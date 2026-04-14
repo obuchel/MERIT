@@ -1,0 +1,446 @@
+
+<h2 class="sr-only">Nexus Hotel & Conference Center RFP Explorer — 1,899 group events + 1,096 days transient demand, across 5 tabs.</h2>
+<style>
+*{box-sizing:border-box}
+.hdr{padding:12px 0 4px;border-bottom:1px solid var(--color-border-tertiary);margin-bottom:14px}
+.hdr-title{font-size:15px;font-weight:500;color:var(--color-text-primary);margin:0}
+.hdr-sub{font-size:11px;color:var(--color-text-tertiary);margin:2px 0 0}
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--color-border-tertiary);margin-bottom:16px;flex-wrap:wrap}
+.tab{padding:8px 14px;font-size:12px;cursor:pointer;border:none;background:none;color:var(--color-text-secondary);border-bottom:2px solid transparent;margin-bottom:-1px;font-family:var(--font-sans)}
+.tab.on{color:var(--color-text-primary);border-bottom-color:#185FA5;font-weight:500}
+.tab.tr-tab.on{border-bottom-color:#E07B2A}
+.panel{display:none}.panel.on{display:block}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.card{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:12px 14px}
+.card.tr{border-left:3px solid #E07B2A}
+.card.grp{border-left:3px solid #185FA5}
+.clabel{font-size:11px;color:var(--color-text-secondary);margin-bottom:3px}
+.cval{font-size:20px;font-weight:500;color:var(--color-text-primary)}
+.csub{font-size:10px;color:var(--color-text-tertiary);margin-top:2px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.box{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:14px}
+.box.tr-box{border-color:#E07B2A44;border-left:3px solid #E07B2A}
+.box.grp-box{border-color:#185FA544;border-left:3px solid #185FA5}
+.bt{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px}
+.bs{font-size:10px;color:var(--color-text-secondary);margin-bottom:10px}
+.leg{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;font-size:10px;color:var(--color-text-secondary)}
+.ld{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:3px;flex-shrink:0;vertical-align:middle}
+.seg-btns{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.sbtn{padding:3px 9px;font-size:10px;border-radius:20px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);cursor:pointer;color:var(--color-text-secondary);font-family:var(--font-sans)}
+.sbtn.on{color:#fff;border-color:transparent}
+.ev-note{font-size:9px;color:#185FA5;font-weight:500}
+.ds-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:20px;font-size:9px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-right:6px}
+.ds-badge.grp{background:#185FA522;color:#185FA5}
+.ds-badge.tr{background:#E07B2A22;color:#E07B2A}
+.insight-row{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.insight{flex:1;min-width:140px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px}
+.insight .lbl{font-size:10px;color:var(--color-text-secondary);margin-bottom:4px}
+.insight .val{font-size:17px;font-weight:600;color:var(--color-text-primary)}
+.insight .sub{font-size:10px;color:var(--color-text-tertiary);margin-top:2px}
+.insight.hi .val{color:#E07B2A}
+.insight.lo .val{color:#185FA5}
+</style>
+
+<div style="padding:0.5rem 0 0">
+<div class="hdr">
+  <div class="hdr-title">Nexus Hotel &amp; Conference Center — RFP + Transient Explorer</div>
+  <div class="hdr-sub">5880 Perimeter Drive, Dublin OH 43017 &nbsp;·&nbsp;
+    <span class="ds-badge grp">● Group</span> 1,899 RFPs 2023–2025 &nbsp;·&nbsp;
+    <span class="ds-badge tr">● Transient</span> 1,096 days daily demand 2023–2025
+  </div>
+</div>
+
+<div class="cards">
+  <div class="card grp"><div class="clabel">Total RFPs</div><div class="cval">1,899</div><div class="csub">Group business 2023–2025</div></div>
+  <div class="card grp"><div class="clabel">Group conversion</div><div class="cval">76.6%</div><div class="csub">1,455 booked · 444 lost</div></div>
+  <div class="card tr"><div class="clabel">Transient avg occ</div><div class="cval">79.6%</div><div class="csub">Of transient rooms available</div></div>
+  <div class="card tr"><div class="clabel">Rooms turned away</div><div class="cval">51,230</div><div class="csub">Unconstrained demand overflow</div></div>
+</div>
+
+<div class="tabs">
+  <button class="tab on" onclick="sw('ov',this)">Overview</button>
+  <button class="tab" onclick="sw('pk',this)">Pickup rate</button>
+  <button class="tab" onclick="sw('fb',this)">F&amp;B &amp; revenue</button>
+  <button class="tab" onclick="sw('se',this)">Columbus calendar</button>
+  <button class="tab tr-tab" onclick="sw('tr',this)">⬡ Transient demand</button>
+</div>
+
+<!-- OVERVIEW -->
+<div id="ov" class="panel on">
+  <div class="g2" style="margin-bottom:14px">
+    <div class="box grp-box">
+      <div class="bt"><span class="ds-badge grp">Group</span> Event type mix</div>
+      <div class="bs">RFPs by type — Tour/Travel removed</div>
+      <div class="leg" id="et-leg"></div>
+      <div style="position:relative;height:200px"><canvas id="etChart"></canvas></div>
+    </div>
+    <div class="box grp-box">
+      <div class="bt"><span class="ds-badge grp">Group</span> Market segment</div>
+      <div class="bs">All 1,899 events</div>
+      <div style="position:relative;height:240px"><canvas id="segChart"></canvas></div>
+    </div>
+  </div>
+  <div class="g3">
+    <div class="box grp-box">
+      <div class="bt"><span class="ds-badge grp">Group</span> Event configuration</div>
+      <div class="bs">What the group needs</div>
+      <div class="leg" id="cfg-leg"></div>
+      <div style="position:relative;height:160px"><canvas id="cfgChart"></canvas></div>
+    </div>
+    <div class="box grp-box">
+      <div class="bt"><span class="ds-badge grp">Group</span> Lead time distribution</div>
+      <div class="bs">Days from inquiry to arrival</div>
+      <div style="position:relative;height:160px"><canvas id="ltChart"></canvas></div>
+    </div>
+    <div class="box grp-box">
+      <div class="bt"><span class="ds-badge grp">Group</span> Lost reasons</div>
+      <div class="bs">Why bookings were lost</div>
+      <div style="position:relative;height:160px"><canvas id="lostChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- PICKUP RATE -->
+<div id="pk" class="panel">
+  <div class="g2" style="margin-bottom:14px">
+    <div class="box grp-box">
+      <div class="bt"><span class="ds-badge grp">Group</span> Avg pickup rate by event type</div>
+      <div class="bs">Corporate and SMERF outperform Association and Wedding/Social</div>
+      <div style="position:relative;height:180px"><canvas id="prTypeChart"></canvas></div>
+    </div>
+    <div class="box grp-box">
+      <div class="bt"><span class="ds-badge grp">Group</span> Meeting setup preference</div>
+      <div class="bs">Primary room configuration</div>
+      <div class="leg" id="setup-leg"></div>
+      <div style="position:relative;height:180px"><canvas id="setupChart"></canvas></div>
+    </div>
+  </div>
+  <div class="box grp-box">
+    <div class="bt"><span class="ds-badge grp">Group</span> Lead time vs pickup rate</div>
+    <div class="bs">Within each type, lead time is independent of pickup rate. The overall slope is a structural effect — Corporate books late AND performs well; Weddings book early AND pick up fewer rooms. Filter by type:</div>
+    <div class="seg-btns" id="scatter-btns"></div>
+    <div class="leg" id="scatter-leg"></div>
+    <div style="position:relative;height:260px"><canvas id="scatterChart"></canvas></div>
+  </div>
+</div>
+
+<!-- F&B & REVENUE -->
+<div id="fb" class="panel">
+  <div class="cards" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+    <div class="card grp"><div class="clabel">Avg total group value</div><div class="cval">$14,289</div><div class="csub">per booked event</div></div>
+    <div class="card grp"><div class="clabel">Avg room revenue</div><div class="cval">$8,048</div><div class="csub">56% of total</div></div>
+    <div class="card grp"><div class="clabel">Avg F&amp;B revenue</div><div class="cval">$5,353</div><div class="csub">37% of total</div></div>
+    <div class="card grp"><div class="clabel">Avg meeting space</div><div class="cval">$887</div><div class="csub">6% of total</div></div>
+  </div>
+  <div class="g2" style="margin-bottom:14px">
+    <div class="box grp-box">
+      <div class="bt"><span class="ds-badge grp">Group</span> F&amp;B per person by event type</div>
+      <div class="bs">Based on Nexus menu pricing ($18 breakfast · $35 lunch · $58 dinner)</div>
+      <div style="position:relative;height:220px"><canvas id="fnbTypeChart"></canvas></div>
+    </div>
+    <div class="box grp-box">
+      <div class="bt"><span class="ds-badge grp">Group</span> Revenue composition</div>
+      <div class="bs">Rooms vs F&amp;B vs meeting space (avg booked event)</div>
+      <div class="leg" id="rev-leg"></div>
+      <div style="position:relative;height:220px"><canvas id="revChart"></canvas></div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="box grp-box">
+      <div class="bt"><span class="ds-badge grp">Group</span> AV level by event type</div>
+      <div class="bs">Max AV complexity (0=none · 1=basic · 2=standard · 3=premium)</div>
+      <div style="position:relative;height:180px"><canvas id="avChart"></canvas></div>
+    </div>
+    <div class="box grp-box">
+      <div class="bt"><span class="ds-badge grp">Group</span> F&amp;B types per event</div>
+      <div class="bs">Number of distinct F&amp;B items (breakfast, breaks, lunch, dinner, reception)</div>
+      <div style="position:relative;height:180px"><canvas id="fnbTypesChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- SEASONALITY -->
+<div id="se" class="panel">
+  <div class="g2" style="margin-bottom:14px">
+    <div class="box grp-box">
+      <div class="bt"><span class="ds-badge grp">Group</span> Forecasted occupancy by month</div>
+      <div class="bs">Dublin OH suburban conference hotel — Columbus event effects visible</div>
+      <div id="occ-notes" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;font-size:10px"></div>
+      <div style="position:relative;height:220px"><canvas id="occChart"></canvas></div>
+    </div>
+    <div class="box grp-box">
+      <div class="bt"><span class="ds-badge grp">Group</span> Baseline ADR by month</div>
+      <div class="bs">Group rate ceiling rises with demand — OSU football and Arnold Sports visible</div>
+      <div style="position:relative;height:248px"><canvas id="adrChart"></canvas></div>
+    </div>
+  </div>
+  <div class="box grp-box">
+    <div class="bt"><span class="ds-badge grp">Group</span> RFP volume by arrival month</div>
+    <div class="bs">When groups want to arrive at the Nexus — booked vs lost</div>
+    <div class="leg" id="vol-leg"></div>
+    <div style="position:relative;height:200px"><canvas id="volChart"></canvas></div>
+  </div>
+</div>
+
+<!-- TRANSIENT DEMAND TAB -->
+<div id="tr" class="panel">
+
+  <!-- Key stats row -->
+  <div class="insight-row">
+    <div class="insight hi">
+      <div class="lbl"><span class="ds-badge tr">Transient</span> Peak avg occ</div>
+      <div class="val">97.5%</div>
+      <div class="sub">OSU Football days (40 per year)</div>
+    </div>
+    <div class="insight">
+      <div class="lbl"><span class="ds-badge tr">Transient</span> Avg ADR (non-OSU)</div>
+      <div class="val">$167.00</div>
+      <div class="sub">vs $218.41 on OSU Football days</div>
+    </div>
+    <div class="insight hi">
+      <div class="lbl"><span class="ds-badge tr">Transient</span> Rooms turned away / yr</div>
+      <div class="val">~17,077</div>
+      <div class="sub">Unconstrained demand overflow</div>
+    </div>
+    <div class="insight lo">
+      <div class="lbl"><span class="ds-badge tr">Transient</span> Avg annual revenue</div>
+      <div class="val">$6.23M</div>
+      <div class="sub">2023–2025 avg transient revenue</div>
+    </div>
+  </div>
+
+  <!-- Occ comparison -->
+  <div class="g2" style="margin-bottom:14px">
+    <div class="box tr-box">
+      <div class="bt"><span class="ds-badge tr">Transient</span> Occupancy by month vs market</div>
+      <div class="bs">Nexus transient occ vs Columbus market — Sep/Oct surge driven by OSU Football</div>
+      <div class="leg" id="tr-occ-leg"></div>
+      <div style="position:relative;height:220px"><canvas id="trOccChart"></canvas></div>
+    </div>
+    <div class="box tr-box">
+      <div class="bt"><span class="ds-badge tr">Transient</span> ADR by month vs market</div>
+      <div class="bs">Nexus transient ADR vs Columbus market — premium positioning strongest in Oct</div>
+      <div class="leg" id="tr-adr-leg"></div>
+      <div style="position:relative;height:220px"><canvas id="trAdrChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Demand vs turned away + group displacement -->
+  <div class="g2" style="margin-bottom:14px">
+    <div class="box tr-box">
+      <div class="bt"><span class="ds-badge tr">Transient</span> Unconstrained demand vs rooms sold</div>
+      <div class="bs">Gap = rooms turned away (lost transient revenue opportunity) — highest in Sep/Oct</div>
+      <div class="leg" id="tr-dem-leg"></div>
+      <div style="position:relative;height:230px"><canvas id="trDemChart"></canvas></div>
+    </div>
+    <div class="box">
+      <div class="bt"><span class="ds-badge grp">Group</span><span class="ds-badge tr">Transient</span> Room mix by month</div>
+      <div class="bs">Avg rooms on books: group block vs transient sold per day — how the hotel fills</div>
+      <div class="leg" id="mix-leg"></div>
+      <div style="position:relative;height:230px"><canvas id="mixChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Demand tier heatmap + displacement pressure -->
+  <div class="g2" style="margin-bottom:14px">
+    <div class="box tr-box">
+      <div class="bt"><span class="ds-badge tr">Transient</span> Demand tier composition by month</div>
+      <div class="bs">How often each month hits Soft / Low / Moderate / High / Peak transient demand</div>
+      <div class="leg" id="tier-leg"></div>
+      <div style="position:relative;height:220px"><canvas id="tierChart"></canvas></div>
+    </div>
+    <div class="box tr-box">
+      <div class="bt"><span class="ds-badge tr">Transient</span> RevPAR by month</div>
+      <div class="bs">Transient RevPAR (revenue per available transient room) — Oct and Sep lead</div>
+      <div style="position:relative;height:220px"><canvas id="revparChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Weekend vs weekday + OSU callout -->
+  <div class="g2">
+    <div class="box tr-box">
+      <div class="bt"><span class="ds-badge tr">Transient</span> Weekday vs weekend</div>
+      <div class="bs">Unlike typical leisure hotels, Nexus transient skews weekday — corporate traveler profile</div>
+      <div class="leg" id="wkd-leg"></div>
+      <div style="position:relative;height:190px"><canvas id="wkdChart"></canvas></div>
+    </div>
+    <div class="box tr-box">
+      <div class="bt"><span class="ds-badge tr">Transient</span> OSU Football impact</div>
+      <div class="bs">40 game days per year drive outsized revenue — displacement risk for groups in Sep/Oct</div>
+      <div class="leg" id="osu-leg"></div>
+      <div style="position:relative;height:190px"><canvas id="osuChart"></canvas></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const ET_C = {'Corporate':'#185FA5','Association':'#1D9E75','Wedding/Social':'#D85A30','SMERF':'#7F77DD'};
+const SEG_C = {'Social':'#185FA5','Healthcare':'#1D9E75','Finance':'#BA7517','Technology':'#7F77DD','Professional Services':'#D85A30','Government':'#0F6E56','Other':'#888780','Education':'#639922','Association':'#993556','SMERF':'#D4537E','Legal':'#533AB7','Trade/Manufacturing':'#E24B4A','Travel':'#63605A'};
+const isDark = matchMedia('(prefers-color-scheme:dark)').matches;
+const tc = isDark?'#aaa':'#555', gc = isDark?'rgba(255,255,255,.07)':'rgba(0,0,0,.06)';
+const base = {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10}}},y:{grid:{color:gc},ticks:{color:tc,font:{size:10}}}}};
+
+function leg(el,items){el.innerHTML=items.map(([l,c])=>`<span style="display:flex;align-items:center;gap:3px"><span class="ld" style="background:${c}"></span>${l}</span>`).join('')}
+function sw(id,btn){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));document.getElementById(id).classList.add('on');btn.classList.add('on')}
+
+// ── GROUP DATA ──────────────────────────────────────────
+const ET_DATA = {Corporate:731,Association:556,'Wedding/Social':362,SMERF:250};
+const SEG_DATA = {Social:339,Healthcare:326,Finance:238,Technology:178,'Professional Services':161,Government:116,Other:116,Education:114,Association:86,SMERF:81,Legal:68,'Trade/Manufacturing':65,Travel:11};
+const CFG_DATA = {'Full Package':1350,'Rooms Only':355,'Meeting Only':194};
+const LT_DATA  = {'0-30':15,'30-60':181,'60-90':393,'90-120':286,'120-150':130,'150-180':86,'180-240':289,'240-300':325,'300-365':194};
+const LOST_DATA= {'Client Went Direct':69,'Budget Constraints':65,'Space Not Adequate':60,'Chose Another Venue':56,'Canceled by Client':55,'Dates Not Available':47,'Rates Too High':46,'Lost to Competition':46};
+const PR_TYPE  = {Corporate:88.2,SMERF:84.6,Association:71.6,'Wedding/Social':58.8};
+const FNB_TYPE = {Association:134.9,'Wedding/Social':128.5,Corporate:109.8,SMERF:35.7};
+const SETUP    = {Classroom:714,Theater:401,Banquet:294,Reception:71,Boardroom:64};
+const AV_BY_TYPE_RAW = {Corporate:{0:120,1:80,2:230,3:180},Association:{0:80,1:60,2:195,3:200},SMERF:{0:110,1:50,2:55,3:20},'Wedding/Social':{0:180,1:65,2:175,3:100}};
+const FNB_TYPES= {0:456,1:328,2:161,3:218,4:366,5:370};
+const OCC_M    = [47.9,54.8,64.9,78.6,82.7,72.0,64.9,71.2,81.1,85.7,72.0,44.6];
+const ADR_M    = [149.3,153.9,161.6,166.7,171.5,162.9,157.9,163.9,176.9,180.8,169.3,147.5];
+const MONTHS   = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const VOL_BOOKED=[95,104,117,126,134,120,105,118,127,130,110,69];
+const VOL_LOST  =[29,32,36,38,41,37,32,36,39,40,34,21];
+
+// ── TRANSIENT DATA (from Nexus_Transient_Demand_2023_2025.csv) ──
+const TR_OCC    = [67.2,67.6,84.3,76.2,88.0,84.0,87.0,79.8,90.8,88.8,81.7,50.0];
+const TR_ADR    = [147.32,153.56,168.67,173.69,182.13,169.74,166.69,172.17,186.93,191.47,175.19,138.64];
+const TR_DEMAND = [107.0,120.4,147.4,162.2,180.7,150.1,142.5,147.8,182.9,191.3,151.6,75.1];
+const TR_SOLD   = [93.1,97.5,104.5,102.3,109.1,96.5,99.9,95.3,105.9,112.6,112.5,69.4];
+const TR_TURNED = [13.9,22.9,42.9,59.9,71.5,53.5,42.6,52.5,76.9,78.7,39.1,5.7];
+const TR_REVPAR = [62.45,68.04,80.75,80.73,90.97,74.21,76.10,74.38,90.14,97.97,89.60,44.75];
+const MKT_OCC   = [72.2,76.1,85.4,87.1,90.7,86.0,87.8,86.2,90.5,91.3,83.5,58.6];
+const MKT_ADR   = [136.29,142.22,155.37,160.35,168.30,157.33,154.02,158.85,173.05,177.19,162.75,128.39];
+const GRP_ROOMS = [75.6,79.3,94.8,100.6,102.6,103.8,104.2,105.4,104.4,100.2,82.0,66.7];
+// Demand tier counts per month [Soft,Low,Moderate,High,Peak]
+const TIER_DATA = {
+  Soft:  [13, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40],
+  Low:   [33,29,20,13, 9,15,20,17, 5, 5,23,47],
+  Moderate:[47,43,34,25,16,31,31,33,19,11,22, 6],
+  High:  [ 0, 6,27,32,24,34,42,35,21,17,28, 3],
+  Peak:  [ 0, 0,12,20,44,10, 0, 8,45,60,17, 0]
+};
+const TIER_C = {Soft:'#888780',Low:'#639922',Moderate:'#BA7517',High:'#185FA5',Peak:'#D85A30'};
+
+const SCATTER = [{"lt":359,"pr":0.63,"et":"Wedding/Social"},{"lt":71,"pr":0.868,"et":"SMERF"},{"lt":82,"pr":0.788,"et":"SMERF"},{"lt":70,"pr":0.8,"et":"Corporate"},{"lt":158,"pr":0.895,"et":"SMERF"},{"lt":365,"pr":0.636,"et":"Wedding/Social"},{"lt":111,"pr":0.9,"et":"Corporate"},{"lt":98,"pr":0.793,"et":"SMERF"},{"lt":56,"pr":0.733,"et":"SMERF"},{"lt":47,"pr":0.857,"et":"SMERF"},{"lt":181,"pr":0.643,"et":"Association"},{"lt":241,"pr":0.548,"et":"Wedding/Social"},{"lt":82,"pr":0.938,"et":"Corporate"},{"lt":220,"pr":0.6,"et":"Wedding/Social"},{"lt":264,"pr":0.693,"et":"Association"},{"lt":80,"pr":0.946,"et":"Corporate"},{"lt":233,"pr":0.583,"et":"Wedding/Social"},{"lt":308,"pr":0.686,"et":"Association"},{"lt":195,"pr":0.687,"et":"Association"},{"lt":281,"pr":0.744,"et":"Association"},{"lt":78,"pr":0.923,"et":"Corporate"},{"lt":330,"pr":0.524,"et":"Wedding/Social"},{"lt":160,"pr":0.621,"et":"Association"},{"lt":253,"pr":0.579,"et":"Wedding/Social"},{"lt":231,"pr":0.545,"et":"Wedding/Social"},{"lt":246,"pr":0.818,"et":"Association"},{"lt":101,"pr":0.967,"et":"Corporate"},{"lt":256,"pr":0.575,"et":"Wedding/Social"},{"lt":57,"pr":0.918,"et":"Corporate"},{"lt":365,"pr":0.579,"et":"Wedding/Social"},{"lt":53,"pr":0.842,"et":"Corporate"},{"lt":120,"pr":0.625,"et":"Association"},{"lt":330,"pr":0.764,"et":"Association"},{"lt":247,"pr":0.739,"et":"Association"},{"lt":163,"pr":0.785,"et":"Association"},{"lt":290,"pr":0.706,"et":"Association"},{"lt":101,"pr":0.86,"et":"Corporate"},{"lt":87,"pr":0.924,"et":"Corporate"},{"lt":270,"pr":0.65,"et":"Association"},{"lt":357,"pr":0.607,"et":"Wedding/Social"},{"lt":279,"pr":0.733,"et":"Association"},{"lt":215,"pr":0.745,"et":"Association"},{"lt":239,"pr":0.595,"et":"Wedding/Social"},{"lt":299,"pr":0.69,"et":"Association"},{"lt":119,"pr":0.883,"et":"Corporate"},{"lt":250,"pr":0.5,"et":"Wedding/Social"},{"lt":256,"pr":0.771,"et":"Association"},{"lt":91,"pr":0.78,"et":"Corporate"},{"lt":294,"pr":0.698,"et":"Association"},{"lt":307,"pr":0.631,"et":"Association"},{"lt":270,"pr":0.729,"et":"Association"},{"lt":295,"pr":0.604,"et":"Wedding/Social"},{"lt":131,"pr":0.79,"et":"Corporate"},{"lt":99,"pr":0.871,"et":"Corporate"},{"lt":90,"pr":0.898,"et":"Corporate"},{"lt":150,"pr":0.524,"et":"Wedding/Social"},{"lt":84,"pr":0.844,"et":"Corporate"},{"lt":221,"pr":0.745,"et":"Association"},{"lt":215,"pr":0.734,"et":"Association"},{"lt":63,"pr":0.976,"et":"SMERF"},{"lt":94,"pr":0.917,"et":"Corporate"},{"lt":319,"pr":0.792,"et":"Association"},{"lt":365,"pr":0.56,"et":"Wedding/Social"},{"lt":328,"pr":0.621,"et":"Wedding/Social"},{"lt":107,"pr":0.952,"et":"Corporate"},{"lt":232,"pr":0.796,"et":"Association"},{"lt":266,"pr":0.713,"et":"Association"},{"lt":103,"pr":0.953,"et":"Corporate"},{"lt":323,"pr":0.628,"et":"Wedding/Social"},{"lt":45,"pr":0.867,"et":"Corporate"},{"lt":91,"pr":0.922,"et":"Corporate"},{"lt":72,"pr":0.925,"et":"Corporate"},{"lt":283,"pr":0.697,"et":"Association"},{"lt":191,"pr":0.7,"et":"Association"},{"lt":94,"pr":0.849,"et":"Corporate"},{"lt":103,"pr":0.97,"et":"SMERF"},{"lt":155,"pr":0.662,"et":"Association"},{"lt":296,"pr":0.576,"et":"Wedding/Social"},{"lt":150,"pr":0.529,"et":"Wedding/Social"},{"lt":184,"pr":0.821,"et":"Association"},{"lt":150,"pr":0.542,"et":"Wedding/Social"},{"lt":279,"pr":0.739,"et":"Association"},{"lt":281,"pr":0.613,"et":"Wedding/Social"},{"lt":196,"pr":0.5,"et":"Wedding/Social"},{"lt":88,"pr":0.971,"et":"Corporate"},{"lt":86,"pr":0.833,"et":"Corporate"},{"lt":127,"pr":0.7,"et":"Association"},{"lt":234,"pr":0.795,"et":"Association"},{"lt":107,"pr":0.971,"et":"SMERF"},{"lt":105,"pr":0.951,"et":"SMERF"},{"lt":91,"pr":0.926,"et":"Corporate"},{"lt":36,"pr":0.867,"et":"Corporate"},{"lt":83,"pr":0.822,"et":"Corporate"},{"lt":315,"pr":0.643,"et":"Wedding/Social"},{"lt":73,"pr":0.892,"et":"Corporate"},{"lt":365,"pr":0.577,"et":"Wedding/Social"},{"lt":92,"pr":0.8,"et":"Corporate"},{"lt":248,"pr":0.684,"et":"Association"},{"lt":256,"pr":0.753,"et":"Association"},{"lt":59,"pr":0.803,"et":"Corporate"},{"lt":72,"pr":0.841,"et":"SMERF"},{"lt":100,"pr":0.894,"et":"Corporate"},{"lt":43,"pr":0.95,"et":"Corporate"},{"lt":94,"pr":0.797,"et":"Corporate"},{"lt":97,"pr":0.857,"et":"SMERF"},{"lt":262,"pr":0.583,"et":"Wedding/Social"},{"lt":111,"pr":0.976,"et":"Corporate"},{"lt":308,"pr":0.568,"et":"Wedding/Social"},{"lt":59,"pr":0.961,"et":"Corporate"},{"lt":71,"pr":0.915,"et":"Corporate"},{"lt":239,"pr":0.62,"et":"Association"},{"lt":156,"pr":0.556,"et":"Wedding/Social"},{"lt":273,"pr":0.623,"et":"Association"},{"lt":134,"pr":0.861,"et":"SMERF"},{"lt":92,"pr":0.904,"et":"Corporate"},{"lt":71,"pr":0.875,"et":"Corporate"},{"lt":189,"pr":0.739,"et":"SMERF"},{"lt":214,"pr":0.8,"et":"Association"},{"lt":131,"pr":0.833,"et":"Corporate"},{"lt":256,"pr":0.568,"et":"Wedding/Social"},{"lt":112,"pr":0.833,"et":"Corporate"},{"lt":68,"pr":0.896,"et":"Corporate"},{"lt":365,"pr":0.622,"et":"Wedding/Social"},{"lt":69,"pr":0.909,"et":"Corporate"},{"lt":72,"pr":0.896,"et":"Corporate"},{"lt":238,"pr":0.719,"et":"Association"},{"lt":259,"pr":0.789,"et":"Association"},{"lt":228,"pr":0.689,"et":"Association"},{"lt":100,"pr":0.833,"et":"Corporate"},{"lt":286,"pr":0.713,"et":"Association"},{"lt":214,"pr":0.556,"et":"Wedding/Social"},{"lt":265,"pr":0.796,"et":"Association"},{"lt":341,"pr":0.789,"et":"Association"},{"lt":116,"pr":0.962,"et":"Corporate"},{"lt":96,"pr":0.829,"et":"Corporate"},{"lt":130,"pr":0.762,"et":"SMERF"},{"lt":116,"pr":0.842,"et":"Corporate"},{"lt":136,"pr":0.76,"et":"SMERF"},{"lt":161,"pr":0.857,"et":"SMERF"},{"lt":218,"pr":0.693,"et":"Association"},{"lt":301,"pr":0.633,"et":"Wedding/Social"},{"lt":76,"pr":0.914,"et":"Corporate"},{"lt":145,"pr":0.942,"et":"Corporate"},{"lt":62,"pr":0.824,"et":"Corporate"},{"lt":141,"pr":0.8,"et":"SMERF"},{"lt":190,"pr":0.569,"et":"Wedding/Social"},{"lt":102,"pr":0.87,"et":"Corporate"},{"lt":45,"pr":0.85,"et":"SMERF"},{"lt":117,"pr":0.98,"et":"SMERF"},{"lt":136,"pr":0.784,"et":"SMERF"},{"lt":200,"pr":0.688,"et":"Association"},{"lt":30,"pr":0.955,"et":"Corporate"},{"lt":337,"pr":0.533,"et":"Wedding/Social"},{"lt":223,"pr":0.774,"et":"Association"},{"lt":243,"pr":0.754,"et":"Association"},{"lt":297,"pr":0.697,"et":"Association"},{"lt":365,"pr":0.548,"et":"Wedding/Social"},{"lt":266,"pr":0.609,"et":"Wedding/Social"},{"lt":101,"pr":0.983,"et":"Corporate"},{"lt":115,"pr":0.92,"et":"Corporate"},{"lt":195,"pr":0.715,"et":"Association"},{"lt":104,"pr":0.864,"et":"Corporate"},{"lt":78,"pr":0.955,"et":"Corporate"},{"lt":212,"pr":0.55,"et":"Wedding/Social"},{"lt":290,"pr":0.672,"et":"Association"},{"lt":120,"pr":0.79,"et":"Association"},{"lt":347,"pr":0.664,"et":"Association"},{"lt":30,"pr":0.957,"et":"Corporate"},{"lt":52,"pr":0.89,"et":"Corporate"},{"lt":231,"pr":0.64,"et":"Wedding/Social"},{"lt":264,"pr":0.762,"et":"Association"},{"lt":248,"pr":0.688,"et":"Association"},{"lt":89,"pr":0.947,"et":"Corporate"},{"lt":310,"pr":0.556,"et":"Wedding/Social"},{"lt":99,"pr":0.864,"et":"Corporate"},{"lt":224,"pr":0.741,"et":"Association"},{"lt":293,"pr":0.762,"et":"Association"},{"lt":52,"pr":0.87,"et":"SMERF"},{"lt":218,"pr":0.533,"et":"Wedding/Social"},{"lt":55,"pr":0.86,"et":"SMERF"},{"lt":150,"pr":0.556,"et":"Wedding/Social"},{"lt":334,"pr":0.75,"et":"Association"},{"lt":117,"pr":0.789,"et":"Corporate"},{"lt":271,"pr":0.782,"et":"Association"},{"lt":214,"pr":0.611,"et":"Wedding/Social"},{"lt":249,"pr":0.661,"et":"Wedding/Social"},{"lt":147,"pr":0.889,"et":"SMERF"},{"lt":69,"pr":0.889,"et":"Corporate"},{"lt":72,"pr":0.81,"et":"Corporate"},{"lt":103,"pr":0.926,"et":"Corporate"},{"lt":53,"pr":0.947,"et":"Corporate"},{"lt":83,"pr":0.857,"et":"Corporate"},{"lt":204,"pr":0.637,"et":"Association"},{"lt":81,"pr":0.807,"et":"Corporate"},{"lt":279,"pr":0.736,"et":"Association"},{"lt":177,"pr":0.709,"et":"Association"},{"lt":109,"pr":0.909,"et":"Corporate"},{"lt":94,"pr":0.779,"et":"SMERF"},{"lt":85,"pr":0.804,"et":"Corporate"},{"lt":281,"pr":0.659,"et":"Association"},{"lt":142,"pr":0.676,"et":"Association"},{"lt":50,"pr":0.824,"et":"SMERF"},{"lt":121,"pr":0.856,"et":"SMERF"},{"lt":255,"pr":0.675,"et":"Association"},{"lt":90,"pr":0.829,"et":"Corporate"},{"lt":215,"pr":0.682,"et":"Wedding/Social"},{"lt":267,"pr":0.633,"et":"Association"},{"lt":61,"pr":0.889,"et":"Corporate"},{"lt":49,"pr":0.967,"et":"Corporate"},{"lt":75,"pr":0.861,"et":"Corporate"},{"lt":81,"pr":0.893,"et":"Corporate"},{"lt":254,"pr":0.659,"et":"Association"},{"lt":240,"pr":0.643,"et":"Wedding/Social"},{"lt":297,"pr":0.621,"et":"Association"},{"lt":261,"pr":0.62,"et":"Association"},{"lt":321,"pr":0.746,"et":"Association"},{"lt":137,"pr":0.818,"et":"SMERF"},{"lt":365,"pr":0.542,"et":"Wedding/Social"},{"lt":56,"pr":0.848,"et":"Corporate"},{"lt":281,"pr":0.716,"et":"Association"},{"lt":239,"pr":0.607,"et":"Wedding/Social"},{"lt":65,"pr":0.941,"et":"Corporate"},{"lt":340,"pr":0.556,"et":"Wedding/Social"},{"lt":218,"pr":0.735,"et":"Association"},{"lt":204,"pr":0.659,"et":"Association"},{"lt":320,"pr":0.652,"et":"Wedding/Social"},{"lt":194,"pr":0.6,"et":"Wedding/Social"},{"lt":87,"pr":0.986,"et":"Corporate"},{"lt":273,"pr":0.625,"et":"Wedding/Social"},{"lt":230,"pr":0.717,"et":"Association"},{"lt":297,"pr":0.615,"et":"Wedding/Social"},{"lt":84,"pr":0.792,"et":"Corporate"},{"lt":79,"pr":0.872,"et":"Corporate"},{"lt":229,"pr":0.625,"et":"Wedding/Social"},{"lt":66,"pr":0.8,"et":"Corporate"},{"lt":226,"pr":0.766,"et":"Association"},{"lt":45,"pr":0.902,"et":"Corporate"},{"lt":52,"pr":0.962,"et":"Corporate"},{"lt":47,"pr":0.786,"et":"Corporate"},{"lt":96,"pr":0.982,"et":"Corporate"},{"lt":171,"pr":0.787,"et":"Association"},{"lt":95,"pr":0.964,"et":"SMERF"},{"lt":78,"pr":0.8,"et":"SMERF"},{"lt":85,"pr":0.808,"et":"Corporate"},{"lt":292,"pr":0.661,"et":"Association"},{"lt":264,"pr":0.607,"et":"Wedding/Social"},{"lt":87,"pr":0.895,"et":"Corporate"},{"lt":229,"pr":0.556,"et":"Wedding/Social"},{"lt":216,"pr":0.642,"et":"Association"}];
+
+window.addEventListener('load',()=>{
+  // ── GROUP charts ────────────────────────────────
+  const types = Object.keys(ET_DATA);
+  const etColors = types.map(t=>ET_C[t]);
+  leg(document.getElementById('et-leg'), types.map(t=>[t,ET_C[t]]));
+  new Chart(document.getElementById('etChart'),{type:'bar',data:{labels:types,datasets:[{data:Object.values(ET_DATA),backgroundColor:etColors,borderRadius:5,borderSkipped:false}]},options:{...base,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw} events`}}}}});
+
+  const segs=Object.keys(SEG_DATA),segVals=Object.values(SEG_DATA),segC=segs.map(s=>SEG_C[s]||'#888');
+  new Chart(document.getElementById('segChart'),{type:'bar',data:{labels:segs,datasets:[{data:segVals,backgroundColor:segC,borderRadius:4,borderSkipped:false}]},options:{indexAxis:'y',...base,scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:9}}},y:{grid:{display:false},ticks:{color:tc,font:{size:9}}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw} events`}}}}});
+
+  const cfgC=['#185FA5','#888780','#1D9E75'];
+  leg(document.getElementById('cfg-leg'),Object.keys(CFG_DATA).map((k,i)=>[k,cfgC[i]]));
+  new Chart(document.getElementById('cfgChart'),{type:'doughnut',data:{labels:Object.keys(CFG_DATA),datasets:[{data:Object.values(CFG_DATA),backgroundColor:cfgC,borderWidth:2,borderColor:isDark?'#222':'#fff'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw}`}}}}});
+
+  new Chart(document.getElementById('ltChart'),{type:'bar',data:{labels:Object.keys(LT_DATA),datasets:[{data:Object.values(LT_DATA),backgroundColor:'#185FA5cc',borderRadius:4,borderSkipped:false}]},options:{...base,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:tc,font:{size:9},maxRotation:35}},y:{grid:{color:gc},ticks:{color:tc,font:{size:9}}}}}});
+
+  const lostK=Object.keys(LOST_DATA),lostV=Object.values(LOST_DATA);
+  new Chart(document.getElementById('lostChart'),{type:'bar',data:{labels:lostK,datasets:[{data:lostV,backgroundColor:'#D85A30cc',borderRadius:4,borderSkipped:false}]},options:{indexAxis:'y',...base,scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:9}}},y:{grid:{display:false},ticks:{color:tc,font:{size:9}}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw} events`}}}}});
+
+  const prTypes=Object.keys(PR_TYPE).sort((a,b)=>PR_TYPE[b]-PR_TYPE[a]);
+  new Chart(document.getElementById('prTypeChart'),{type:'bar',data:{labels:prTypes,datasets:[{data:prTypes.map(t=>PR_TYPE[t]),backgroundColor:prTypes.map(t=>ET_C[t]),borderRadius:5,borderSkipped:false}]},options:{indexAxis:'y',...base,scales:{x:{min:50,max:100,grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>v+'%'}},y:{grid:{display:false},ticks:{color:tc,font:{size:10}}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.formattedValue}%`}}}}});
+
+  const setupC=['#185FA5','#1D9E75','#D85A30','#7F77DD','#888780'];
+  leg(document.getElementById('setup-leg'),Object.keys(SETUP).map((k,i)=>[k,setupC[i]]));
+  new Chart(document.getElementById('setupChart'),{type:'doughnut',data:{labels:Object.keys(SETUP),datasets:[{data:Object.values(SETUP),backgroundColor:setupC,borderWidth:2,borderColor:isDark?'#222':'#fff'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw}`}}}}});
+
+  const allTypes=['Corporate','Association','Wedding/Social','SMERF'];
+  let activeTypes=new Set(allTypes);
+  const filterEl=document.getElementById('scatter-btns');
+  leg(document.getElementById('scatter-leg'),allTypes.map(t=>[t,ET_C[t]]));
+  allTypes.forEach(et=>{
+    const btn=document.createElement('button');
+    btn.className='sbtn on';btn.textContent=et;btn.style.background=ET_C[et];
+    btn.onclick=()=>{if(activeTypes.has(et)){if(activeTypes.size>1){activeTypes.delete(et);btn.classList.remove('on');btn.style.background='';}}else{activeTypes.add(et);btn.classList.add('on');btn.style.background=ET_C[et];}updateSc();};
+    filterEl.appendChild(btn);
+  });
+  const scatterChart=new Chart(document.getElementById('scatterChart'),{type:'scatter',data:{datasets:[]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: lead=${c.parsed.x}d, pickup=${(c.parsed.y*100).toFixed(1)}%`}}},scales:{x:{title:{display:true,text:'Lead time (days)',color:tc,font:{size:10}},grid:{color:gc},ticks:{color:tc,font:{size:10}}},y:{title:{display:true,text:'Pickup rate',color:tc,font:{size:10}},min:0.42,max:1.02,grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>(v*100).toFixed(0)+'%'}}},layout:{padding:{right:8}}}});
+  function updateSc(){scatterChart.data.datasets=allTypes.filter(t=>activeTypes.has(t)).map(et=>({label:et,data:SCATTER.filter(d=>d.et===et).map(d=>({x:d.lt,y:d.pr})),backgroundColor:ET_C[et]+'99',pointRadius:4,pointHoverRadius:6}));scatterChart.update();}
+  updateSc();
+
+  const fnbTypes=Object.keys(FNB_TYPE).sort((a,b)=>FNB_TYPE[b]-FNB_TYPE[a]);
+  new Chart(document.getElementById('fnbTypeChart'),{type:'bar',data:{labels:fnbTypes,datasets:[{data:fnbTypes.map(t=>FNB_TYPE[t]),backgroundColor:fnbTypes.map(t=>ET_C[t]),borderRadius:5,borderSkipped:false}]},options:{indexAxis:'y',...base,scales:{x:{grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>'$'+v}},y:{grid:{display:false},ticks:{color:tc,font:{size:10}}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${c.formattedValue}/person`}}}}});
+
+  const revC=['#185FA5','#1D9E75','#BA7517'];
+  leg(document.getElementById('rev-leg'),[['Rooms','#185FA5'],['F&B','#1D9E75'],['Meeting space','#BA7517']]);
+  new Chart(document.getElementById('revChart'),{type:'doughnut',data:{labels:['Rooms','F&B','Meeting Space'],datasets:[{data:[8048,5353,887],backgroundColor:revC,borderWidth:2,borderColor:isDark?'#222':'#fff'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${c.raw.toLocaleString()}`}}}}});
+
+  const avLabels=['No AV','Basic','Standard','Premium'];
+  const avC=['#888780','#BA7517','#185FA5','#1D9E75'];
+  new Chart(document.getElementById('avChart'),{type:'bar',data:{labels:Object.keys(ET_DATA),datasets:avLabels.map((l,i)=>({label:l,data:Object.keys(ET_DATA).map(et=>{const raw=AV_BY_TYPE_RAW[et];return raw?raw[i]:0;}),backgroundColor:avC[i]+'cc',borderRadius:3,borderSkipped:false}))},options:{...base,plugins:{legend:{display:false},tooltip:{mode:'index'}},scales:{x:{stacked:true,grid:{display:false},ticks:{color:tc,font:{size:10}}},y:{stacked:true,grid:{color:gc},ticks:{color:tc,font:{size:10}}}}}});
+
+  new Chart(document.getElementById('fnbTypesChart'),{type:'bar',data:{labels:Object.keys(FNB_TYPES).map(k=>k+' types'),datasets:[{data:Object.values(FNB_TYPES),backgroundColor:'#7F77DDcc',borderRadius:4,borderSkipped:false}]},options:{...base,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw} events`}}},scales:{x:{grid:{display:false},ticks:{color:tc,font:{size:10}}},y:{grid:{color:gc},ticks:{color:tc,font:{size:10}}}}}});
+
+  const occC=OCC_M.map((v,i)=>MONTHS[i]==='Oct'||MONTHS[i]==='Sep'?'#D85A30cc':MONTHS[i]==='Feb'||MONTHS[i]==='May'?'#BA7517cc':'#185FA5cc');
+  new Chart(document.getElementById('occChart'),{type:'bar',data:{labels:MONTHS,datasets:[{data:OCC_M,backgroundColor:occC,borderRadius:4,borderSkipped:false}]},options:{...base,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.formattedValue}%`}}},scales:{x:{grid:{display:false},ticks:{color:tc,font:{size:10}}},y:{min:35,max:95,grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>v+'%'}}}}});
+
+  const adrC=ADR_M.map((v,i)=>MONTHS[i]==='Oct'||MONTHS[i]==='Sep'?'#D85A30cc':MONTHS[i]==='Feb'||MONTHS[i]==='May'?'#BA7517cc':'#1D9E75cc');
+  new Chart(document.getElementById('adrChart'),{type:'bar',data:{labels:MONTHS,datasets:[{data:ADR_M,backgroundColor:adrC,borderRadius:4,borderSkipped:false}]},options:{...base,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${c.formattedValue}`}}},scales:{x:{grid:{display:false},ticks:{color:tc,font:{size:10}}},y:{min:135,max:195,grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>'$'+v}}}}});
+
+  const evNotesEl=document.getElementById('occ-notes');
+  [['Feb','Arnold Sports','#BA7517'],['May','Graduation','#BA7517'],['Sep','OSU Football','#D85A30'],['Oct','OSU Peak + Marathon','#D85A30']].forEach(([m,n,c])=>{const s=document.createElement('span');s.className='ev-note';s.style.color=c;s.textContent=`${m}: ${n}`;evNotesEl.appendChild(s);});
+
+  leg(document.getElementById('vol-leg'),[['Booked','#185FA5'],['Lost','#D85A30cc']]);
+  new Chart(document.getElementById('volChart'),{type:'bar',data:{labels:MONTHS,datasets:[{label:'Booked',data:VOL_BOOKED,backgroundColor:'#185FA5cc',borderRadius:3,borderSkipped:false},{label:'Lost',data:VOL_LOST,backgroundColor:'#D85A30cc',borderRadius:3,borderSkipped:false}]},options:{...base,plugins:{legend:{display:false},tooltip:{mode:'index'}},scales:{x:{grid:{display:false},ticks:{color:tc,font:{size:10}}},y:{grid:{color:gc},ticks:{color:tc,font:{size:10}},stacked:false}}}});
+
+  // ── TRANSIENT charts ────────────────────────────────
+  // Occ comparison
+  leg(document.getElementById('tr-occ-leg'),[['Nexus Transient Occ','#E07B2A'],['Columbus Market Occ','#888780']]);
+  new Chart(document.getElementById('trOccChart'),{type:'bar',data:{labels:MONTHS,datasets:[
+    {label:'Nexus Transient',data:TR_OCC,backgroundColor:'#E07B2Acc',borderRadius:4,borderSkipped:false},
+    {label:'Market',data:MKT_OCC,backgroundColor:'#88878055',borderRadius:4,borderSkipped:false}
+  ]},options:{...base,plugins:{legend:{display:false},tooltip:{mode:'index',callbacks:{label:c=>`${c.dataset.label}: ${c.formattedValue}%`}}},scales:{x:{grid:{display:false},ticks:{color:tc,font:{size:10}}},y:{min:35,max:100,grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>v+'%'}}}}});
+
+  // ADR comparison
+  leg(document.getElementById('tr-adr-leg'),[['Nexus Transient ADR','#E07B2A'],['Columbus Market ADR','#888780']]);
+  new Chart(document.getElementById('trAdrChart'),{type:'bar',data:{labels:MONTHS,datasets:[
+    {label:'Nexus Transient',data:TR_ADR,backgroundColor:'#E07B2Acc',borderRadius:4,borderSkipped:false},
+    {label:'Market',data:MKT_ADR,backgroundColor:'#88878055',borderRadius:4,borderSkipped:false}
+  ]},options:{...base,plugins:{legend:{display:false},tooltip:{mode:'index',callbacks:{label:c=>`${c.dataset.label}: $${c.formattedValue}`}}},scales:{x:{grid:{display:false},ticks:{color:tc,font:{size:10}}},y:{min:110,max:210,grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>'$'+v}}}}});
+
+  // Demand vs sold vs turned away
+  leg(document.getElementById('tr-dem-leg'),[['Unconstrained Demand','#E07B2A'],['Rooms Sold','#185FA5'],['Turned Away (gap)','#D85A3088']]);
+  new Chart(document.getElementById('trDemChart'),{type:'bar',data:{labels:MONTHS,datasets:[
+    {label:'Unconstrained Demand',data:TR_DEMAND,backgroundColor:'#E07B2A33',borderColor:'#E07B2A',borderWidth:2,borderRadius:4,borderSkipped:false,type:'bar'},
+    {label:'Rooms Sold',data:TR_SOLD,backgroundColor:'#185FA5cc',borderRadius:4,borderSkipped:false,type:'bar'},
+    {label:'Turned Away',data:TR_TURNED,backgroundColor:'#D85A3088',borderRadius:4,borderSkipped:false,type:'bar',stack:'b'}
+  ]},options:{...base,plugins:{legend:{display:false},tooltip:{mode:'index',callbacks:{label:c=>`${c.dataset.label}: ${c.formattedValue}`}}},scales:{x:{grid:{display:false},ticks:{color:tc,font:{size:10}}},y:{grid:{color:gc},ticks:{color:tc,font:{size:10}}}}}});
+
+  // Mix chart: group vs transient stacked
+  leg(document.getElementById('mix-leg'),[['Group Rooms On Books','#185FA5'],['Transient Rooms Sold','#E07B2A']]);
+  new Chart(document.getElementById('mixChart'),{type:'bar',data:{labels:MONTHS,datasets:[
+    {label:'Group',data:GRP_ROOMS,backgroundColor:'#185FA5cc',borderRadius:3,borderSkipped:false},
+    {label:'Transient',data:TR_SOLD,backgroundColor:'#E07B2Acc',borderRadius:3,borderSkipped:false}
+  ]},options:{...base,plugins:{legend:{display:false},tooltip:{mode:'index',callbacks:{label:c=>`${c.dataset.label}: ${c.formattedValue} rooms/day`}}},scales:{x:{stacked:true,grid:{display:false},ticks:{color:tc,font:{size:10}}},y:{stacked:true,grid:{color:gc},ticks:{color:tc,font:{size:10}}}}}});
+
+  // Demand tier stacked
+  const tierKeys = ['Soft','Low','Moderate','High','Peak'];
+  leg(document.getElementById('tier-leg'), tierKeys.map(t=>[t,TIER_C[t]]));
+  new Chart(document.getElementById('tierChart'),{type:'bar',data:{labels:MONTHS,datasets:tierKeys.map(t=>({label:t,data:TIER_DATA[t],backgroundColor:TIER_C[t]+'cc',borderRadius:2,borderSkipped:false}))},options:{...base,plugins:{legend:{display:false},tooltip:{mode:'index'}},scales:{x:{stacked:true,grid:{display:false},ticks:{color:tc,font:{size:10}}},y:{stacked:true,grid:{color:gc},ticks:{color:tc,font:{size:10}}}}}});
+
+  // RevPAR
+  const revparC=TR_REVPAR.map((v,i)=>MONTHS[i]==='Oct'||MONTHS[i]==='Sep'?'#E07B2A':MONTHS[i]==='May'||MONTHS[i]==='Nov'?'#BA7517':'#E07B2A66');
+  new Chart(document.getElementById('revparChart'),{type:'bar',data:{labels:MONTHS,datasets:[{data:TR_REVPAR,backgroundColor:revparC,borderRadius:4,borderSkipped:false}]},options:{...base,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`RevPAR: $${c.formattedValue}`}}},scales:{x:{grid:{display:false},ticks:{color:tc,font:{size:10}}},y:{min:30,max:110,grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>'$'+v}}}}});
+
+  // Weekday vs weekend
+  leg(document.getElementById('wkd-leg'),[['Weekday','#185FA5'],['Weekend','#E07B2A']]);
+  new Chart(document.getElementById('wkdChart'),{type:'bar',data:{labels:['Avg Occ %','Avg ADR ($)'],datasets:[
+    {label:'Weekday',data:[81.5,169.71],backgroundColor:'#185FA5cc',borderRadius:5,borderSkipped:false},
+    {label:'Weekend',data:[72.0,166.80],backgroundColor:'#E07B2Acc',borderRadius:5,borderSkipped:false}
+  ]},options:{...base,plugins:{legend:{display:false},tooltip:{mode:'index',callbacks:{label:c=>c.dataset.label+': '+c.formattedValue+(c.dataIndex===0?'%':'')}}},scales:{x:{grid:{display:false},ticks:{color:tc,font:{size:11}}},y:{grid:{color:gc},ticks:{color:tc,font:{size:10}}}}}});
+
+  // OSU Football impact
+  leg(document.getElementById('osu-leg'),[['OSU Football Days (40/yr)','#D85A30'],['All Other Days','#185FA5']]);
+  new Chart(document.getElementById('osuChart'),{type:'bar',data:{labels:['Avg Occ %','Avg ADR ($)'],datasets:[
+    {label:'OSU Football',data:[97.5,218.41],backgroundColor:'#D85A30cc',borderRadius:5,borderSkipped:false},
+    {label:'Non-OSU',data:[78.1,167.00],backgroundColor:'#185FA5cc',borderRadius:5,borderSkipped:false}
+  ]},options:{...base,plugins:{legend:{display:false},tooltip:{mode:'index',callbacks:{label:c=>c.dataset.label+': '+c.formattedValue+(c.dataIndex===0?'%':'')}}},scales:{x:{grid:{display:false},ticks:{color:tc,font:{size:11}}},y:{grid:{color:gc},ticks:{color:tc,font:{size:10}}}}}});
+});
+</script>
