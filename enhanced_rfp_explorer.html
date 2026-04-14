@@ -1,0 +1,341 @@
+
+<h2 class="sr-only">Interactive RFP data explorer: segment breakdown, pickup rate, F&B revenue, and feature correlations for 1,455 booked hotel events.</h2>
+
+<style>
+.tabs{display:flex;gap:2px;margin-bottom:1.5rem;border-bottom:1px solid var(--color-border-tertiary);padding-bottom:0}
+.tab{padding:8px 16px;font-size:13px;cursor:pointer;border:none;background:none;color:var(--color-text-secondary);border-bottom:2px solid transparent;margin-bottom:-1px;font-family:var(--font-sans)}
+.tab.active{color:var(--color-text-primary);border-bottom-color:#185FA5;font-weight:500}
+.tab:hover:not(.active){color:var(--color-text-primary)}
+.panel{display:none}.panel.active{display:block}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:1.5rem}
+.card{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:12px 14px}
+.card-label{font-size:12px;color:var(--color-text-secondary);margin-bottom:4px}
+.card-val{font-size:22px;font-weight:500;color:var(--color-text-primary)}
+.card-sub{font-size:11px;color:var(--color-text-tertiary);margin-top:2px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chart-box{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:16px}
+.chart-title{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.chart-sub{font-size:11px;color:var(--color-text-secondary);margin-bottom:12px}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;font-size:11px;color:var(--color-text-secondary)}
+.leg-dot{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:4px;flex-shrink:0}
+.seg-filter{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.seg-btn{padding:4px 10px;font-size:11px;border-radius:20px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);cursor:pointer;color:var(--color-text-secondary);font-family:var(--font-sans)}
+.seg-btn.on{background:#185FA5;border-color:#185FA5;color:#fff}
+.corr-bar-pos{background:#185FA5}.corr-bar-neg{background:#D85A30}
+.corr-row{display:grid;grid-template-columns:140px 1fr 48px 1fr 48px;align-items:center;gap:6px;margin-bottom:6px;font-size:11px}
+.corr-center{display:flex;justify-content:center;font-size:11px;color:var(--color-text-tertiary)}
+</style>
+
+<div style="padding:0.5rem 0 0">
+<div class="cards">
+  <div class="card"><div class="card-label">Booked events</div><div class="card-val">1,455</div><div class="card-sub">vs 1,899 total RFPs</div></div>
+  <div class="card"><div class="card-label">Avg pickup rate</div><div class="card-val">76.9%</div><div class="card-sub">rooms committed / blocked</div></div>
+  <div class="card"><div class="card-label">Avg F&B per person</div><div class="card-val">$72.90</div><div class="card-sub">across 1,455 events</div></div>
+  <div class="card"><div class="card-label">Added columns</div><div class="card-val">53</div><div class="card-sub">over original 29</div></div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('overview',this)">Overview</button>
+  <button class="tab" onclick="switchTab('pickup',this)">Pickup rate</button>
+  <button class="tab" onclick="switchTab('fnb',this)">F&B revenue</button>
+  <button class="tab" onclick="switchTab('corr',this)">Correlations</button>
+</div>
+
+<div id="overview" class="panel active">
+  <div class="row2">
+    <div class="chart-box">
+      <div class="chart-title">Market segment volume</div>
+      <div class="chart-sub">Events booked per segment</div>
+      <div class="legend" id="seg-legend"></div>
+      <div style="position:relative;height:280px"><canvas id="segChart" role="img" aria-label="Bar chart showing booked events by market segment. Social leads with 279.">Social 279, Healthcare 269, Finance 204, Technology 146.</canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">Event format & meeting setup</div>
+      <div class="chart-sub">Format mix and meeting room requests</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">Event format</div>
+          <div class="legend" id="fmt-legend"></div>
+          <div style="position:relative;height:140px"><canvas id="fmtChart" role="img" aria-label="Donut chart of event formats. In-person 79%, Hybrid 16%, Virtual 5%.">In-person 1150, Hybrid 238, Virtual 67.</canvas></div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">Meeting rooms requested</div>
+          <div class="legend" id="mr-legend"></div>
+          <div style="position:relative;height:140px"><canvas id="mrChart" role="img" aria-label="Donut chart of meeting rooms. 1 room 66%, none 18%, 2 rooms 15%.">0 rooms 266, 1 room 964, 2 rooms 225.</canvas></div>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">F&B types per event</div>
+        <div style="position:relative;height:90px"><canvas id="fnbTypesChart" role="img" aria-label="Bar chart of distinct F&B types per event. 0 through 5 types.">0:318, 1:268, 2:108, 3:147, 4:303, 5:311.</canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="pickup" class="panel">
+  <div class="row2" style="margin-bottom:16px">
+    <div class="chart-box">
+      <div class="chart-title">Lead time distribution</div>
+      <div class="chart-sub">Days between inquiry and arrival</div>
+      <div style="position:relative;height:200px"><canvas id="ltDistChart" role="img" aria-label="Bar chart of lead time buckets. 30-60 days is most common with 425 events.">0-30:92, 30-60:425, 60-90:185, 90-120:101, 120-180:226, 180-270:321, 270-365:105.</canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">Avg pickup rate by segment</div>
+      <div class="chart-sub">Travel and Technology lead at 94% and 87%</div>
+      <div style="position:relative;height:200px"><canvas id="pickupSegChart" role="img" aria-label="Horizontal bar chart of pickup rates by market segment. Travel highest at 93.9%.">Travel 93.9%, Technology 87.0%, Professional Services 83.7%.</canvas></div>
+    </div>
+  </div>
+  <div class="chart-box">
+    <div class="chart-title">Lead time vs pickup rate</div>
+    <div class="chart-sub">Pearson r = −0.84 — longer lead times strongly predict lower pickup. Filter by segment:</div>
+    <div class="seg-filter" id="scatter-filter"></div>
+    <div class="legend" id="scatter-legend"></div>
+    <div style="position:relative;height:260px"><canvas id="scatterChart" role="img" aria-label="Scatter plot of lead time versus pickup rate, colored by market segment. Strong negative correlation visible.">300 sampled events shown.</canvas></div>
+  </div>
+</div>
+
+<div id="fnb" class="panel">
+  <div class="row2">
+    <div class="chart-box">
+      <div class="chart-title">Avg F&B spend per person by segment</div>
+      <div class="chart-sub">Trade/Manufacturing and Social spend most</div>
+      <div style="position:relative;height:300px"><canvas id="fnbSegChart" role="img" aria-label="Horizontal bar chart of average F&B per person by market segment. Trade Manufacturing highest at $94.50.">Trade/Manufacturing $94.50, Social $92.70, Association $91.00.</canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">AV complexity by segment</div>
+      <div class="chart-sub">Avg max AV level (0=none · 1=basic · 2=standard · 3=premium)</div>
+      <div style="position:relative;height:300px"><canvas id="avSegChart" role="img" aria-label="Horizontal bar chart of average AV level by segment. Association and Trade/Manufacturing highest near 2.4.">Association 2.38, Trade/Manufacturing 2.45, Education 2.03.</canvas></div>
+    </div>
+  </div>
+</div>
+
+<div id="corr" class="panel">
+  <div class="chart-box">
+    <div class="chart-title">Feature correlations with model targets</div>
+    <div class="chart-sub">Pearson r for 10 key added numeric features. Blue = positive, orange = negative.</div>
+    <div style="display:flex;gap:16px;margin-bottom:8px;font-size:11px;color:var(--color-text-secondary)">
+      <span><span class="leg-dot" style="background:#185FA5"></span>Positive</span>
+      <span><span class="leg-dot" style="background:#D85A30"></span>Negative</span>
+    </div>
+    <div style="display:grid;grid-template-columns:140px 1fr 52px 1fr 52px;gap:6px;font-size:11px;color:var(--color-text-tertiary);margin-bottom:8px;padding-bottom:6px;border-bottom:0.5px solid var(--color-border-tertiary)">
+      <span>Feature</span><span style="text-align:right;padding-right:4px">← negative</span><span style="text-align:center">Pickup r</span><span>positive →</span><span style="text-align:center">F&B r</span>
+    </div>
+    <div id="corrRows"></div>
+  </div>
+  <div style="margin-top:16px" class="chart-box">
+    <div class="chart-title">Correlation overview — bar chart</div>
+    <div class="chart-sub">Absolute correlation strength with each target</div>
+    <div class="legend" id="corr-chart-legend"></div>
+    <div style="position:relative;height:280px"><canvas id="corrChart" role="img" aria-label="Grouped bar chart of absolute Pearson correlation values for 10 features against two model targets.">Lead_Time has highest pickup correlation at 0.842.</canvas></div>
+  </div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const SEG_DATA = {"Social":279,"Healthcare":269,"Finance":204,"Technology":146,"Professional Services":131,"Travel":102,"SMERF":65,"Education":63,"Government":53,"Association":45,"Other":35,"Legal":32,"Trade/Manufacturing":31};
+const FMT_DATA = {"In-person":1150,"Hybrid":238,"Virtual":67};
+const PICKUP_SEG = {"Association":0.711,"Education":0.745,"Finance":0.821,"Government":0.732,"Healthcare":0.793,"Legal":0.722,"Other":0.815,"Professional Services":0.837,"SMERF":0.812,"Social":0.588,"Technology":0.870,"Trade/Manufacturing":0.706,"Travel":0.939};
+const FNB_SEG = {"Association":91.0,"Education":75.1,"Finance":76.6,"Government":71.7,"Healthcare":79.7,"Legal":78.8,"Other":37.8,"Professional Services":76.5,"SMERF":38.1,"Social":92.7,"Technology":67.7,"Trade/Manufacturing":94.5,"Travel":13.5};
+const LT_DIST = {"0-30":92,"30-60":425,"60-90":185,"90-120":101,"120-180":226,"180-270":321,"270-365":105};
+const AV_SEG = {"Association":2.38,"Education":2.03,"Finance":2.13,"Government":2.04,"Healthcare":2.14,"Legal":2.12,"Other":1.37,"Professional Services":2.09,"SMERF":1.28,"Social":0.93,"Technology":1.91,"Trade/Manufacturing":2.45,"Travel":0.22};
+const MR_DATA = {"None":266,"1 room":964,"2 rooms":225};
+const FNB_TYPES = {"0 types":318,"1 type":268,"2 types":108,"3 types":147,"4 types":303,"5 types":311};
+const CORRELATIONS = [
+  {feature:"Lead time",pickup:-0.842,fnb:0.274},
+  {feature:"Response due days",pickup:-0.497,fnb:0.186},
+  {feature:"Full day pct",pickup:0.289,fnb:0.334},
+  {feature:"Num meeting rooms",pickup:-0.081,fnb:0.645},
+  {feature:"Avg room utilization",pickup:-0.001,fnb:0.708},
+  {feature:"Max AV level",pickup:0.039,fnb:0.602},
+  {feature:"Num F&B types",pickup:0.106,fnb:0.533},
+  {feature:"Total meeting cost",pickup:-0.046,fnb:0.340},
+  {feature:"Num sessions",pickup:-0.108,fnb:0.442},
+  {feature:"Total meeting hours",pickup:-0.004,fnb:0.474}
+];
+const SCATTER_RAW = [{"lt":86,"pr":0.75,"seg":"SMERF","fnb":39.6},{"lt":80,"pr":0.936,"seg":"Healthcare","fnb":75.2},{"lt":83,"pr":0.875,"seg":"SMERF","fnb":40.0},{"lt":250,"pr":0.663,"seg":"Healthcare","fnb":77.8},{"lt":365,"pr":0.5,"seg":"Social","fnb":141.1},{"lt":21,"pr":0.969,"seg":"Professional Services","fnb":90.7},{"lt":39,"pr":0.833,"seg":"Professional Services","fnb":98.2},{"lt":137,"pr":0.746,"seg":"Healthcare","fnb":103.8},{"lt":57,"pr":0.973,"seg":"Travel","fnb":0.0},{"lt":23,"pr":0.865,"seg":"Healthcare","fnb":85.3},{"lt":42,"pr":0.908,"seg":"Finance","fnb":73.2},{"lt":40,"pr":0.846,"seg":"Travel","fnb":37.8},{"lt":37,"pr":0.813,"seg":"Healthcare","fnb":86.7},{"lt":61,"pr":0.817,"seg":"Finance","fnb":100.0},{"lt":53,"pr":0.887,"seg":"Technology","fnb":0.0},{"lt":155,"pr":0.811,"seg":"Healthcare","fnb":105.4},{"lt":37,"pr":0.95,"seg":"Professional Services","fnb":71.5},{"lt":18,"pr":0.986,"seg":"Finance","fnb":78.6},{"lt":41,"pr":0.833,"seg":"Professional Services","fnb":0.0},{"lt":168,"pr":0.647,"seg":"Social","fnb":107.5},{"lt":287,"pr":0.568,"seg":"Social","fnb":123.8},{"lt":163,"pr":0.818,"seg":"Legal","fnb":101.5},{"lt":263,"pr":0.644,"seg":"Government","fnb":121.6},{"lt":254,"pr":0.615,"seg":"Social","fnb":125.6},{"lt":203,"pr":0.6,"seg":"Social","fnb":103.4},{"lt":223,"pr":0.6,"seg":"Social","fnb":0.0},{"lt":289,"pr":0.577,"seg":"Social","fnb":134.7},{"lt":60,"pr":0.727,"seg":"SMERF","fnb":41.4},{"lt":188,"pr":0.579,"seg":"Social","fnb":0.0},{"lt":97,"pr":0.71,"seg":"SMERF","fnb":46.9},{"lt":33,"pr":0.86,"seg":"Finance","fnb":102.9},{"lt":364,"pr":0.545,"seg":"Social","fnb":116.3},{"lt":21,"pr":0.863,"seg":"Healthcare","fnb":76.2},{"lt":97,"pr":0.702,"seg":"Education","fnb":103.7},{"lt":136,"pr":0.675,"seg":"Association","fnb":118.6},{"lt":236,"pr":0.659,"seg":"Government","fnb":75.5},{"lt":151,"pr":0.729,"seg":"Trade/Manufacturing","fnb":81.2},{"lt":365,"pr":0.583,"seg":"Social","fnb":0.0},{"lt":235,"pr":0.603,"seg":"Social","fnb":108.5},{"lt":263,"pr":0.571,"seg":"Social","fnb":113.6},{"lt":118,"pr":0.765,"seg":"SMERF","fnb":52.2},{"lt":289,"pr":0.591,"seg":"Social","fnb":110.3},{"lt":171,"pr":0.775,"seg":"Education","fnb":95.4},{"lt":197,"pr":0.667,"seg":"Association","fnb":94.0},{"lt":162,"pr":0.813,"seg":"Finance","fnb":89.0},{"lt":14,"pr":0.88,"seg":"Finance","fnb":94.3},{"lt":155,"pr":0.762,"seg":"Healthcare","fnb":112.9},{"lt":77,"pr":0.786,"seg":"Finance","fnb":0.0},{"lt":51,"pr":0.833,"seg":"Healthcare","fnb":105.3},{"lt":47,"pr":0.921,"seg":"Technology","fnb":0.0},{"lt":38,"pr":0.985,"seg":"Travel","fnb":0.0},{"lt":38,"pr":0.824,"seg":"Finance","fnb":90.5},{"lt":54,"pr":0.8,"seg":"Healthcare","fnb":105.6},{"lt":52,"pr":0.938,"seg":"Finance","fnb":0.0},{"lt":300,"pr":0.565,"seg":"Social","fnb":0.0},{"lt":188,"pr":0.714,"seg":"Healthcare","fnb":81.7},{"lt":150,"pr":0.718,"seg":"Finance","fnb":81.0},{"lt":243,"pr":0.676,"seg":"Healthcare","fnb":112.6},{"lt":210,"pr":0.621,"seg":"Finance","fnb":76.3},{"lt":84,"pr":0.892,"seg":"Other","fnb":0.0},{"lt":137,"pr":0.576,"seg":"Social","fnb":111.5},{"lt":175,"pr":0.695,"seg":"Education","fnb":86.0},{"lt":211,"pr":0.691,"seg":"Healthcare","fnb":0.0},{"lt":233,"pr":0.65,"seg":"Social","fnb":113.2},{"lt":118,"pr":0.694,"seg":"Social","fnb":153.4},{"lt":264,"pr":0.583,"seg":"Social","fnb":107.4},{"lt":59,"pr":0.97,"seg":"Travel","fnb":33.2},{"lt":228,"pr":0.613,"seg":"Social","fnb":120.8},{"lt":52,"pr":0.933,"seg":"Healthcare","fnb":71.0},{"lt":88,"pr":0.86,"seg":"Other","fnb":0.0},{"lt":67,"pr":0.928,"seg":"Technology","fnb":74.4},{"lt":20,"pr":0.923,"seg":"Technology","fnb":81.4},{"lt":185,"pr":0.713,"seg":"Healthcare","fnb":74.5},{"lt":75,"pr":0.97,"seg":"Travel","fnb":0.0},{"lt":72,"pr":0.625,"seg":"Social","fnb":0.0},{"lt":234,"pr":0.711,"seg":"Education","fnb":100.8},{"lt":226,"pr":0.657,"seg":"Association","fnb":103.2},{"lt":53,"pr":0.87,"seg":"Professional Services","fnb":0.0},{"lt":51,"pr":0.935,"seg":"Healthcare","fnb":74.4},{"lt":58,"pr":0.903,"seg":"Travel","fnb":29.8},{"lt":228,"pr":0.715,"seg":"Association","fnb":104.2},{"lt":190,"pr":0.556,"seg":"Social","fnb":103.7},{"lt":26,"pr":0.98,"seg":"Healthcare","fnb":78.2},{"lt":18,"pr":0.93,"seg":"Professional Services","fnb":73.9},{"lt":67,"pr":0.926,"seg":"Professional Services","fnb":74.9},{"lt":179,"pr":0.641,"seg":"Social","fnb":0.0},{"lt":57,"pr":0.898,"seg":"Healthcare","fnb":0.0},{"lt":150,"pr":0.652,"seg":"Social","fnb":153.6},{"lt":88,"pr":0.776,"seg":"Healthcare","fnb":77.9},{"lt":253,"pr":0.682,"seg":"Government","fnb":90.0},{"lt":143,"pr":0.697,"seg":"Healthcare","fnb":95.2},{"lt":212,"pr":0.713,"seg":"Government","fnb":79.3},{"lt":81,"pr":0.969,"seg":"Travel","fnb":40.9},{"lt":61,"pr":0.836,"seg":"Finance","fnb":88.9},{"lt":36,"pr":0.8,"seg":"Healthcare","fnb":92.5},{"lt":53,"pr":0.941,"seg":"Travel","fnb":35.4},{"lt":34,"pr":0.8,"seg":"Technology","fnb":94.4},{"lt":25,"pr":0.813,"seg":"SMERF","fnb":40.8},{"lt":284,"pr":0.652,"seg":"Education","fnb":87.1},{"lt":42,"pr":0.929,"seg":"Healthcare","fnb":94.6},{"lt":164,"pr":0.795,"seg":"Education","fnb":105.2},{"lt":53,"pr":0.923,"seg":"Healthcare","fnb":81.4},{"lt":23,"pr":0.808,"seg":"Finance","fnb":81.7},{"lt":207,"pr":0.735,"seg":"Education","fnb":117.6},{"lt":42,"pr":0.926,"seg":"Professional Services","fnb":108.8},{"lt":68,"pr":0.941,"seg":"Travel","fnb":34.0},{"lt":243,"pr":0.568,"seg":"Social","fnb":123.1},{"lt":181,"pr":0.634,"seg":"Healthcare","fnb":0.0},{"lt":40,"pr":0.939,"seg":"Finance","fnb":80.8},{"lt":102,"pr":0.818,"seg":"SMERF","fnb":46.8},{"lt":81,"pr":0.984,"seg":"Travel","fnb":28.1},{"lt":104,"pr":0.734,"seg":"Association","fnb":0.0},{"lt":189,"pr":0.687,"seg":"Government","fnb":85.4},{"lt":47,"pr":0.9,"seg":"Travel","fnb":0.0},{"lt":108,"pr":0.795,"seg":"Government","fnb":53.0},{"lt":260,"pr":0.569,"seg":"Social","fnb":117.0},{"lt":59,"pr":0.833,"seg":"Technology","fnb":0.0},{"lt":39,"pr":0.844,"seg":"Healthcare","fnb":0.0},{"lt":60,"pr":0.79,"seg":"Healthcare","fnb":77.4},{"lt":124,"pr":0.689,"seg":"Government","fnb":103.9},{"lt":26,"pr":0.856,"seg":"Healthcare","fnb":82.8},{"lt":81,"pr":0.952,"seg":"Travel","fnb":40.9},{"lt":271,"pr":0.667,"seg":"Finance","fnb":80.2},{"lt":237,"pr":0.586,"seg":"Social","fnb":119.6},{"lt":342,"pr":0.575,"seg":"Social","fnb":130.0},{"lt":175,"pr":0.808,"seg":"Government","fnb":104.9},{"lt":189,"pr":0.6,"seg":"Social","fnb":0.0},{"lt":113,"pr":0.818,"seg":"Healthcare","fnb":104.1},{"lt":58,"pr":0.938,"seg":"Technology","fnb":101.7},{"lt":183,"pr":0.708,"seg":"Professional Services","fnb":114.9},{"lt":92,"pr":0.804,"seg":"Education","fnb":36.9},{"lt":36,"pr":0.923,"seg":"Technology","fnb":81.9},{"lt":232,"pr":0.65,"seg":"Finance","fnb":86.1},{"lt":62,"pr":0.966,"seg":"Healthcare","fnb":83.8},{"lt":73,"pr":0.917,"seg":"Travel","fnb":37.5},{"lt":71,"pr":0.925,"seg":"Finance","fnb":78.5},{"lt":70,"pr":0.951,"seg":"Travel","fnb":0.0},{"lt":236,"pr":0.679,"seg":"Trade/Manufacturing","fnb":102.5},{"lt":131,"pr":0.792,"seg":"Healthcare","fnb":90.3},{"lt":42,"pr":0.847,"seg":"Technology","fnb":103.8},{"lt":26,"pr":0.95,"seg":"Technology","fnb":80.4},{"lt":330,"pr":0.611,"seg":"Social","fnb":105.4},{"lt":31,"pr":0.837,"seg":"Finance","fnb":89.4},{"lt":56,"pr":0.917,"seg":"Travel","fnb":44.0},{"lt":200,"pr":0.719,"seg":"Trade/Manufacturing","fnb":74.3},{"lt":50,"pr":0.737,"seg":"Healthcare","fnb":85.4},{"lt":41,"pr":0.914,"seg":"Professional Services","fnb":72.9},{"lt":43,"pr":0.863,"seg":"Healthcare","fnb":70.1},{"lt":252,"pr":0.583,"seg":"Social","fnb":0.0},{"lt":254,"pr":0.594,"seg":"Social","fnb":102.5},{"lt":35,"pr":0.818,"seg":"Healthcare","fnb":75.3},{"lt":259,"pr":0.538,"seg":"Social","fnb":145.8},{"lt":37,"pr":0.9,"seg":"Technology","fnb":71.4},{"lt":86,"pr":0.779,"seg":"Government","fnb":48.7},{"lt":97,"pr":0.795,"seg":"SMERF","fnb":47.9},{"lt":67,"pr":0.794,"seg":"SMERF","fnb":50.4},{"lt":115,"pr":0.785,"seg":"Finance","fnb":90.8},{"lt":266,"pr":0.679,"seg":"Healthcare","fnb":87.8},{"lt":228,"pr":0.75,"seg":"Healthcare","fnb":104.9},{"lt":40,"pr":0.79,"seg":"Professional Services","fnb":0.0},{"lt":219,"pr":0.696,"seg":"Legal","fnb":82.3},{"lt":86,"pr":0.763,"seg":"Association","fnb":112.0},{"lt":61,"pr":0.94,"seg":"Professional Services","fnb":83.2},{"lt":213,"pr":0.552,"seg":"Social","fnb":106.9},{"lt":120,"pr":0.715,"seg":"Government","fnb":104.7},{"lt":289,"pr":0.67,"seg":"Education","fnb":92.4},{"lt":233,"pr":0.667,"seg":"Association","fnb":83.2},{"lt":120,"pr":0.892,"seg":"SMERF","fnb":37.5},{"lt":181,"pr":0.633,"seg":"Association","fnb":85.8},{"lt":196,"pr":0.708,"seg":"Healthcare","fnb":101.8},{"lt":217,"pr":0.719,"seg":"Association","fnb":112.5},{"lt":39,"pr":0.9,"seg":"Healthcare","fnb":0.0},{"lt":163,"pr":0.774,"seg":"Finance","fnb":85.8},{"lt":37,"pr":0.938,"seg":"Finance","fnb":65.9},{"lt":62,"pr":0.8,"seg":"Healthcare","fnb":94.0},{"lt":168,"pr":0.778,"seg":"Government","fnb":87.1},{"lt":43,"pr":0.863,"seg":"Technology","fnb":0.0},{"lt":130,"pr":0.604,"seg":"Social","fnb":145.0},{"lt":195,"pr":0.631,"seg":"Healthcare","fnb":92.3},{"lt":23,"pr":0.852,"seg":"Finance","fnb":71.2},{"lt":201,"pr":0.698,"seg":"Trade/Manufacturing","fnb":122.1},{"lt":119,"pr":0.797,"seg":"Technology","fnb":43.1},{"lt":151,"pr":0.693,"seg":"Government","fnb":81.4},{"lt":58,"pr":0.826,"seg":"Technology","fnb":74.5},{"lt":198,"pr":0.691,"seg":"Healthcare","fnb":77.7},{"lt":53,"pr":0.833,"seg":"Travel","fnb":29.2},{"lt":58,"pr":0.98,"seg":"Travel","fnb":0.0},{"lt":196,"pr":0.576,"seg":"Social","fnb":115.2},{"lt":161,"pr":0.794,"seg":"Government","fnb":0.0},{"lt":65,"pr":0.875,"seg":"Technology","fnb":69.0},{"lt":237,"pr":0.583,"seg":"Social","fnb":113.0},{"lt":172,"pr":0.771,"seg":"Healthcare","fnb":109.2},{"lt":45,"pr":0.797,"seg":"Professional Services","fnb":0.0},{"lt":175,"pr":0.686,"seg":"Healthcare","fnb":101.9},{"lt":26,"pr":0.923,"seg":"Travel","fnb":0.0},{"lt":245,"pr":0.559,"seg":"Social","fnb":120.2},{"lt":239,"pr":0.736,"seg":"Government","fnb":78.7},{"lt":94,"pr":0.795,"seg":"Finance","fnb":116.3},{"lt":33,"pr":0.859,"seg":"Professional Services","fnb":103.8},{"lt":318,"pr":0.538,"seg":"Social","fnb":126.1},{"lt":86,"pr":0.757,"seg":"SMERF","fnb":38.3},{"lt":71,"pr":0.881,"seg":"Technology","fnb":50.2},{"lt":176,"pr":0.714,"seg":"Finance","fnb":94.7},{"lt":113,"pr":0.789,"seg":"Legal","fnb":102.3},{"lt":33,"pr":0.804,"seg":"Finance","fnb":0.0},{"lt":219,"pr":0.6,"seg":"Social","fnb":142.8},{"lt":302,"pr":0.655,"seg":"Healthcare","fnb":120.6},{"lt":238,"pr":0.571,"seg":"Social","fnb":110.0},{"lt":198,"pr":0.646,"seg":"Education","fnb":0.0},{"lt":50,"pr":0.95,"seg":"Technology","fnb":79.4},{"lt":222,"pr":0.716,"seg":"Finance","fnb":105.1},{"lt":180,"pr":0.733,"seg":"Education","fnb":80.6},{"lt":30,"pr":0.853,"seg":"Healthcare","fnb":0.0},{"lt":69,"pr":0.824,"seg":"Education","fnb":43.5},{"lt":76,"pr":0.812,"seg":"SMERF","fnb":42.0},{"lt":81,"pr":0.795,"seg":"SMERF","fnb":0.0},{"lt":27,"pr":0.986,"seg":"Healthcare","fnb":75.0},{"lt":147,"pr":0.759,"seg":"Finance","fnb":117.4},{"lt":15,"pr":0.913,"seg":"Technology","fnb":97.5},{"lt":61,"pr":0.862,"seg":"Travel","fnb":0.0},{"lt":42,"pr":0.914,"seg":"Technology","fnb":103.6},{"lt":105,"pr":0.8,"seg":"Association","fnb":83.8},{"lt":51,"pr":0.842,"seg":"Finance","fnb":76.0},{"lt":257,"pr":0.543,"seg":"Social","fnb":100.0},{"lt":23,"pr":0.83,"seg":"Healthcare","fnb":94.1},{"lt":47,"pr":0.824,"seg":"Professional Services","fnb":85.7},{"lt":69,"pr":0.895,"seg":"Travel","fnb":0.0},{"lt":64,"pr":0.767,"seg":"SMERF","fnb":41.1},{"lt":104,"pr":0.784,"seg":"Other","fnb":52.8},{"lt":51,"pr":0.949,"seg":"Professional Services","fnb":81.0},{"lt":144,"pr":0.744,"seg":"Association","fnb":107.2},{"lt":40,"pr":0.866,"seg":"Finance","fnb":94.9},{"lt":212,"pr":0.643,"seg":"Healthcare","fnb":98.5},{"lt":291,"pr":0.633,"seg":"Healthcare","fnb":99.7},{"lt":164,"pr":0.705,"seg":"Finance","fnb":80.1},{"lt":29,"pr":0.895,"seg":"Professional Services","fnb":84.3},{"lt":344,"pr":0.55,"seg":"Social","fnb":104.1},{"lt":28,"pr":0.867,"seg":"Technology","fnb":98.5},{"lt":50,"pr":0.817,"seg":"SMERF","fnb":48.3},{"lt":365,"pr":0.524,"seg":"Social","fnb":130.7},{"lt":213,"pr":0.695,"seg":"Professional Services","fnb":97.4},{"lt":163,"pr":0.721,"seg":"Healthcare","fnb":85.1},{"lt":78,"pr":0.75,"seg":"Finance","fnb":110.9},{"lt":214,"pr":0.643,"seg":"Association","fnb":118.8},{"lt":55,"pr":0.856,"seg":"SMERF","fnb":39.0},{"lt":350,"pr":0.619,"seg":"Social","fnb":141.3},{"lt":45,"pr":0.929,"seg":"Finance","fnb":65.1},{"lt":272,"pr":0.526,"seg":"Social","fnb":122.3},{"lt":58,"pr":0.762,"seg":"Education","fnb":46.1},{"lt":57,"pr":0.915,"seg":"Finance","fnb":106.0},{"lt":45,"pr":0.804,"seg":"Finance","fnb":95.0},{"lt":193,"pr":0.73,"seg":"Government","fnb":120.5},{"lt":177,"pr":0.796,"seg":"Professional Services","fnb":96.5},{"lt":51,"pr":0.913,"seg":"Healthcare","fnb":0.0},{"lt":231,"pr":0.667,"seg":"Healthcare","fnb":82.6},{"lt":299,"pr":0.553,"seg":"Social","fnb":113.3},{"lt":190,"pr":0.644,"seg":"Healthcare","fnb":112.8},{"lt":55,"pr":0.852,"seg":"Healthcare","fnb":87.8},{"lt":42,"pr":0.833,"seg":"Healthcare","fnb":98.3},{"lt":235,"pr":0.556,"seg":"Social","fnb":123.5},{"lt":141,"pr":0.682,"seg":"Healthcare","fnb":100.0},{"lt":127,"pr":0.708,"seg":"Healthcare","fnb":92.1},{"lt":31,"pr":0.81,"seg":"Healthcare","fnb":76.6},{"lt":80,"pr":0.976,"seg":"Travel","fnb":0.0},{"lt":57,"pr":0.795,"seg":"Technology","fnb":96.9},{"lt":79,"pr":0.963,"seg":"Travel","fnb":0.0},{"lt":30,"pr":0.814,"seg":"Technology","fnb":90.2},{"lt":164,"pr":0.722,"seg":"Education","fnb":93.1},{"lt":175,"pr":0.805,"seg":"Healthcare","fnb":0.0},{"lt":62,"pr":0.909,"seg":"Professional Services","fnb":93.4},{"lt":178,"pr":0.689,"seg":"Legal","fnb":113.4},{"lt":169,"pr":0.761,"seg":"Healthcare","fnb":99.9},{"lt":87,"pr":0.848,"seg":"SMERF","fnb":45.1},{"lt":246,"pr":0.545,"seg":"Social","fnb":137.3},{"lt":160,"pr":0.766,"seg":"Finance","fnb":77.4},{"lt":227,"pr":0.64,"seg":"Social","fnb":128.9},{"lt":160,"pr":0.688,"seg":"Social","fnb":136.1},{"lt":56,"pr":0.849,"seg":"Education","fnb":42.4},{"lt":40,"pr":0.829,"seg":"Professional Services","fnb":88.1},{"lt":51,"pr":0.892,"seg":"Professional Services","fnb":88.1},{"lt":44,"pr":0.847,"seg":"Healthcare","fnb":88.7},{"lt":138,"pr":0.667,"seg":"Trade/Manufacturing","fnb":92.2},{"lt":37,"pr":0.926,"seg":"Professional Services","fnb":86.0},{"lt":158,"pr":0.698,"seg":"Legal","fnb":86.1},{"lt":118,"pr":0.813,"seg":"Finance","fnb":105.9},{"lt":69,"pr":0.902,"seg":"Travel","fnb":0.0},{"lt":47,"pr":0.837,"seg":"Finance","fnb":76.8},{"lt":136,"pr":0.815,"seg":"Healthcare","fnb":109.3},{"lt":198,"pr":0.744,"seg":"Healthcare","fnb":77.0},{"lt":217,"pr":0.702,"seg":"Finance","fnb":83.4},{"lt":39,"pr":0.828,"seg":"Healthcare","fnb":0.0},{"lt":158,"pr":0.698,"seg":"Finance","fnb":82.6},{"lt":29,"pr":0.87,"seg":"Finance","fnb":73.2},{"lt":46,"pr":0.852,"seg":"Finance","fnb":83.4},{"lt":178,"pr":0.717,"seg":"Healthcare","fnb":110.0},{"lt":65,"pr":0.859,"seg":"Professional Services","fnb":85.4},{"lt":54,"pr":0.957,"seg":"Finance","fnb":87.0},{"lt":156,"pr":0.6,"seg":"Social","fnb":112.3},{"lt":326,"pr":0.548,"seg":"Social","fnb":131.6},{"lt":43,"pr":0.625,"seg":"Social","fnb":0.0}];
+
+const SEG_COLORS = {
+  "Social":"#378ADD","Healthcare":"#1D9E75","Finance":"#BA7517","Technology":"#7F77DD",
+  "Professional Services":"#D85A30","Travel":"#0F6E56","SMERF":"#D4537E","Education":"#63992",
+  "Government":"#639922","Association":"#993556","Other":"#888780","Legal":"#533AB7",
+  "Trade/Manufacturing":"#E24B4A"
+};
+const SEG_HEX = Object.values(SEG_COLORS);
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+function makeLegend(el, items) {
+  el.innerHTML = items.map(([label,color])=>
+    `<span style="display:flex;align-items:center;gap:4px"><span class="leg-dot" style="background:${color}"></span>${label}</span>`
+  ).join('');
+}
+
+const isDark = matchMedia('(prefers-color-scheme:dark)').matches;
+const textColor = isDark ? '#ccc' : '#555';
+const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)';
+
+const baseOpts = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{legend:{display:false}, tooltip:{callbacks:{}}},
+  scales:{x:{grid:{color:gridColor},ticks:{color:textColor,font:{size:10}}},
+          y:{grid:{color:gridColor},ticks:{color:textColor,font:{size:10}}}}
+};
+
+window.addEventListener('load', () => {
+  const segs = Object.keys(SEG_DATA);
+  const segVals = Object.values(SEG_DATA);
+  const segColors = segs.map(s=>SEG_COLORS[s]||'#888');
+
+  makeLegend(document.getElementById('seg-legend'),
+    segs.slice(0,6).map(s=>[s,SEG_COLORS[s]]));
+
+  new Chart(document.getElementById('segChart'), {
+    type:'bar',
+    data:{labels:segs, datasets:[{data:segVals,backgroundColor:segColors,borderRadius:4,borderSkipped:false}]},
+    options:{...baseOpts, plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw} events`}}}}
+  });
+
+  makeLegend(document.getElementById('fmt-legend'),
+    Object.entries(FMT_DATA).map(([k])=>[k,['#185FA5','#0F6E56','#BA7517'][Object.keys(FMT_DATA).indexOf(k)]]));
+  new Chart(document.getElementById('fmtChart'),{
+    type:'doughnut',
+    data:{labels:Object.keys(FMT_DATA),datasets:[{data:Object.values(FMT_DATA),backgroundColor:['#185FA5','#0F6E56','#BA7517'],borderWidth:2,borderColor:isDark?'#222':'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw}`}}}}
+  });
+
+  makeLegend(document.getElementById('mr-legend'),
+    [['None','#888780'],['1 room','#185FA5'],['2 rooms','#0F6E56']]);
+  new Chart(document.getElementById('mrChart'),{
+    type:'doughnut',
+    data:{labels:Object.keys(MR_DATA),datasets:[{data:Object.values(MR_DATA),backgroundColor:['#888780','#185FA5','#0F6E56'],borderWidth:2,borderColor:isDark?'#222':'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:false}}}
+  });
+
+  new Chart(document.getElementById('fnbTypesChart'),{
+    type:'bar',
+    data:{labels:Object.keys(FNB_TYPES),datasets:[{data:Object.values(FNB_TYPES),backgroundColor:'#7F77DD',borderRadius:3,borderSkipped:false}]},
+    options:{...baseOpts,scales:{x:{grid:{display:false},ticks:{color:textColor,font:{size:10}}},y:{display:false}},plugins:{legend:{display:false}}}
+  });
+
+  new Chart(document.getElementById('ltDistChart'),{
+    type:'bar',
+    data:{labels:Object.keys(LT_DIST),datasets:[{data:Object.values(LT_DIST),backgroundColor:'#185FA5',borderRadius:4,borderSkipped:false}]},
+    options:{...baseOpts,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw} events`}}}}
+  });
+
+  const pickupSegs = Object.keys(PICKUP_SEG).sort((a,b)=>PICKUP_SEG[b]-PICKUP_SEG[a]);
+  new Chart(document.getElementById('pickupSegChart'),{
+    type:'bar',
+    data:{labels:pickupSegs,datasets:[{data:pickupSegs.map(s=>+(PICKUP_SEG[s]*100).toFixed(1)),backgroundColor:pickupSegs.map(s=>SEG_COLORS[s]||'#888'),borderRadius:4,borderSkipped:false}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.formattedValue}%`}}},
+      scales:{x:{min:50,max:100,grid:{color:gridColor},ticks:{color:textColor,font:{size:10},callback:v=>v+'%'}},
+              y:{grid:{display:false},ticks:{color:textColor,font:{size:10}}}}}
+  });
+
+  const allSegs = [...new Set(SCATTER_RAW.map(d=>d.seg))].sort();
+  let activeSegs = new Set(allSegs);
+  const filterEl = document.getElementById('scatter-filter');
+  makeLegend(document.getElementById('scatter-legend'),
+    allSegs.map(s=>[s, SEG_COLORS[s]||'#888']));
+
+  allSegs.forEach(seg=>{
+    const btn = document.createElement('button');
+    btn.className = 'seg-btn on'; btn.textContent = seg;
+    btn.onclick = () => {
+      if(activeSegs.has(seg)){if(activeSegs.size>1){activeSegs.delete(seg);btn.classList.remove('on');}}
+      else{activeSegs.add(seg);btn.classList.add('on');}
+      updateScatter();
+    };
+    filterEl.appendChild(btn);
+  });
+
+  function buildScatterDatasets() {
+    return allSegs.filter(s=>activeSegs.has(s)).map(seg=>({
+      label:seg,
+      data:SCATTER_RAW.filter(d=>d.seg===seg).map(d=>({x:d.lt,y:+(d.pr*100).toFixed(1)})),
+      backgroundColor:(SEG_COLORS[seg]||'#888')+'99',
+      pointRadius:4, pointHoverRadius:6
+    }));
+  }
+
+  const scatterChart = new Chart(document.getElementById('scatterChart'),{
+    type:'scatter',
+    data:{datasets:buildScatterDatasets()},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        label:c=>`${c.dataset.label}: lead=${c.parsed.x}d, pickup=${c.parsed.y}%`
+      }}},
+      scales:{
+        x:{title:{display:true,text:'Lead time (days)',color:textColor,font:{size:11}},grid:{color:gridColor},ticks:{color:textColor,font:{size:10}}},
+        y:{title:{display:true,text:'Pickup rate (%)',color:textColor,font:{size:11}},min:40,max:105,grid:{color:gridColor},ticks:{color:textColor,font:{size:10},callback:v=>v+'%'}}
+      },layout:{padding:{right:10}}}
+  });
+
+  function updateScatter(){scatterChart.data.datasets=buildScatterDatasets();scatterChart.update();}
+
+  const fnbSegs = Object.keys(FNB_SEG).sort((a,b)=>FNB_SEG[b]-FNB_SEG[a]);
+  new Chart(document.getElementById('fnbSegChart'),{
+    type:'bar',
+    data:{labels:fnbSegs,datasets:[{data:fnbSegs.map(s=>FNB_SEG[s]),backgroundColor:fnbSegs.map(s=>SEG_COLORS[s]||'#888'),borderRadius:4,borderSkipped:false}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${c.formattedValue} / person`}}},
+      scales:{x:{grid:{color:gridColor},ticks:{color:textColor,font:{size:10},callback:v=>'$'+v}},
+              y:{grid:{display:false},ticks:{color:textColor,font:{size:10}}}}}
+  });
+
+  const avSegs = Object.keys(AV_SEG).sort((a,b)=>AV_SEG[b]-AV_SEG[a]);
+  new Chart(document.getElementById('avSegChart'),{
+    type:'bar',
+    data:{labels:avSegs,datasets:[{data:avSegs.map(s=>AV_SEG[s]),backgroundColor:avSegs.map(s=>SEG_COLORS[s]||'#888'),borderRadius:4,borderSkipped:false}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`AV level: ${c.formattedValue}`}}},
+      scales:{x:{min:0,max:3,grid:{color:gridColor},ticks:{color:textColor,font:{size:10}}},
+              y:{grid:{display:false},ticks:{color:textColor,font:{size:10}}}}}
+  });
+
+  const corrRows = document.getElementById('corrRows');
+  const MAX_BAR = 120;
+  CORRELATIONS.forEach(d=>{
+    const pickupPos = d.pickup>=0;
+    const fnbPos = d.fnb>=0;
+    const row = document.createElement('div');
+    row.className = 'corr-row';
+    const pBar = Math.abs(d.pickup)*MAX_BAR;
+    const fBar = Math.abs(d.fnb)*MAX_BAR;
+    row.innerHTML = `
+      <span style="color:var(--color-text-primary);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.feature}</span>
+      <div style="display:flex;justify-content:flex-end">
+        <div style="width:${pickupPos?0:pBar}px;height:10px;background:${pickupPos?'transparent':'#D85A30'};border-radius:2px"></div>
+      </div>
+      <div style="text-align:center;color:${Math.abs(d.pickup)>0.3?(pickupPos?'#185FA5':'#D85A30'):textColor}">${d.pickup.toFixed(2)}</div>
+      <div>
+        <div style="width:${pickupPos?pBar:0}px;height:10px;background:${pickupPos?'#185FA5':'transparent'};border-radius:2px"></div>
+      </div>
+      <div style="text-align:center;color:${Math.abs(d.fnb)>0.3?(fnbPos?'#185FA5':'#D85A30'):textColor}">${d.fnb.toFixed(2)}</div>`;
+    corrRows.appendChild(row);
+  });
+
+  makeLegend(document.getElementById('corr-chart-legend'),[['Pickup rate','#185FA5'],['F&B per person','#1D9E75']]);
+  new Chart(document.getElementById('corrChart'),{
+    type:'bar',
+    data:{
+      labels:CORRELATIONS.map(d=>d.feature),
+      datasets:[
+        {label:'Pickup rate',data:CORRELATIONS.map(d=>Math.abs(d.pickup)),backgroundColor:'#185FA5cc',borderRadius:3,borderSkipped:false},
+        {label:'F&B per person',data:CORRELATIONS.map(d=>Math.abs(d.fnb)),backgroundColor:'#1D9E75cc',borderRadius:3,borderSkipped:false}
+      ]
+    },
+    options:{...baseOpts,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`|r| = ${c.formattedValue}`}}},
+      scales:{x:{grid:{display:false},ticks:{color:textColor,font:{size:10},maxRotation:35}},
+              y:{min:0,max:1,grid:{color:gridColor},ticks:{color:textColor,font:{size:10}}}}}
+  });
+});
+</script>
