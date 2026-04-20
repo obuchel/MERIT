@@ -1,0 +1,109 @@
+Field_Name,Description,Data_Type,New_Field,Used_In_Model,Source
+RFP_ID,Unique RFP identifier,Text,No,,Original
+Status,Booking status (Booked or Lost),Text,No,,Original
+Account_Name,Client organization name,Text,No,,Original
+Event_Name,Name of the event,Text,No,,Original
+Event_Type,"Corporate, Association, Wedding/Social, SMERF, Tour/Travel",Text,No,All models (encoded),Original
+Event_Format,"In-person, Virtual, Hybrid",Text,Yes,Pickup/Conversion/F&B,Cvent
+Event_Configuration,"Rooms Only, Meeting Only, Full Package",Text,No,All models (encoded),Original
+Market_Segment,"Technology, Healthcare, Finance, etc.",Text,Yes,Pickup/Conversion/F&B,Cvent
+Organization_Industry,Client industry,Text,Yes,,Cvent
+Lead_Source,"Sales Call, Cvent, Referral, etc.",Text,No,Pickup/Conversion,Original
+Client_Priority,"Low, Medium, High",Text,Yes,All models,Cvent
+Inquiry_Date,Date RFP received,Date,No,,Original
+Decision_Date,Date client decided,Date,No,,Original
+Decision_Days,Days from inquiry to decision,Integer,Yes,Conversion,Derived
+Arrival_Date,Event start date,Date,No,,Original
+Departure_Date,Event end date,Date,No,,Original
+Nights,Number of nights,Integer,No,All models,Original
+Lead_Time,Days from inquiry to arrival,Integer,No,All models,Derived
+Peak_Room_Block,Peak night room block,Integer,No,All models,Original
+Total_Room_Nights_Requested,Block × nights,Integer,No,Pickup/ADR,Original
+Attendees,Event attendees,Integer,No,All models,Original
+Has_Meeting_Space,Meeting space required (0/1),Integer,Yes,Pickup/Conversion,Derived
+Meeting_Spaces,Specific rooms requested,Text,No,,Original
+Has_FnB_Requirements,F&B required (0/1),Integer,Yes,Pickup/Conversion/F&B,Derived
+Has_Special_Requirements,Special needs noted (0/1),Integer,Yes,Conversion/F&B,Cvent
+Response_Due_Days,Days to respond,Integer,Yes,Conversion,Cvent
+Budget_Provided,Client gave budget (0/1),Integer,Yes,Pickup/Conversion/F&B,Cvent
+Budget_Amount,Stated budget,Currency,Yes,,Cvent
+Destinations_Considered,Competing venues (1-5),Integer,Yes,Pickup/Conversion,Cvent
+Forecasted_Occupancy,Hotel occupancy forecast for dates (0-100),Percentage,No,Conversion/ADR,Daily data
+Baseline_ADR,Market rate for dates,Currency,No,Conversion,Daily data
+Quoted_ADR,Quoted room rate,Currency,No,Pickup/Conversion,Original
+Actual_Pickup_Rate,Actual/requested room nights (booked only),Float,Yes,Pickup target,Derived
+Actual_FnB_Per_Person,F&B per attendee per day (booked only),Currency,Yes,F&B target,Derived
+Num_Room_Types,Sleeping room types in block (1-6),Integer,Yes,All models,Room grid
+Pct_Standard_Rooms,% standard king/twin,Float,Yes,Pickup/F&B,Room grid
+Pct_Premium_Rooms,% superior + suite,Float,Yes,All models,Room grid
+Has_Suites,Suites in block (0/1),Integer,Yes,All models,Room grid
+Rate_Spread,Max minus min room rate,Currency,Yes,Pickup/Conversion,Room grid
+Night_Variance_Pct,Nightly block variance %,Float,Yes,Pickup/Conversion,Room grid
+Num_Meeting_Rooms,Conference/meeting rooms requested (0-4),Integer,Yes,All except ADR,Meeting grid
+Num_Sessions,Total session count across all days and rooms,Integer,Yes,Conversion/F&B,Meeting grid
+Total_Meeting_Hours,Sum of all session hours,Integer,Yes,Pickup/Conversion/F&B,Meeting grid
+Uses_Ballroom,Grand Ballroom requested (0/1),Integer,Yes,Conversion,Meeting grid
+Uses_Boardroom,Boardroom requested (0/1),Integer,Yes,Conversion,Meeting grid
+Num_Setup_Styles,Distinct setup styles used,Integer,No,,Meeting grid
+Primary_Setup,"Most common setup (Theater, Classroom, Boardroom, etc.)",Text,No,,Meeting grid
+Max_AV_Level,"Highest AV package (0=None, 1=Basic, 2=Standard, 3=Premium)",Integer,Yes,Pickup/Conversion,Meeting grid
+Has_Premium_AV,Premium AV package requested (0/1),Integer,Yes,Conversion,Meeting grid
+Avg_AV_Level,Average AV level across sessions,Float,No,,Meeting grid
+Total_Room_Rental,Sum of meeting room rental charges,Currency,No,,Meeting grid
+Total_AV_Cost,Sum of AV charges,Currency,No,,Meeting grid
+Total_Session_FnB,Sum of session F&B charges,Currency,No,,Meeting grid
+Total_Meeting_Cost,Room rental + AV + session F&B,Currency,No,,Meeting grid
+Num_FnB_Types,"Distinct F&B items (breakfast, lunch, breaks, dinner, reception)",Integer,Yes,Pickup/Conversion/F&B,Meeting grid
+Has_Dinner,Dinner service requested (0/1),Integer,Yes,Conversion/F&B,Meeting grid
+Has_Reception,Cocktail reception requested (0/1),Integer,Yes,Conversion/F&B,Meeting grid
+Has_Evening_Session,Evening sessions scheduled (0/1),Integer,Yes,Conversion/F&B,Meeting grid
+Full_Day_Pct,% of sessions that are full-day,Float,Yes,Conversion/F&B,Meeting grid
+Avg_Room_Utilization,Attendees / room capacity ratio,Float,Yes,Conversion,Meeting grid
+Proposed_Room_Revenue,Quoted ADR × peak room block × nights,Currency,No,ADR/Conversion,Derived
+Proposed_Meeting_Revenue,Proposed meeting room rental revenue,Currency,No,Conversion/F&B,Derived
+Proposed_FnB_Revenue,Proposed food & beverage revenue,Currency,No,F&B,Derived
+Proposed_Total_Revenue,Sum of proposed room + meeting + F&B revenue,Currency,No,All models,Derived
+Actual_Room_Nights,Actual room nights consumed (booked only),Integer,No,Pickup,Original
+Actual_Room_Revenue,Actual room revenue realized (booked only),Currency,No,ADR/Pickup,Original
+Actual_Meeting_Revenue,Actual meeting room revenue realized (booked only),Currency,No,Conversion/F&B,Original
+Actual_FnB_Revenue,Actual F&B revenue realized (booked only),Currency,No,F&B,Original
+Actual_Total_Revenue,Sum of actual room + meeting + F&B revenue (booked only),Currency,No,All models,Original
+Lost_Reason,"Reason for lost business (lost events only); e.g. Rates Too High / Client Declined, Dates Not Available, Space Not Adequate",Text,No,Conversion,Original
+Year,Arrival year (derived from Arrival_Date),Integer,Yes,All models (temporal),Derived
+Month,Arrival month 1–12 (derived from Arrival_Date),Integer,Yes,All models (temporal),Derived
+Min_Room_Rate,Lowest nightly room rate in the block,Currency,Yes,ADR/Pickup,Room grid
+Max_Room_Rate,Highest nightly room rate in the block,Currency,Yes,ADR/Pickup,Room grid
+Suite_Rate,Rate for suite room type (equals Max_Room_Rate when suites present),Currency,Yes,ADR/Pickup,Room grid
+Standard_Rate,Rate for standard room type (equals Min_Room_Rate),Currency,Yes,ADR/Pickup,Room grid
+Peak_Night_Index,Night index (1-based) with highest room block,Integer,Yes,Pickup/Conversion,Room grid
+Rooms_Night_1,Rooms on books for night 1 of the block,Integer,Yes,Pickup,Room grid
+Rooms_Night_2,Rooms on books for night 2 of the block (0 if 1-night event),Integer,Yes,Pickup,Room grid
+Rooms_Night_3,Rooms on books for night 3 of the block (0 if ≤2 nights),Integer,Yes,Pickup,Room grid
+Rooms_Night_4,Rooms on books for night 4 of the block (0 if ≤3 nights),Integer,Yes,Pickup,Room grid
+Num_Meeting_Days,Number of distinct days with meeting space usage,Integer,Yes,Conversion/F&B,Meeting grid
+ADR_Discount_Pct,"% discount from baseline ADR; positive = below market, negative = premium",Float,Yes,ADR/Conversion,Derived
+Revenue_Per_Room_Night,Proposed total revenue ÷ total room nights; CPOR efficiency indicator,Currency,Yes,All models,Derived
+Rooms_Per_Attendee,Peak room block ÷ attendees; group sleep pattern proxy,Float,Yes,Pickup/F&B,Derived
+Meeting_Space_Ratio,Meeting rooms per 10 attendees; density / space utilization indicator,Float,Yes,Conversion,Derived
+Demand_Tier,Low / Shoulder / Peak based on Forecasted_Occupancy thresholds,Text,Yes,All models,Derived
+Is_Compression_Date,1 if Forecasted_Occupancy ≥ 85%; high-demand date flag,Integer,Yes,ADR/Conversion,Derived
+Day_of_Week_Arrival,Numeric day of week for arrival date (0=Mon … 6=Sun),Integer,Yes,Pickup/Conversion,Derived
+Arrival_DOW_Name,Short day-of-week label: Mon / Tue / … / Sun,Text,No,,Derived
+Is_Weekend_Arrival,1 if arrival is Friday–Sunday; correlates with leisure/SMERF demand,Integer,Yes,Pickup/Conversion,Derived
+Is_Repeat_Client,1 if Lead_Source = Repeat Client; mirrors CRM returning-client flag,Integer,Yes,Conversion,Derived
+Flag_Missing_Rate_Target,1 if Budget_Provided = 0 and Budget_Amount = 0; key APIT completeness flag,Integer,Yes,All models,Derived
+Flag_Short_Response_Window,1 if Response_Due_Days ≤ 5; urgency alert,Integer,Yes,Conversion,Derived
+Flag_Rate_Below_Baseline,1 if Quoted_ADR < Baseline_ADR × 0.97; rate-risk alert,Integer,Yes,ADR/Conversion,Derived
+Account_Prior_Events,Count of all events from same account with earlier Arrival_Date,Integer,Yes,Conversion,CRM-Derived
+Account_Prior_Booked,Count of prior booked (won) events for this account,Integer,Yes,Conversion,CRM-Derived
+Account_Prior_Revenue,Sum of Actual_Total_Revenue from prior booked events for this account,Currency,Yes,Conversion,CRM-Derived
+Account_Win_Rate,Account_Prior_Booked ÷ Account_Prior_Events; NaN if first-time account,Float,Yes,Conversion,CRM-Derived
+Is_First_Time_Account,1 if no prior events exist for this account; CRM new-business flag,Integer,Yes,Conversion,CRM-Derived
+Has_Prior_Decline,1 if account has any prior Lost event; turn-down history flag,Integer,Yes,Conversion,CRM-Derived
+Rooms_Available_Peak_Date,220 minus Group_Rooms already committed on the peak event date,Integer,Yes,Pickup/Displacement,PMS-Derived
+Displacement_Risk_Score,Peak_Room_Block ÷ Rooms_Available_Peak_Date; 0–1 scale,Float,Yes,Displacement,PMS-Derived
+Displacement_Risk_Level,Low / Moderate / High displacement risk tier,Text,Yes,Displacement,PMS-Derived
+Flag_High_Displacement,1 if Displacement_Risk_Level = High (score ≥ 0.60),Integer,Yes,Displacement,PMS-Derived
+Flag_Date_Conflict,1 if Rooms_Available_Peak_Date < Peak_Room_Block; capacity conflict alert,Integer,Yes,Displacement,PMS-Derived
+Completeness_Score,% of 15 key APIT fields populated; drives uncertainty-handler flag,Float,Yes,All models,Derived
+Urgency_Index,Response_Due_Days ÷ Lead_Time; high = must-respond-fast relative to event,Float,Yes,Conversion,Derived

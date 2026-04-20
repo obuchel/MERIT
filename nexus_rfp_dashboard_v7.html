@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nexus Hotel — RFP + Transient Explorer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Georgia',serif;background:#0f1117;color:#e8e6e0;font-size:13px;padding:16px;min-height:100vh}
+#loader{position:fixed;inset:0;background:#0f1117;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:16px}
+.spin{width:32px;height:32px;border:2px solid #2a2d38;border-top-color:#5fa8e8;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-msg{font-family:monospace;font-size:11px;color:#5a5850;letter-spacing:.06em}
+#error-box{display:none;background:#d85a3022;border:1px solid #d85a3066;border-radius:4px;padding:16px;color:#d85a30;font-family:monospace;font-size:11px;margin-bottom:16px;white-space:pre-wrap}
+.hdr{padding:14px 0 10px;border-bottom:1px solid #2a2d38;margin-bottom:16px}
+.hdr-title{font-size:17px;font-weight:600;color:#f0ede6;letter-spacing:.01em}
+.hdr-sub{font-size:11px;color:#7a7870;margin-top:5px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.ds-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-family:monospace}
+.ds-badge.grp{background:#185FA520;color:#5fa8e8;border:.5px solid #185FA540}
+.ds-badge.tr{background:#E07B2A20;color:#e8933a;border:.5px solid #E07B2A40}
+.ds-badge.flag{background:#9b59b620;color:#b882e8;border:.5px solid #9b59b640}
+.file-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.flink{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:3px;font-size:9px;font-family:monospace;background:#1a1d26;border:.5px solid #2e3247;color:#8ab4d8;transition:border-color .15s,color .15s;text-decoration:none}
+.flink:hover{border-color:#5fa8e8;color:#a8d0f0}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.card{background:#161921;border-radius:4px;padding:13px 15px;border:.5px solid #2a2d38}
+.card.grp{border-left:2px solid #5fa8e8}.card.tr{border-left:2px solid #e8933a}.card.flag{border-left:2px solid #b882e8}
+.clabel{font-size:10px;color:#7a7870;margin-bottom:4px;font-family:monospace;letter-spacing:.04em;text-transform:uppercase}
+.cval{font-size:22px;font-weight:600;color:#f0ede6;font-family:'Georgia',serif}
+.csub{font-size:10px;color:#5a5850;margin-top:3px}
+.tabs{display:flex;gap:0;border-bottom:1px solid #2a2d38;margin-bottom:16px;flex-wrap:wrap}
+.tab{padding:8px 16px;font-size:11px;cursor:pointer;border:none;background:none;color:#7a7870;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:monospace;letter-spacing:.04em;text-transform:uppercase;transition:color .15s}
+.tab:hover{color:#b8b6b0}.tab.on{color:#f0ede6;border-bottom-color:#5fa8e8;font-weight:600}
+.tab.tr-tab.on{border-bottom-color:#e8933a}.tab.flag-tab.on{border-bottom-color:#b882e8}
+.panel{display:none}.panel.on{display:block}
+.box{background:#161921;border:.5px solid #2a2d38;border-radius:4px;padding:14px}
+.box.grp-box{border-left:2px solid #5fa8e840}.box.tr-box{border-left:2px solid #e8933a40}.box.flag-box{border-left:2px solid #b882e840}
+.bt{font-size:11px;font-weight:600;color:#c8c6c0;margin-bottom:2px;font-family:monospace;letter-spacing:.02em;display:flex;align-items:center;gap:6px}
+.bs{font-size:10px;color:#5a5850;margin-bottom:10px;line-height:1.4}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}.mb{margin-bottom:12px}
+.leg{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:8px;font-size:10px;color:#7a7870;font-family:monospace}
+.ld{width:8px;height:8px;border-radius:1px;display:inline-block;margin-right:3px;flex-shrink:0;vertical-align:middle}
+.seg-btns{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.sbtn{padding:3px 10px;font-size:10px;border-radius:2px;border:.5px solid #2e3247;background:#1a1d26;cursor:pointer;color:#7a7870;font-family:monospace;transition:all .15s}
+.sbtn.on{color:#0f1117;border-color:transparent;font-weight:600}
+.insight-row{display:flex;gap:9px;margin-bottom:12px;flex-wrap:wrap}
+.insight{flex:1;min-width:130px;background:#1a1d26;border-radius:4px;padding:10px 13px;border:.5px solid #2e3247}
+.insight .lbl{font-size:9px;color:#5a5850;margin-bottom:4px;font-family:monospace;letter-spacing:.05em;text-transform:uppercase}
+.insight .val{font-size:18px;font-weight:600;color:#f0ede6;font-family:'Georgia',serif}
+.insight .sub{font-size:9px;color:#5a5850;margin-top:2px}
+.insight.hi .val{color:#e8933a}.insight.lo .val{color:#5fa8e8}.insight.pu .val{color:#b882e8}
+.flag-table{width:100%;border-collapse:collapse;font-size:10px;font-family:monospace}
+.flag-table th{padding:5px 8px;text-align:left;color:#7a7870;font-weight:600;border-bottom:1px solid #2a2d38;letter-spacing:.04em;text-transform:uppercase}
+.flag-table td{padding:5px 8px;border-bottom:.5px solid #1e2130;color:#c8c6c0}
+.flag-table tr:last-child td{border-bottom:none}
+.flag-cell{display:inline-flex;align-items:center;justify-content:center;padding:2px 6px;border-radius:2px;font-weight:600;font-size:10px;min-width:42px}
+</style>
+</head>
+<body>
+<div id="loader"><div class="spin"></div><div class="load-msg" id="load-msg">Loading CSV files…</div></div>
+<div id="error-box"></div>
+<div id="app" style="display:none">
+<div class="hdr">
+  <div class="hdr-title">Nexus Hotel &amp; Conference Center — RFP + Transient Explorer</div>
+  <div class="hdr-sub">
+    5880 Perimeter Drive, Dublin OH 43017 &nbsp;·&nbsp;
+    <span class="ds-badge grp">● Group</span> <span id="kpi-rfp-count">—</span> RFPs &nbsp;·&nbsp;
+    <span class="ds-badge tr">● Transient</span> <span id="kpi-tr-days">—</span> days 2023–2025 &nbsp;·&nbsp;
+    <span class="ds-badge flag">● APIT</span> enriched signals
+  </div>
+  <div class="file-links">
+    <a class="flink" href="Enhanced_All_Events_v8.csv" download>⬇ Enhanced_All_Events_v8.csv</a>
+    <a class="flink" href="Enhanced_Booked_Events_v6.csv" download>⬇ Enhanced_Booked_Events_v6.csv</a>
+    <a class="flink" href="Enhanced_Lost_Business_v6.csv" download>⬇ Enhanced_Lost_Business_v6.csv</a>
+    <a class="flink" href="Nexus_Transient_Demand_v2.csv" download>⬇ Nexus_Transient_Demand_v2.csv</a>
+    <a class="flink" href="Enhanced_Data_Dictionary_v5.csv" download>⬇ Enhanced_Data_Dictionary_v5.csv</a>
+  </div>
+</div>
+<div class="cards">
+  <div class="card grp"><div class="clabel">Total RFPs</div><div class="cval" id="c-total">—</div><div class="csub" id="c-total-sub">—</div></div>
+  <div class="card grp"><div class="clabel">Group conversion</div><div class="cval" id="c-conv">—</div><div class="csub" id="c-conv-sub">—</div></div>
+  <div class="card tr"><div class="clabel">Avg transient occ</div><div class="cval" id="c-trocc">—</div><div class="csub" id="c-trocc-sub">—</div></div>
+  <div class="card flag"><div class="clabel">Avg completeness</div><div class="cval" id="c-comp">—</div><div class="csub" id="c-comp-sub">—</div></div>
+</div>
+<div class="tabs">
+  <button class="tab on"       onclick="sw('ov',this)">Overview</button>
+  <button class="tab"          onclick="sw('pk',this)">Pickup Rate</button>
+  <button class="tab"          onclick="sw('fb',this)">F&amp;B &amp; Revenue</button>
+  <button class="tab flag-tab" onclick="sw('ap',this)">⬡ APIT Signals</button>
+  <button class="tab tr-tab"   onclick="sw('tr',this)">⬡ Transient Demand</button>
+</div>
+<!-- OVERVIEW -->
+<div id="ov" class="panel on">
+  <div class="g2 mb">
+    <div class="box grp-box"><div class="bt"><span class="ds-badge grp">Group</span> Event type mix</div><div class="bs">All RFPs by type</div><div class="leg" id="et-leg"></div><div style="position:relative;height:190px"><canvas id="etChart"></canvas></div></div>
+    <div class="box grp-box"><div class="bt"><span class="ds-badge grp">Group</span> Market segment</div><div class="bs">All RFPs by segment</div><div style="position:relative;height:230px"><canvas id="segChart"></canvas></div></div>
+  </div>
+  <div class="g3">
+    <div class="box grp-box"><div class="bt"><span class="ds-badge grp">Group</span> Event configuration</div><div class="bs">What the group needs</div><div class="leg" id="cfg-leg"></div><div style="position:relative;height:160px"><canvas id="cfgChart"></canvas></div></div>
+    <div class="box grp-box"><div class="bt"><span class="ds-badge grp">Group</span> Lead time distribution</div><div class="bs">Days from inquiry to arrival</div><div style="position:relative;height:160px"><canvas id="ltChart"></canvas></div></div>
+    <div class="box grp-box"><div class="bt"><span class="ds-badge grp">Group</span> Lost reasons</div><div class="bs">Top 8 reasons for lost business</div><div style="position:relative;height:160px"><canvas id="lostChart"></canvas></div></div>
+  </div>
+</div>
+<!-- PICKUP -->
+<div id="pk" class="panel">
+  <div class="g2 mb">
+    <div class="box grp-box"><div class="bt"><span class="ds-badge grp">Group</span> Avg pickup rate by event type</div><div class="bs">Booked events only</div><div style="position:relative;height:180px"><canvas id="prTypeChart"></canvas></div></div>
+    <div class="box grp-box"><div class="bt"><span class="ds-badge grp">Group</span> Meeting setup preference</div><div class="bs">Primary setup across events with meeting space</div><div class="leg" id="setup-leg"></div><div style="position:relative;height:180px"><canvas id="setupChart"></canvas></div></div>
+  </div>
+  <div class="box grp-box"><div class="bt"><span class="ds-badge grp">Group</span> Lead time vs pickup rate</div><div class="bs">Sample of up to 300 booked events. Within each type, lead time is independent of pickup — the overall slope is structural. Filter by type:</div><div class="seg-btns" id="scatter-btns"></div><div class="leg" id="scatter-leg"></div><div style="position:relative;height:260px"><canvas id="scatterChart"></canvas></div></div>
+</div>
+<!-- F&B -->
+<div id="fb" class="panel">
+  <div class="cards" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+    <div class="card grp"><div class="clabel">Avg total group value</div><div class="cval" id="fb-total">—</div><div class="csub">per booked event</div></div>
+    <div class="card grp"><div class="clabel">Avg room revenue</div><div class="cval" id="fb-room">—</div><div class="csub" id="fb-room-pct">—</div></div>
+    <div class="card grp"><div class="clabel">Avg F&amp;B revenue</div><div class="cval" id="fb-fnb">—</div><div class="csub" id="fb-fnb-pct">—</div></div>
+    <div class="card grp"><div class="clabel">Avg meeting space</div><div class="cval" id="fb-meet">—</div><div class="csub" id="fb-meet-pct">—</div></div>
+  </div>
+  <div class="g2 mb">
+    <div class="box grp-box"><div class="bt"><span class="ds-badge grp">Group</span> Actual F&amp;B per person by event type</div><div class="bs">Booked events only</div><div style="position:relative;height:220px"><canvas id="fnbTypeChart"></canvas></div></div>
+    <div class="box grp-box"><div class="bt"><span class="ds-badge grp">Group</span> Revenue composition</div><div class="bs">Rooms vs F&amp;B vs meeting space (avg booked event)</div><div class="leg" id="rev-leg"></div><div style="position:relative;height:220px"><canvas id="revChart"></canvas></div></div>
+  </div>
+  <div class="g2">
+    <div class="box grp-box"><div class="bt"><span class="ds-badge grp">Group</span> AV level by event type</div><div class="bs">Max AV complexity (0=none · 1=basic · 2=standard · 3=premium)</div><div style="position:relative;height:180px"><canvas id="avChart"></canvas></div></div>
+    <div class="box grp-box"><div class="bt"><span class="ds-badge grp">Group</span> Revenue per room night by demand tier</div><div class="bs">CPOR efficiency across Low / Shoulder / Peak contexts</div><div style="position:relative;height:180px"><canvas id="rpnChart"></canvas></div></div>
+  </div>
+</div>
+<!-- APIT -->
+<div id="ap" class="panel">
+  <div class="insight-row">
+    <div class="insight hi"><div class="lbl">Rate Below Baseline</div><div class="val" id="ap-below">—</div><div class="sub" id="ap-below-sub">—</div></div>
+    <div class="insight hi"><div class="lbl">Missing Rate Target</div><div class="val" id="ap-missing">—</div><div class="sub" id="ap-missing-sub">—</div></div>
+    <div class="insight lo"><div class="lbl">High Displacement Risk</div><div class="val" id="ap-displ">—</div><div class="sub" id="ap-displ-sub">—</div></div>
+    <div class="insight lo"><div class="lbl">Date Conflicts</div><div class="val" id="ap-conflict">—</div><div class="sub" id="ap-conflict-sub">—</div></div>
+    <div class="insight pu"><div class="lbl">Short Response Window</div><div class="val" id="ap-resp">—</div><div class="sub" id="ap-resp-sub">—</div></div>
+  </div>
+  <div class="g2 mb">
+    <div class="box flag-box"><div class="bt"><span class="ds-badge flag">APIT</span> Displacement risk distribution</div><div class="bs">Peak_Room_Block ÷ rooms available on peak event date</div><div class="leg" id="displ-leg"></div><div style="position:relative;height:200px"><canvas id="displChart"></canvas></div></div>
+    <div class="box flag-box"><div class="bt"><span class="ds-badge flag">APIT</span> ADR discount by event type</div><div class="bs">How far below baseline ADR each segment is quoted (avg %)</div><div style="position:relative;height:200px"><canvas id="adrDiscChart"></canvas></div></div>
+  </div>
+  <div class="g2 mb">
+    <div class="box flag-box"><div class="bt"><span class="ds-badge flag">APIT</span> Flag rates by event type</div><div class="bs">% of RFPs in each type triggering each APIT signal</div><div style="position:relative;height:220px"><canvas id="flagByTypeChart"></canvas></div></div>
+    <div class="box flag-box"><div class="bt"><span class="ds-badge flag">APIT</span> ADR discount bucket distribution</div><div class="bs">All RFPs by deviation from baseline ADR</div><div style="position:relative;height:220px"><canvas id="adrBucketChart"></canvas></div></div>
+  </div>
+  <div class="box flag-box"><div class="bt"><span class="ds-badge flag">APIT</span> Flag matrix by event type</div><div class="bs">% of RFPs triggering each signal — heat-colored green→red</div><table class="flag-table" id="flagMatrix"></table></div>
+</div>
+<!-- TRANSIENT -->
+<div id="tr" class="panel">
+  <div class="insight-row">
+    <div class="insight hi"><div class="lbl">Avg daily displacement cost</div><div class="val" id="tr-displ-cost">—</div><div class="sub">Total opportunity cost of group rooms</div></div>
+    <div class="insight lo"><div class="lbl">Days sold out</div><div class="val" id="tr-soldout">—</div><div class="sub" id="tr-soldout-sub">—</div></div>
+    <div class="insight pu"><div class="lbl">On-Track YoY pace</div><div class="val" id="tr-pace">—</div><div class="sub" id="tr-pace-sub">—</div></div>
+    <div class="insight hi"><div class="lbl">Nexus ADR premium</div><div class="val" id="tr-adr-idx">—</div><div class="sub">vs comp-set market ADR</div></div>
+  </div>
+  <div class="g2 mb">
+    <div class="box tr-box"><div class="bt"><span class="ds-badge tr">Transient</span> Occupancy vs market comp set</div><div class="bs">Monthly avg transient occ of available rooms</div><div class="leg" id="tr-occ-leg"></div><div style="position:relative;height:180px"><canvas id="trOccChart"></canvas></div></div>
+    <div class="box tr-box"><div class="bt"><span class="ds-badge tr">Transient</span> ADR vs market comp set</div><div class="bs">Monthly avg transient ADR</div><div class="leg" id="tr-adr-leg"></div><div style="position:relative;height:180px"><canvas id="trAdrChart"></canvas></div></div>
+  </div>
+  <div class="g2 mb">
+    <div class="box tr-box"><div class="bt"><span class="ds-badge tr">Transient</span> Demand vs sold vs turned away</div><div class="bs">Avg daily rooms — gap = displacement from group blocks</div><div class="leg" id="tr-dem-leg"></div><div style="position:relative;height:180px"><canvas id="trDemChart"></canvas></div></div>
+    <div class="box tr-box"><div class="bt"><span class="ds-badge tr">Transient</span> Transient yield % by month</div><div class="bs">Revenue captured as % of available transient room-revenue potential</div><div style="position:relative;height:180px"><canvas id="trYieldChart"></canvas></div></div>
+  </div>
+  <div class="g2 mb">
+    <div class="box tr-box"><div class="bt"><span class="ds-badge tr">Transient</span> Rate strategy in effect by month</div><div class="bs">Rack / Standard / Promotional / Premium_Event / Holiday_Reduced</div><div class="leg" id="rs-leg"></div><div style="position:relative;height:200px"><canvas id="rsChart"></canvas></div></div>
+    <div class="box tr-box"><div class="bt"><span class="ds-badge tr">Transient</span> Demand tier by month</div><div class="bs">Daily demand classification across 2023–2025</div><div class="leg" id="tier-leg"></div><div style="position:relative;height:200px"><canvas id="tierChart"></canvas></div></div>
+  </div>
+  <div class="g2">
+    <div class="box tr-box"><div class="bt"><span class="ds-badge tr">Transient</span> Weekday vs weekend</div><div class="bs">Avg occupancy and ADR — corporate Mon–Thu pattern</div><div class="leg" id="wkd-leg"></div><div style="position:relative;height:180px"><canvas id="wkdChart"></canvas></div></div>
+    <div class="box tr-box"><div class="bt"><span class="ds-badge tr">Transient</span> OSU Football impact</div><div class="bs">Home game days vs all other days</div><div class="leg" id="osu-leg"></div><div style="position:relative;height:180px"><canvas id="osuChart"></canvas></div></div>
+  </div>
+</div>
+</div>
+<script>
+const GC='#1e2130',TC='#7a7870';
+const ET_C={Corporate:'#5fa8e8',Association:'#4a9e70','Wedding/Social':'#e8933a',SMERF:'#b882e8'};
+const TIER_C={Soft:'#4a5568',Low:'#68a34a',Moderate:'#c49a1a',High:'#4a86c8',Peak:'#d85a30'};
+const RS_C={Rack:'#d85a30',Standard:'#5fa8e8',Promotional:'#4a9e70',Premium_Event:'#e8933a',Holiday_Reduced:'#7a6a8a'};
+const DISPL_C={Low:'#4a9e70',Moderate:'#c49a1a',High:'#d85a30',Unknown:'#4a5568'};
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const ET_ORDER=['Corporate','Association','Wedding/Social','SMERF'];
+const base={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:GC},ticks:{color:TC,font:{size:10}}},y:{grid:{color:GC},ticks:{color:TC,font:{size:10}}}}};
+const $=id=>document.getElementById(id);
+function fmt(n,d=0){return n==null||isNaN(n)?'—':n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function fmtPct(n,d=1){return isNaN(n)||n==null?'—':fmt(n,d)+'%';}
+function fmtD(n,d=0){return isNaN(n)||n==null?'—':'$'+fmt(n,d);}
+function groupCount(rows,key){const m={};rows.forEach(r=>{const v=r[key]||'';m[v]=(m[v]||0)+1;});return m;}
+function groupMean(rows,key,vk){const s={},c={};rows.forEach(r=>{const v=r[key]||'',n=+r[vk];if(!isNaN(n)&&r[vk]!==''){s[v]=(s[v]||0)+n;c[v]=(c[v]||0)+1;}});const m={};Object.keys(s).forEach(k=>m[k]=s[k]/c[k]);return m;}
+function colMean(rows,key){let s=0,n=0;rows.forEach(r=>{const v=+r[key];if(!isNaN(v)&&r[key]!==''){s+=v;n++;}});return n?s/n:NaN;}
+function colSum(rows,key){let s=0;rows.forEach(r=>{const v=+r[key];if(!isNaN(v))s+=v;});return s;}
+function monthlyMean(rows,vk){const s=Array(12).fill(0),c=Array(12).fill(0);rows.forEach(r=>{const mo=+r['Month']-1,v=+r[vk];if(mo>=0&&mo<12&&!isNaN(v)&&r[vk]!==''){s[mo]+=v;c[mo]++;}});return s.map((x,i)=>c[i]?+(x/c[i]).toFixed(2):null);}
+function monthlyCount(rows,fn){const c=Array(12).fill(0);rows.forEach(r=>{const mo=+r['Month']-1;if(mo>=0&&mo<12&&fn(r))c[mo]++;});return c;}
+function topN(obj,n){return Object.fromEntries(Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,n));}
+function sortByVal(obj,desc=true){return Object.fromEntries(Object.entries(obj).sort((a,b)=>desc?b[1]-a[1]:a[1]-b[1]));}
+function bucketize(rows,key,edges,labels){const c={};labels.forEach(l=>c[l]=0);rows.forEach(r=>{const v=+r[key];if(isNaN(v))return;for(let i=0;i<edges.length-1;i++){if(v>edges[i]&&v<=edges[i+1]){c[labels[i]]++;break;}}});return c;}
+function leg(el,items){el.innerHTML=items.map(([l,c])=>`<span style="display:flex;align-items:center;gap:3px"><span class="ld" style="background:${c}"></span>${l}</span>`).join('');}
+function sw(id,btn){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));$(id).classList.add('on');btn.classList.add('on');}
+function sampleRows(rows,n){if(rows.length<=n)return rows;const sh=[...rows];for(let i=sh.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[sh[i],sh[j]]=[sh[j],sh[i]];}return sh.slice(0,n);}
+function loadCSV(url){return new Promise((res,rej)=>{Papa.parse(url,{download:true,header:true,skipEmptyLines:true,complete:r=>res(r.data),error:e=>rej(e)});});}
+
+async function main(){
+  try{
+    $('load-msg').textContent='Loading Enhanced_All_Events_v8.csv…';
+    const evRows=await loadCSV('Enhanced_All_Events_v8.csv');
+    $('load-msg').textContent='Loading Nexus_Transient_Demand_v2.csv…';
+    const trRows=await loadCSV('Nexus_Transient_Demand_v2.csv');
+    $('load-msg').textContent='Computing…';
+
+    const booked=evRows.filter(r=>r.Status==='Booked');
+    const lost=evRows.filter(r=>r.Status==='Lost');
+
+    // KPI header
+    $('kpi-rfp-count').textContent=fmt(evRows.length);
+    $('kpi-tr-days').textContent=fmt(trRows.length);
+
+    // Top cards
+    $('c-total').textContent=fmt(evRows.length);
+    $('c-total-sub').textContent=`${fmt(booked.length)} booked · ${fmt(lost.length)} lost`;
+    $('c-conv').textContent=fmtPct(booked.length/evRows.length*100);
+    $('c-conv-sub').textContent=`${fmt(booked.length)} booked · ${fmt(lost.length)} lost`;
+    const trOccMean=colMean(trRows,'Transient_Occ_Of_Available');
+    $('c-trocc').textContent=fmtPct(trOccMean);
+    $('c-trocc-sub').textContent=`${fmt(colSum(trRows,'Transient_Rooms_Turned_Away'))} rooms turned away`;
+    $('c-comp').textContent=fmtPct(colMean(evRows,'Completeness_Score'));
+    $('c-comp-sub').textContent=`Avg ${fmtPct(colMean(evRows,'ADR_Discount_Pct'),1)} ADR discount`;
+
+    // APIT pills
+    const N=evRows.length;
+    function flagPct(fk){const n=evRows.filter(r=>+r[fk]===1).length;return{n,pct:n/N*100};}
+    const fBelow=flagPct('Flag_Rate_Below_Baseline'),fMiss=flagPct('Flag_Missing_Rate_Target'),
+          fDispl=flagPct('Flag_High_Displacement'),fConf=flagPct('Flag_Date_Conflict'),fResp=flagPct('Flag_Short_Response_Window');
+    $('ap-below').textContent=fmtPct(fBelow.pct); $('ap-below-sub').textContent=`${fmt(fBelow.n)} of ${fmt(N)} RFPs`;
+    $('ap-missing').textContent=fmtPct(fMiss.pct); $('ap-missing-sub').textContent='No budget provided at inquiry';
+    $('ap-displ').textContent=fmtPct(fDispl.pct);  $('ap-displ-sub').textContent=`${fmt(fDispl.n)} RFPs — near capacity`;
+    $('ap-conflict').textContent=fmtPct(fConf.pct); $('ap-conflict-sub').textContent=`${fmt(fConf.n)} RFPs exceed inventory`;
+    $('ap-resp').textContent=fmtPct(fResp.pct);     $('ap-resp-sub').textContent='≤5 days to respond';
+
+    // Transient pills
+    $('tr-displ-cost').textContent=fmtD(colMean(trRows,'Total_Displacement_Cost'));
+    const sold0=trRows.filter(r=>+r.Rooms_to_Capacity===0).length;
+    $('tr-soldout').textContent=fmtPct(sold0/trRows.length*100);
+    $('tr-soldout-sub').textContent=`${fmt(sold0)} of ${fmt(trRows.length)} days`;
+    const paceR=trRows.filter(r=>r.Pace_Status&&r.Pace_Status!=='');
+    const onT=paceR.filter(r=>r.Pace_Status==='On Track').length;
+    $('tr-pace').textContent=fmtPct(onT/paceR.length*100);
+    $('tr-pace-sub').textContent=`${fmt(onT)} of ${fmt(paceR.length)} comparable days`;
+    $('tr-adr-idx').textContent='+'+fmtPct((colMean(trRows,'ADR_Index')-1)*100,1);
+
+    // F&B cards
+    const avgRoom=colMean(booked,'Actual_Room_Revenue'),avgFnb=colMean(booked,'Actual_FnB_Revenue'),
+          avgMeet=colMean(booked,'Actual_Meeting_Revenue'),avgTot=colMean(booked,'Actual_Total_Revenue');
+    $('fb-total').textContent=fmtD(avgTot);
+    $('fb-room').textContent=fmtD(avgRoom); $('fb-room-pct').textContent=fmtPct(avgRoom/avgTot*100,0)+' of total';
+    $('fb-fnb').textContent=fmtD(avgFnb);   $('fb-fnb-pct').textContent=fmtPct(avgFnb/avgTot*100,0)+' of total';
+    $('fb-meet').textContent=fmtD(avgMeet);  $('fb-meet-pct').textContent=fmtPct(avgMeet/avgTot*100,0)+' of total';
+
+    // ── CHARTS ────────────────────────────────────────────────────────────────
+
+    // Overview: event type
+    const etCnt=groupCount(evRows,'Event_Type');
+    const etL=ET_ORDER.filter(k=>etCnt[k]);
+    leg($('et-leg'),etL.map(t=>[t,ET_C[t]]));
+    new Chart($('etChart'),{type:'bar',data:{labels:etL,datasets:[{data:etL.map(t=>etCnt[t]),backgroundColor:etL.map(t=>ET_C[t]),borderRadius:4,borderSkipped:false}]},options:{...base,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw}`}}}}});
+
+    // Overview: segment
+    const segCnt=sortByVal(groupCount(evRows,'Market_Segment'));
+    new Chart($('segChart'),{type:'bar',data:{labels:Object.keys(segCnt),datasets:[{data:Object.values(segCnt),backgroundColor:'#5fa8e8cc',borderRadius:3,borderSkipped:false}]},options:{indexAxis:'y',...base,scales:{x:{grid:{color:GC},ticks:{color:TC,font:{size:9}}},y:{grid:{display:false},ticks:{color:TC,font:{size:9}}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw} events`}}}}});
+
+    // Overview: config
+    const cfgCnt=groupCount(evRows,'Event_Configuration'),cfgC=['#5fa8e8','#4a5568','#4a9e70'],cfgK=Object.keys(cfgCnt);
+    leg($('cfg-leg'),cfgK.map((k,i)=>[k,cfgC[i]]));
+    new Chart($('cfgChart'),{type:'doughnut',data:{labels:cfgK,datasets:[{data:cfgK.map(k=>cfgCnt[k]),backgroundColor:cfgC,borderWidth:2,borderColor:'#0f1117'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw}`}}}}});
+
+    // Overview: lead time
+    const ltE=[0,30,60,90,120,150,180,240,300,366],ltL=['0–30','30–60','60–90','90–120','120–150','150–180','180–240','240–300','300–365'];
+    const ltCnt=bucketize(evRows,'Lead_Time',ltE,ltL);
+    new Chart($('ltChart'),{type:'bar',data:{labels:ltL,datasets:[{data:ltL.map(l=>ltCnt[l]),backgroundColor:'#5fa8e8cc',borderRadius:3,borderSkipped:false}]},options:{...base,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:TC,font:{size:9},maxRotation:35}},y:{grid:{color:GC},ticks:{color:TC,font:{size:9}}}}}});
+
+    // Overview: lost reasons
+    const lostCnt=topN(groupCount(lost,'Lost_Reason'),8);
+    new Chart($('lostChart'),{type:'bar',data:{labels:Object.keys(lostCnt),datasets:[{data:Object.values(lostCnt),backgroundColor:'#d85a30cc',borderRadius:3,borderSkipped:false}]},options:{indexAxis:'y',...base,scales:{x:{grid:{color:GC},ticks:{color:TC,font:{size:9}}},y:{grid:{display:false},ticks:{color:TC,font:{size:9}}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw} events`}}}}});
+
+    // Pickup: by type
+    const prRaw=groupMean(booked,'Event_Type','Actual_Pickup_Rate');
+    const prD=sortByVal(Object.fromEntries(ET_ORDER.filter(t=>prRaw[t]).map(t=>[t,+(prRaw[t]*100).toFixed(1)])));
+    new Chart($('prTypeChart'),{type:'bar',data:{labels:Object.keys(prD),datasets:[{data:Object.values(prD),backgroundColor:Object.keys(prD).map(t=>ET_C[t]),borderRadius:4,borderSkipped:false}]},options:{indexAxis:'y',...base,scales:{x:{min:50,max:100,grid:{color:GC},ticks:{color:TC,font:{size:10},callback:v=>v+'%'}},y:{grid:{display:false},ticks:{color:TC,font:{size:10}}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.formattedValue}%`}}}}});
+
+    // Pickup: setup
+    const setupRows=evRows.filter(r=>+r.Has_Meeting_Space===1);
+    const setupCnt=sortByVal(groupCount(setupRows,'Primary_Setup')),setupC=['#5fa8e8','#4a9e70','#d85a30','#b882e8','#7a7870'],setupK=Object.keys(setupCnt);
+    leg($('setup-leg'),setupK.map((k,i)=>[k,setupC[i]||'#888']));
+    new Chart($('setupChart'),{type:'doughnut',data:{labels:setupK,datasets:[{data:setupK.map(k=>setupCnt[k]),backgroundColor:setupC,borderWidth:2,borderColor:'#0f1117'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw}`}}}}});
+
+    // Pickup: scatter
+    const scSamp=sampleRows(booked.filter(r=>r.Lead_Time&&r.Actual_Pickup_Rate),300);
+    const scData=scSamp.map(r=>({lt:+r.Lead_Time,pr:+r.Actual_Pickup_Rate,et:r.Event_Type}));
+    let activeT=new Set(ET_ORDER);
+    leg($('scatter-leg'),ET_ORDER.map(t=>[t,ET_C[t]]));
+    ET_ORDER.forEach(et=>{const btn=document.createElement('button');btn.className='sbtn on';btn.textContent=et;btn.style.background=ET_C[et];btn.style.color='#0f1117';btn.onclick=()=>{if(activeT.has(et)){if(activeT.size>1){activeT.delete(et);btn.classList.remove('on');btn.style.background='';btn.style.color=TC;}}else{activeT.add(et);btn.classList.add('on');btn.style.background=ET_C[et];btn.style.color='#0f1117';}updSc();};$('scatter-btns').appendChild(btn);});
+    const scChart=new Chart($('scatterChart'),{type:'scatter',data:{datasets:[]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: lead=${c.parsed.x}d, pickup=${(c.parsed.y*100).toFixed(1)}%`}}},scales:{x:{title:{display:true,text:'Lead time (days)',color:TC,font:{size:10}},grid:{color:GC},ticks:{color:TC,font:{size:10}}},y:{title:{display:true,text:'Pickup rate',color:TC,font:{size:10}},min:0.42,max:1.02,grid:{color:GC},ticks:{color:TC,font:{size:10},callback:v=>(v*100).toFixed(0)+'%'}}}}});
+    function updSc(){scChart.data.datasets=ET_ORDER.filter(t=>activeT.has(t)).map(et=>({label:et,data:scData.filter(d=>d.et===et).map(d=>({x:d.lt,y:d.pr})),backgroundColor:ET_C[et]+'99',pointRadius:4,pointHoverRadius:6}));scChart.update();}
+    updSc();
+
+    // F&B: per person
+    const fnbRaw=groupMean(booked,'Event_Type','Actual_FnB_Per_Person');
+    const fnbD=sortByVal(Object.fromEntries(ET_ORDER.filter(t=>fnbRaw[t]).map(t=>[t,+fnbRaw[t].toFixed(1)])));
+    new Chart($('fnbTypeChart'),{type:'bar',data:{labels:Object.keys(fnbD),datasets:[{data:Object.values(fnbD),backgroundColor:Object.keys(fnbD).map(t=>ET_C[t]),borderRadius:4,borderSkipped:false}]},options:{indexAxis:'y',...base,scales:{x:{grid:{color:GC},ticks:{color:TC,font:{size:10},callback:v=>'$'+v}},y:{grid:{display:false},ticks:{color:TC,font:{size:10}}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${c.formattedValue}/person`}}}}});
+
+    // F&B: revenue donut
+    leg($('rev-leg'),[['Rooms','#5fa8e8'],['F&B','#4a9e70'],['Meeting','#e8933a']]);
+    new Chart($('revChart'),{type:'doughnut',data:{labels:['Rooms','F&B','Meeting'],datasets:[{data:[+avgRoom.toFixed(0),+avgFnb.toFixed(0),+avgMeet.toFixed(0)],backgroundColor:['#5fa8e8','#4a9e70','#e8933a'],borderWidth:2,borderColor:'#0f1117'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${c.raw.toLocaleString()}`}}}}});
+
+    // F&B: AV level stacked
+    const avC=['#4a5568','#c49a1a','#5fa8e8','#4a9e70'];
+    new Chart($('avChart'),{type:'bar',data:{labels:ET_ORDER,datasets:[0,1,2,3].map((lv,i)=>({label:['No AV','Basic','Standard','Premium'][i],data:ET_ORDER.map(et=>evRows.filter(r=>r.Event_Type===et&&+r.Max_AV_Level===lv).length),backgroundColor:avC[i]+'cc',borderRadius:2,borderSkipped:false}))},options:{...base,plugins:{legend:{display:false},tooltip:{mode:'index'}},scales:{x:{stacked:true,grid:{display:false},ticks:{color:TC,font:{size:10}}},y:{stacked:true,grid:{color:GC},ticks:{color:TC,font:{size:10}}}}}});
+
+    // F&B: Rev per room night by demand tier
+    const rpnRaw=groupMean(evRows,'Demand_Tier','Revenue_Per_Room_Night');
+    const rpnO=['Low','Shoulder','Peak'],rpnC=['#4a9e70','#5fa8e8','#d85a30'];
+    const rpnV=rpnO.map(t=>rpnRaw[t]?+rpnRaw[t].toFixed(1):null);
+    new Chart($('rpnChart'),{type:'bar',data:{labels:rpnO,datasets:[{data:rpnV,backgroundColor:rpnC,borderRadius:4,borderSkipped:false}]},options:{...base,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${c.formattedValue}/room-night`}}},scales:{x:{grid:{display:false},ticks:{color:TC,font:{size:11}}},y:{grid:{color:GC},ticks:{color:TC,font:{size:10},callback:v=>'$'+v}}}}});
+
+    // APIT: displacement donut
+    const displCnt=groupCount(evRows,'Displacement_Risk_Level'),displO=['Low','Moderate','High','Unknown'],displK=displO.filter(k=>displCnt[k]);
+    leg($('displ-leg'),displK.map(k=>[k,DISPL_C[k]]));
+    new Chart($('displChart'),{type:'doughnut',data:{labels:displK,datasets:[{data:displK.map(k=>displCnt[k]),backgroundColor:displK.map(k=>DISPL_C[k]),borderWidth:2,borderColor:'#0f1117'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.raw} RFPs`}}}}});
+
+    // APIT: ADR discount by type
+    const adrRaw=groupMean(evRows,'Event_Type','ADR_Discount_Pct');
+    const adrD=sortByVal(Object.fromEntries(ET_ORDER.filter(t=>adrRaw[t]).map(t=>[t,+adrRaw[t].toFixed(2)])));
+    new Chart($('adrDiscChart'),{type:'bar',data:{labels:Object.keys(adrD),datasets:[{data:Object.values(adrD),backgroundColor:Object.keys(adrD).map(t=>ET_C[t]),borderRadius:4,borderSkipped:false}]},options:{indexAxis:'y',...base,scales:{x:{min:0,max:35,grid:{color:GC},ticks:{color:TC,font:{size:10},callback:v=>v+'%'}},y:{grid:{display:false},ticks:{color:TC,font:{size:10}}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.formattedValue}% avg discount`}}}}});
+
+    // APIT: flags by type grouped
+    const fKeys=['Flag_Missing_Rate_Target','Flag_Short_Response_Window','Flag_Rate_Below_Baseline','Flag_High_Displacement','Flag_Date_Conflict'];
+    const fShort=['No Rate Target','Short Window','Below Baseline','High Displ.','Date Conflict'];
+    const fColors=['#7a6a8a','#e8933a','#d85a30','#5fa8e8','#4a9e70'];
+    new Chart($('flagByTypeChart'),{type:'bar',data:{labels:ET_ORDER,datasets:fKeys.map((fk,i)=>({label:fShort[i],data:ET_ORDER.map(et=>{const s=evRows.filter(r=>r.Event_Type===et);return s.length?+(s.filter(r=>+r[fk]===1).length/s.length*100).toFixed(1):0;}),backgroundColor:fColors[i]+'cc',borderRadius:2,borderSkipped:false}))},options:{...base,plugins:{legend:{display:false},tooltip:{mode:'index',callbacks:{label:c=>`${c.dataset.label}: ${c.formattedValue}%`}}},scales:{x:{grid:{display:false},ticks:{color:TC,font:{size:10}}},y:{max:100,grid:{color:GC},ticks:{color:TC,font:{size:10},callback:v=>v+'%'}}}}});
+
+    // APIT: ADR bucket
+    const adcE=[-999,0,10,20,30,999],adcL=['Above baseline','0–10%','10–20%','20–30%','>30%'];
+    const adcB=bucketize(evRows,'ADR_Discount_Pct',adcE,adcL);
+    new Chart($('adrBucketChart'),{type:'bar',data:{labels:adcL,datasets:[{data:adcL.map(l=>adcB[l]||0),backgroundColor:['#4a9e70','#4a9e70aa','#c49a1a','#e8933a','#d85a30'],borderRadius:4,borderSkipped:false}]},options:{...base,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw} RFPs`}}},scales:{x:{grid:{display:false},ticks:{color:TC,font:{size:10}}},y:{grid:{color:GC},ticks:{color:TC,font:{size:10}}}}}});
+
+    // APIT: flag matrix
+    const mt=$('flagMatrix'),hr=mt.insertRow();
+    ['Event Type','No Rate Target','Short Window','Below Baseline','High Displ.','Date Conflict'].forEach(h=>{const th=document.createElement('th');th.textContent=h;hr.appendChild(th);});
+    function hc(p){if(p>=70)return{bg:'#d85a3022',c:'#d85a30'};if(p>=50)return{bg:'#e8933a22',c:'#e8933a'};if(p>=25)return{bg:'#c49a1a22',c:'#c4a030'};return{bg:'#4a9e7022',c:'#4a9e70'};}
+    ET_ORDER.forEach(et=>{const sub=evRows.filter(r=>r.Event_Type===et),row=mt.insertRow(),ec=row.insertCell();ec.textContent=et;ec.style.color=ET_C[et];ec.style.fontWeight='600';fKeys.forEach(fk=>{const cell=row.insertCell(),p=+(sub.filter(r=>+r[fk]===1).length/sub.length*100).toFixed(0),{bg,c}=hc(p);cell.innerHTML=`<span class="flag-cell" style="background:${bg};color:${c}">${p}%</span>`;});});
+
+    // Transient charts
+    const trOccM=monthlyMean(trRows,'Transient_Occ_Of_Available'),mktOccM=monthlyMean(trRows,'Market_Occ_Pct');
+    leg($('tr-occ-leg'),[['Nexus Transient Occ','#e8933a'],['Columbus Market','#4a5568']]);
+    new Chart($('trOccChart'),{type:'bar',data:{labels:MONTHS,datasets:[{label:'Nexus',data:trOccM,backgroundColor:'#e8933acc',borderRadius:3,borderSkipped:false},{label:'Market',data:mktOccM,backgroundColor:'#4a556899',borderRadius:3,borderSkipped:false}]},options:{...base,plugins:{legend:{display:false},tooltip:{mode:'index',callbacks:{label:c=>`${c.dataset.label}: ${c.formattedValue}%`}}},scales:{x:{grid:{display:false},ticks:{color:TC,font:{size:10}}},y:{min:35,max:100,grid:{color:GC},ticks:{color:TC,font:{size:10},callback:v=>v+'%'}}}}});
+
+    const trAdrM=monthlyMean(trRows,'Transient_ADR'),mktAdrM=monthlyMean(trRows,'Market_ADR');
+    leg($('tr-adr-leg'),[['Nexus Transient ADR','#e8933a'],['Columbus Market','#4a5568']]);
+    new Chart($('trAdrChart'),{type:'bar',data:{labels:MONTHS,datasets:[{label:'Nexus',data:trAdrM,backgroundColor:'#e8933acc',borderRadius:3,borderSkipped:false},{label:'Market',data:mktAdrM,backgroundColor:'#4a556899',borderRadius:3,borderSkipped:false}]},options:{...base,plugins:{legend:{display:false},tooltip:{mode:'index',callbacks:{label:c=>`${c.dataset.label}: $${c.formattedValue}`}}},scales:{x:{grid:{display:false},ticks:{color:TC,font:{size:10}}},y:{min:110,max:210,grid:{color:GC},ticks:{color:TC,font:{size:10},callback:v=>'$'+v}}}}});
+
+    leg($('tr-dem-leg'),[['Unconstrained Demand','#e8933a'],['Rooms Sold','#5fa8e8'],['Turned Away','#d85a3066']]);
+    new Chart($('trDemChart'),{type:'bar',data:{labels:MONTHS,datasets:[{label:'Unconstrained',data:monthlyMean(trRows,'Transient_Demand_Unconstrained'),backgroundColor:'#e8933a33',borderColor:'#e8933a',borderWidth:1.5,borderRadius:3,borderSkipped:false},{label:'Sold',data:monthlyMean(trRows,'Transient_Rooms_Sold'),backgroundColor:'#5fa8e8cc',borderRadius:3,borderSkipped:false},{label:'Turned Away',data:monthlyMean(trRows,'Transient_Rooms_Turned_Away'),backgroundColor:'#d85a3066',borderRadius:3,borderSkipped:false}]},options:{...base,plugins:{legend:{display:false},tooltip:{mode:'index'}},scales:{x:{grid:{display:false},ticks:{color:TC,font:{size:10}}},y:{grid:{color:GC},ticks:{color:TC,font:{size:10}}}}}});
+
+    const trYM=monthlyMean(trRows,'Transient_Yield_Pct');
+    new Chart($('trYieldChart'),{type:'bar',data:{labels:MONTHS,datasets:[{data:trYM,backgroundColor:trYM.map(v=>v>=90?'#4a9e70cc':v>=75?'#c49a1acc':'#d85a30cc'),borderRadius:3,borderSkipped:false}]},options:{...base,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`Yield: ${c.formattedValue}%`}}},scales:{x:{grid:{display:false},ticks:{color:TC,font:{size:10}}},y:{min:35,max:100,grid:{color:GC},ticks:{color:TC,font:{size:10},callback:v=>v+'%'}}}}});
+
+    const rsOrder=['Rack','Standard','Promotional','Premium_Event','Holiday_Reduced'];
+    leg($('rs-leg'),rsOrder.map(k=>[k.replace('_',' '),RS_C[k]]));
+    new Chart($('rsChart'),{type:'bar',data:{labels:MONTHS,datasets:rsOrder.map(rs=>({label:rs.replace('_',' '),data:monthlyCount(trRows,r=>r.Rate_Strategy===rs),backgroundColor:RS_C[rs]+'cc',borderRadius:2,borderSkipped:false}))},options:{...base,plugins:{legend:{display:false},tooltip:{mode:'index'}},scales:{x:{stacked:true,grid:{display:false},ticks:{color:TC,font:{size:10}}},y:{stacked:true,grid:{color:GC},ticks:{color:TC,font:{size:10}}}}}});
+
+    const tierOrder=['Soft','Low','Moderate','High','Peak'];
+    leg($('tier-leg'),tierOrder.map(t=>[t,TIER_C[t]]));
+    new Chart($('tierChart'),{type:'bar',data:{labels:MONTHS,datasets:tierOrder.map(t=>({label:t,data:monthlyCount(trRows,r=>r.Demand_Tier===t),backgroundColor:TIER_C[t]+'cc',borderRadius:2,borderSkipped:false}))},options:{...base,plugins:{legend:{display:false},tooltip:{mode:'index'}},scales:{x:{stacked:true,grid:{display:false},ticks:{color:TC,font:{size:10}}},y:{stacked:true,grid:{color:GC},ticks:{color:TC,font:{size:10}}}}}});
+
+    const wkd=trRows.filter(r=>+r.Is_Weekend===0),wke=trRows.filter(r=>+r.Is_Weekend===1);
+    leg($('wkd-leg'),[['Weekday','#5fa8e8'],['Weekend','#e8933a']]);
+    new Chart($('wkdChart'),{type:'bar',data:{labels:['Avg Occ %','Avg ADR ($)'],datasets:[{label:'Weekday',data:[+colMean(wkd,'Total_Occupancy_Pct').toFixed(1),+colMean(wkd,'Transient_ADR').toFixed(2)],backgroundColor:'#5fa8e8cc',borderRadius:4,borderSkipped:false},{label:'Weekend',data:[+colMean(wke,'Total_Occupancy_Pct').toFixed(1),+colMean(wke,'Transient_ADR').toFixed(2)],backgroundColor:'#e8933acc',borderRadius:4,borderSkipped:false}]},options:{...base,plugins:{legend:{display:false},tooltip:{mode:'index',callbacks:{label:c=>c.dataset.label+': '+c.formattedValue+(c.dataIndex===0?'%':'')}}},scales:{x:{grid:{display:false},ticks:{color:TC,font:{size:11}}},y:{grid:{color:GC},ticks:{color:TC,font:{size:10}}}}}});
+
+    const osu=trRows.filter(r=>+r.Is_OSU_Football===1),nOsu=trRows.filter(r=>+r.Is_OSU_Football===0);
+    leg($('osu-leg'),[['OSU Football','#d85a30'],['All Other Days','#5fa8e8']]);
+    new Chart($('osuChart'),{type:'bar',data:{labels:['Avg Occ %','Avg ADR ($)'],datasets:[{label:'OSU Football',data:[+colMean(osu,'Total_Occupancy_Pct').toFixed(1),+colMean(osu,'Transient_ADR').toFixed(2)],backgroundColor:'#d85a30cc',borderRadius:4,borderSkipped:false},{label:'Non-OSU',data:[+colMean(nOsu,'Total_Occupancy_Pct').toFixed(1),+colMean(nOsu,'Transient_ADR').toFixed(2)],backgroundColor:'#5fa8e8cc',borderRadius:4,borderSkipped:false}]},options:{...base,plugins:{legend:{display:false},tooltip:{mode:'index',callbacks:{label:c=>c.dataset.label+': '+c.formattedValue+(c.dataIndex===0?'%':'')}}},scales:{x:{grid:{display:false},ticks:{color:TC,font:{size:11}}},y:{grid:{color:GC},ticks:{color:TC,font:{size:10}}}}}});
+
+    $('loader').style.display='none';
+    $('app').style.display='block';
+  }catch(e){
+    $('loader').style.display='none';
+    const eb=$('error-box');eb.style.display='block';
+    eb.textContent='Could not load CSV files. Ensure Enhanced_All_Events_v8.csv and Nexus_Transient_Demand_v2.csv are in the same folder as this HTML file.\n\nError: '+e;
+    $('app').style.display='block';
+  }
+}
+main();
+</script>
+</body>
+</html>
