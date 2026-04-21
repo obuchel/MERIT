@@ -1,0 +1,186 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.model-tabs{display:flex;gap:6px;flex-wrap:wrap;padding:1rem 0 0.75rem}
+.mtab{padding:5px 14px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:12px;cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary);transition:background .12s,color .12s}
+.mtab.active{background:var(--color-background-secondary);color:var(--color-text-primary);border-color:var(--color-border-primary);font-weight:500}
+.model-card{background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:1rem 1.25rem;margin-bottom:1rem;border:0.5px solid var(--color-border-tertiary)}
+.model-desc{font-size:13px;color:var(--color-text-secondary);line-height:1.6;margin-bottom:1rem}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.25rem}
+.stat{background:var(--color-background-primary);border-radius:var(--border-radius-md);padding:10px 12px;border:0.5px solid var(--color-border-tertiary)}
+.stat-label{font-size:10px;color:var(--color-text-secondary);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+.stat-val{font-size:20px;font-weight:500;color:var(--color-text-primary)}
+.section-title{font-size:10px;font-weight:600;color:var(--color-text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em}
+.tree-list{display:flex;flex-direction:column;gap:5px;max-height:260px;overflow-y:auto}
+.tree-item{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:var(--border-radius-md);cursor:pointer;border:0.5px solid transparent;transition:all .12s}
+.tree-item:hover{background:var(--color-background-secondary);border-color:var(--color-border-tertiary)}
+.tree-item.selected{background:var(--color-background-secondary);border-color:var(--color-border-secondary)}
+.tree-idx{font-size:11px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-weight:500;color:var(--color-text-secondary);min-width:32px}
+.tree-bar-wrap{flex:1;height:5px;background:var(--color-border-tertiary);border-radius:3px;overflow:hidden}
+.tree-bar{height:100%;border-radius:3px}
+.tree-nodes{font-size:11px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--color-text-secondary);min-width:56px;text-align:right}
+.split-panel{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:1.25rem}
+.panel{background:var(--color-background-primary);border-radius:var(--border-radius-lg);padding:1rem;border:0.5px solid var(--color-border-tertiary)}
+.feature-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.fname{font-size:11px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--color-text-primary);width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default}
+.fbar-wrap{flex:1;height:5px;background:var(--color-border-tertiary);border-radius:3px;overflow:hidden}
+.fbar{height:100%;border-radius:3px}
+.fcnt{font-size:11px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--color-text-secondary);min-width:28px;text-align:right}
+.leaf-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.leaf-val{font-size:12px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-weight:500;min-width:62px;text-align:right}
+.leaf-bar-wrap{flex:1;height:5px;background:var(--color-border-tertiary);border-radius:3px;overflow:hidden}
+.leaf-bar{height:100%;border-radius:3px}
+.no-sel{font-size:13px;color:var(--color-text-secondary);padding:1.5rem 0;text-align:center}
+</style>
+
+<h2 class="sr-only">XGBoost model stats explorer — data from xgboost_trees_data.js</h2>
+<div class="model-tabs" id="tabs"></div>
+<div id="model-area"></div>
+
+<script src="xgboost_trees_data.js"></script>
+<script>
+// ── Model display config (colour + description only — data comes from XGBOOST_TREES) ──
+const MODEL_META = {
+  quoted_adr:{color:'#378ADD',desc:'Predicts the quoted average daily rate (ADR) for an RFP. This regression model sets the pricing anchor — it estimates what room rate to offer, balancing competitive positioning against demand signals like displacement risk, seasonal patterns, and booking pace. With 60 trees and the widest feature set (36 features), it is the most granular pricing model.'},
+  pickup:    {color:'#1D9E75',desc:'Predicts pickup — how many room nights the group will actually consume from their block. It uses 62 trees and adds pricing_pressure_index and fnb_ratio to the feature set, reflecting that food & beverage spend signals genuine group intent.'},
+  conversion:{color:'#D85A30',desc:'Predicts whether an RFP will convert to a confirmed booking. With 155 trees, this is by far the deepest model. Many later trees are near-trivial (tiny leaf values), typical of XGBoost converging: early trees capture coarse patterns, later trees make fine corrections.'},
+  fnb:       {color:'#BA7517',desc:'Predicts food & beverage revenue potential for an RFP group. The fnb_ratio feature (F&B spend as fraction of total value) is the natural anchor. Its leaf values are notably larger in magnitude, reflecting that F&B predictions operate in a wider dollar range.'},
+};
+
+let activeModel='quoted_adr', selectedTree=null;
+
+// ── Derive TREE_DATA from raw arrays (computed once per model switch) ──────
+const _treeDataCache = {};
+function getTreeData(modelKey) {
+  if (_treeDataCache[modelKey]) return _treeDataCache[modelKey];
+  const metas = XGBOOST_TREES[modelKey].t.map(arr => {
+    const splits = arr.filter(e => Array.isArray(e) && e.length === 4);
+    const leaves = arr.filter(e => !(Array.isArray(e) && e.length === 4));
+    const leafNums = leaves.map(e => Array.isArray(e) ? e[0] : e).filter(x => typeof x === 'number');
+    return {
+      nodes:   arr.length,
+      leaves:  leaves.length,
+      maxLeaf: leafNums.length ? parseFloat(Math.max(...leafNums).toFixed(4)) : 0,
+      minLeaf: leafNums.length ? parseFloat(Math.min(...leafNums).toFixed(4)) : 0,
+      feats:   Array.from(new Set(splits.map(s => s[0]))),
+    };
+  });
+  _treeDataCache[modelKey] = metas;
+  return metas;
+}
+
+// ── Feature counts from ALL trees ─────────────────────────────────────────
+function getFeatureCounts(modelKey) {
+  const counts = {};
+  const labels = XGBOOST_TREES[modelKey].f;
+  XGBOOST_TREES[modelKey].t.forEach(arr => {
+    arr.filter(e => Array.isArray(e) && e.length === 4).forEach(s => {
+      const n = labels[s[0]] || ('f' + s[0]);
+      counts[n] = (counts[n] || 0) + 1;
+    });
+  });
+  return Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 8);
+}
+
+function renderTabs() {
+  document.getElementById('tabs').innerHTML = Object.keys(MODEL_META).map(k =>
+    `<button class="mtab${k===activeModel?' active':''}" onclick="switchModel('${k}')">${k}</button>`
+  ).join('');
+}
+
+function renderModel() {
+  const m = MODEL_META[activeModel];
+  const trees = getTreeData(activeModel);
+  const totalNodes = trees.reduce((s,t) => s + (t.nodes||0), 0);
+  const avgLeaves = (trees.reduce((s,t) => s + (t.leaves||0), 0) / trees.length).toFixed(1);
+  const nodeBarMax = Math.max(...trees.map(t => t.nodes||0));
+  const featCounts = getFeatureCounts(activeModel);
+  const maxFeat = featCounts[0] ? featCounts[0][1] : 1;
+  const col = m.color;
+  const treeCount = trees.length;
+
+  let treeDetailHtml = selectedTree !== null
+    ? buildTreeDetail(trees[selectedTree])
+    : `<div class="no-sel">Select a tree to see details</div>`;
+
+  document.getElementById('model-area').innerHTML = `
+    <div class="model-card">
+      <p class="model-desc">${m.desc}</p>
+      <div class="stats-row">
+        <div class="stat"><div class="stat-label">Trees</div><div class="stat-val">${treeCount}</div></div>
+        <div class="stat"><div class="stat-label">Total nodes</div><div class="stat-val">${totalNodes.toLocaleString()}</div></div>
+        <div class="stat"><div class="stat-label">Avg leaves</div><div class="stat-val">${avgLeaves}</div></div>
+      </div>
+      <div class="split-panel">
+        <div class="panel">
+          <div class="section-title">Top features (all ${treeCount} trees)</div>
+          ${featCounts.map(([n,c]) => `
+            <div class="feature-bar-row">
+              <span class="fname" title="${n}">${n}</span>
+              <div class="fbar-wrap"><div class="fbar" style="width:${Math.round(c/maxFeat*100)}%;background:${col}99"></div></div>
+              <span class="fcnt">${c}</span>
+            </div>`).join('')}
+        </div>
+        <div class="panel" id="tree-detail-panel">${treeDetailHtml}</div>
+      </div>
+      <div style="margin-top:1.25rem">
+        <div class="section-title">Trees &#8212; click to inspect</div>
+        <div class="tree-list" id="tree-list">
+          ${trees.map((t,i) => `
+            <div class="tree-item${selectedTree===i?' selected':''}" onclick="selectTree(${i})">
+              <span class="tree-idx">#${i+1}</span>
+              <div class="tree-bar-wrap"><div class="tree-bar" style="width:${Math.round((t.nodes||1)/nodeBarMax*100)}%;background:${col}"></div></div>
+              <span class="tree-nodes">${t.nodes||'&#8212;'} nodes</span>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Tree detail panel — FIXED: uses model colour for positive bar ──────────
+function buildTreeDetail(t) {
+  const col = MODEL_META[activeModel].color;
+  const maxAbs = Math.max(Math.abs(t.maxLeaf||0), Math.abs(t.minLeaf||0));
+  const posBar = maxAbs > 0 ? Math.round((t.maxLeaf||0) / maxAbs * 100) : 0;
+  const negBar = maxAbs > 0 ? Math.round(Math.abs(t.minLeaf||0) / maxAbs * 100) : 0;
+  return `
+    <div class="section-title">Tree details</div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:4px">
+        Nodes: <b style="color:var(--color-text-primary)">${t.nodes}</b>
+        &nbsp;&middot;&nbsp;
+        Leaves: <b style="color:var(--color-text-primary)">${t.leaves}</b>
+      </div>
+    </div>
+    <div class="section-title">Leaf value range</div>
+    <div class="leaf-row">
+      <span class="leaf-val" style="color:${col}">+${(t.maxLeaf||0).toFixed(4)}</span>
+      <div class="leaf-bar-wrap"><div class="leaf-bar" style="width:${posBar}%;background:${col}88"></div></div>
+    </div>
+    <div class="leaf-row">
+      <span class="leaf-val" style="color:#D85A30">${(t.minLeaf||0).toFixed(4)}</span>
+      <div class="leaf-bar-wrap"><div class="leaf-bar" style="width:${negBar}%;background:#D85A3055"></div></div>
+    </div>`;
+}
+
+function switchModel(key) {
+  activeModel = key; selectedTree = null;
+  renderTabs(); renderModel();
+}
+
+function selectTree(i) {
+  selectedTree = selectedTree === i ? null : i;
+  document.querySelectorAll('.tree-item').forEach((el,idx) => el.classList.toggle('selected', idx === selectedTree));
+  const panel = document.getElementById('tree-detail-panel');
+  if (panel) panel.innerHTML = selectedTree !== null
+    ? buildTreeDetail(getTreeData(activeModel)[selectedTree])
+    : `<div class="no-sel">Select a tree to see details</div>`;
+}
+
+window.switchModel = switchModel;
+window.selectTree = selectTree;
+
+renderTabs();
+renderModel();
+</script>

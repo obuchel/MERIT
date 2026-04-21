@@ -1,0 +1,231 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.tabs{display:flex;gap:6px;padding:1rem 0 0.75rem;flex-wrap:wrap}
+.tab{padding:5px 14px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);font-size:12px;cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary);transition:background .12s,color .12s}
+.tab.active{background:var(--color-background-secondary);color:var(--color-text-primary);border-color:var(--color-border-primary);font-weight:500}
+.stats-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:1rem}
+.stat{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;border:0.5px solid var(--color-border-tertiary)}
+.stat-label{font-size:10px;color:var(--color-text-secondary);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+.stat-val{font-size:20px;font-weight:500;color:var(--color-text-primary)}
+.desc{font-size:13px;color:var(--color-text-secondary);line-height:1.6;margin-bottom:1rem}
+.two-col{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:1rem}
+.panel{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem}
+.panel-title{font-size:10px;font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.feat-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.feat-name{font-size:11px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--color-text-primary);width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;cursor:default}
+.feat-bar-bg{flex:1;height:5px;background:var(--color-border-tertiary);border-radius:3px;overflow:hidden}
+.feat-bar{height:100%;border-radius:3px}
+.feat-cnt{font-size:11px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--color-text-secondary);min-width:28px;text-align:right}
+.tree-list-wrap{max-height:220px;overflow-y:auto;padding-right:2px}
+.tree-row{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;cursor:pointer;border:0.5px solid transparent}
+.tree-row:hover{background:var(--color-background-secondary)}
+.tree-row.sel{background:var(--color-background-secondary);border-color:var(--color-border-secondary)}
+.tree-idx{font-size:11px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-weight:500;color:var(--color-text-secondary);min-width:28px}
+.tree-bar-bg{flex:1;height:5px;background:var(--color-border-tertiary);border-radius:3px;overflow:hidden}
+.tree-bar{height:100%;border-radius:3px}
+.tree-nodes{font-size:11px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--color-text-secondary);min-width:52px;text-align:right}
+.tree-section{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem;margin-bottom:1rem}
+.tree-controls{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.nbtn{padding:3px 10px;font-size:12px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);cursor:pointer;background:var(--color-background-primary);color:var(--color-text-primary);transition:background .1s}
+.nbtn:hover{background:var(--color-background-secondary)}
+.tinfo{font-size:11px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--color-text-secondary);margin-left:auto}
+.canvas-scroll{width:100%;overflow-x:auto;overflow-y:auto;border:0.5px solid var(--color-border-tertiary);border-radius:8px;background:var(--color-background-secondary);min-height:200px}
+.legend{display:flex;gap:14px;margin-top:8px;flex-wrap:wrap}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--color-text-secondary)}
+.leg-sq{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+</style>
+
+<h2 class="sr-only">XGBoost tree visualizer — data from xgboost_trees_data.js</h2>
+<div class="tabs" id="tabs"></div>
+<div id="main"></div>
+
+<script src="xgboost_trees_data.js"></script>
+<script>
+// ── Model display config (colour + description only — data comes from XGBOOST_TREES) ──
+const MODEL_META = {
+  quoted_adr: {color:'#378ADD', desc:'Predicts the quoted ADR for an RFP. Balances competitive pricing against demand signals — displacement risk, seasonal patterns, booking pace. Widest feature set (36), most granular pricing model.'},
+  pickup:     {color:'#1D9E75', desc:'Predicts room night pickup from a group\'s block. F&B commitment signals genuine group intent and separates serious buyers from shoppers.'},
+  conversion: {color:'#D85A30', desc:'Predicts booking probability (155 trees — deepest model). Early trees capture coarse patterns; later trees make tiny corrections. Dominant early signal is total_room_nights.'},
+  fnb:        {color:'#BA7517', desc:'Predicts F&B revenue. fnb_ratio is the natural anchor. Leaf values are largest in magnitude — F&B swings widely based on group size and event type.'},
+};
+
+let activeModel='quoted_adr', selectedTreeIdx=0;
+
+// ── Feature label map for canvas nodes ──────────────────────────────────────
+const SHORT_LABEL={
+  win_streak:'win_stk',displacement_ratio:'disp_r',arrival_month_cos:'arr_cos',
+  arrival_month_sin:'arr_sin',pricing_pressure_index:'pr_prs',fnb_ratio:'fnb_r',
+  total_room_nights:'tot_rn',days_to_peak_season:'days_pk',
+  Displacement_Risk_Score:'D.Risk',is_shoulder_season:'shlder',
+  displacement_velocity_30_90d:'dv_vel',avg_discount_nearby_30d:'disc30',
+  rfp_volume_acceleration:'rfp_ac',Meeting_Space_Ratio:'Mtg_Sp',
+  Rooms_Available_Peak_Date:'Rms_Pk',rate_spread:'rt_spd',
+  Flag_Rate_Below_Baseline:'F_Rate',capacity_pressure_score:'cap_pr',
+  occupancy_velocity_30_90d:'ov_vel',days_since_last_segment_rfp:'d_seg',
+  destinations_considered:'dests',win_rate_velocity_30_90d:'wr_vel',
+  budget_amount:'budget',Urgency_Index:'Urgcy',on_books_occupancy_pct:'on_bks',
+  arrival_quarter_sin:'q_sin',Account_Prior_Booked:'AcctPr',
+  competing_rfps_same_week_segment:'comp_r',arrival_clustering_score:'clust',
+  days_since_last_account_rfp:'d_acct',revenue_velocity_30_90d:'rv_vel',
+  avg_room_utilization:'utilz',displacement_acceleration:'d_acc',
+  revenue_acceleration:'rv_acc',smerf_demand_30d:'smerf',
+  booking_pace_7_30d:'pace',business_momentum_score:'biz_m',
+  lead_source_encoded:'ld_src',
+};
+function featLabel(name){return SHORT_LABEL[name]||(name.length>7?name.slice(0,6)+'\u2026':name);}
+
+// ── Compute top features from ALL trees (full counts) ──────────────────────
+function getTopFeats(modelKey, n=8){
+  const counts={};
+  const feats=XGBOOST_TREES[modelKey].f;
+  XGBOOST_TREES[modelKey].t.forEach(arr=>{
+    arr.forEach(e=>{if(Array.isArray(e)&&e.length===4){const f=feats[e[0]]||('f'+e[0]);counts[f]=(counts[f]||0)+1;}});
+  });
+  return Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,n);
+}
+
+// ── Compute tree metadata ──────────────────────────────────────────────────
+function getTreeMeta(modelKey){
+  return XGBOOST_TREES[modelKey].t.map((arr,i)=>{
+    const splits=arr.filter(e=>Array.isArray(e)&&e.length===4);
+    const leaves=arr.filter(e=>!(Array.isArray(e)&&e.length===4));
+    const leafNums=leaves.map(e=>Array.isArray(e)?e[0]:e).filter(x=>typeof x==='number');
+    return{idx:i,nodes:arr.length,maxL:leafNums.length?Math.max(...leafNums):0,minL:leafNums.length?Math.min(...leafNums):0};
+  });
+}
+
+// ── Tree parser ────────────────────────────────────────────────────────────
+function parseTree(arr,featNames){
+  const nodes=arr.map((e,i)=>Array.isArray(e)&&e.length===4?{type:'split',feat:e[0],thresh:e[1],left:e[2],right:e[3],id:i}:{type:'leaf',value:Array.isArray(e)?e[0]:e,id:i});
+  function build(idx){if(idx==null||idx>=nodes.length||!nodes[idx])return null;const n=nodes[idx];if(n.type==='leaf')return{type:'leaf',value:n.value,id:idx};return{type:'split',feat:featNames[n.feat]||('f'+n.feat),thresh:n.thresh,left:build(n.left),right:build(n.right),id:idx};}
+  return build(0);
+}
+function layout(node,depth=0,x=0){if(!node)return{w:0};if(node.type==='leaf'){node._x=x;node._y=depth;node._w=1;return{w:1};}const l=layout(node.left,depth+1,x);const r=layout(node.right,depth+1,x+l.w+0.5);const w=l.w+r.w+0.5;node._x=x+l.w+0.25;node._y=depth;node._w=w;return{w};}
+function depth(n){if(!n)return 0;if(n.type==='leaf')return 1;return 1+Math.max(depth(n.left),depth(n.right));}
+function countNodes(n){if(!n)return 0;if(n.type==='leaf')return 1;return 1+countNodes(n.left)+countNodes(n.right);}
+function countLeaves(n){if(!n)return 0;if(n.type==='leaf')return 1;return countLeaves(n.left)+countLeaves(n.right);}
+
+// ── Canvas renderer ────────────────────────────────────────────────────────
+function drawNode(ctx,node,sx,sy,ox,oy){
+  if(!node)return;
+  const cx=ox+node._x*sx,cy=oy+node._y*sy;
+  if(node.type==='split'){
+    const r=22,col=MODEL_META[activeModel].color;
+    function drawEdge(child,lbl){
+      if(!child)return;
+      const tx=ox+child._x*sx,ty=oy+child._y*sy;
+      ctx.beginPath();ctx.moveTo(cx,cy+r);ctx.lineTo(tx,ty-r);
+      ctx.strokeStyle='rgba(130,130,130,0.22)';ctx.lineWidth=1.5;ctx.stroke();
+      const mx=(cx+tx)/2,my=(cy+r+ty-r)/2;
+      const bc=lbl==='Y'?'#1D9E75':'#D85A30';
+      const bw=14,bh=11,bx=lbl==='Y'?mx-bw-4:mx+4;
+      ctx.beginPath();ctx.roundRect(bx,my-bh/2,bw,bh,3);ctx.fillStyle=bc+'28';ctx.fill();
+      ctx.fillStyle=bc;ctx.font='bold 7.5px system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lbl,bx+bw/2,my);
+    }
+    drawEdge(node.left,'Y');drawEdge(node.right,'N');
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.18)';ctx.lineWidth=1;ctx.stroke();
+    const lbl=featLabel(node.feat);
+    const th=typeof node.thresh==='number'?(Math.abs(node.thresh)<0.01?node.thresh.toExponential(1):parseFloat(node.thresh.toFixed(3)).toString()):String(node.thresh);
+    ctx.fillStyle='#ffffff';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.font='bold 8px system-ui,sans-serif';ctx.fillText(lbl,cx,cy-5.5);
+    ctx.font='6.5px system-ui,sans-serif';ctx.fillStyle='rgba(255,255,255,0.78)';ctx.fillText('\u2264'+th,cx,cy+6);
+    drawNode(ctx,node.left,sx,sy,ox,oy);drawNode(ctx,node.right,sx,sy,ox,oy);
+  }else{
+    const v=node.value,r=13,col=v>0.05?'#1D9E75':v<-0.05?'#D85A30':'#8a8a8a';
+    ctx.beginPath();ctx.roundRect(cx-r,cy-r,r*2,r*2,4);ctx.fillStyle=col+'dd';ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.12)';ctx.lineWidth=0.5;ctx.stroke();
+    ctx.fillStyle='#ffffff';ctx.font='bold 7px system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(parseFloat(v.toFixed(2)),cx,cy);
+  }
+}
+
+function renderTree(){
+  const feats=XGBOOST_TREES[activeModel].f;
+  const arr=XGBOOST_TREES[activeModel].t[selectedTreeIdx];
+  const tree=parseTree(arr,feats);
+  if(!tree){document.getElementById('tinfo').textContent='Empty';return;}
+  layout(tree,0,0);
+  const d=depth(tree),nc=countNodes(tree),nl=countLeaves(tree);
+  const sx=92,sy=90,pad=64;
+  const w=Math.max(680,Math.round(tree._w*sx)+pad*2);
+  const h=Math.round(d*sy)+pad*2;
+  const canvas=document.getElementById('tcanvas');
+  canvas.width=w;canvas.height=h;canvas.style.width=w+'px';canvas.style.height=h+'px';
+  const ctx=canvas.getContext('2d');
+  const isDark=getComputedStyle(document.documentElement).getPropertyValue('--color-background-primary').trim().startsWith('#0')||window.matchMedia('(prefers-color-scheme:dark)').matches;
+  ctx.fillStyle=isDark?'#161b22':'#f6f8fa';ctx.fillRect(0,0,w,h);
+  drawNode(ctx,tree,sx,sy,pad,pad);
+  document.getElementById('tinfo').textContent=`${nc} nodes \u00b7 ${nl} leaves \u00b7 depth ${d}`;
+}
+
+function render(){
+  const m=MODEL_META[activeModel];
+  const feats=getTopFeats(activeModel);
+  const maxFeat=feats[0]?feats[0][1]:1;
+  const trees=getTreeMeta(activeModel);
+  const totalNodes=trees.reduce((s,t)=>s+t.nodes,0);
+  const avgLeaves=(trees.reduce((s,t)=>s+Math.ceil(t.nodes/2),0)/trees.length).toFixed(1);
+  const maxNodes=Math.max(...trees.map(t=>t.nodes));
+  const col=m.color;
+  const treeCount=XGBOOST_TREES[activeModel].t.length;
+
+  document.getElementById('main').innerHTML=`
+<p class="desc">${m.desc}</p>
+<div class="stats-row">
+  <div class="stat"><div class="stat-label">Trees</div><div class="stat-val">${treeCount}</div></div>
+  <div class="stat"><div class="stat-label">Features</div><div class="stat-val">${XGBOOST_TREES[activeModel].f.length}</div></div>
+  <div class="stat"><div class="stat-label">Total nodes</div><div class="stat-val">${totalNodes.toLocaleString()}</div></div>
+  <div class="stat"><div class="stat-label">Avg leaves</div><div class="stat-val">${avgLeaves}</div></div>
+</div>
+<div class="two-col">
+  <div class="panel">
+    <div class="panel-title">Top features (all ${treeCount} trees)</div>
+    ${feats.map(([n,c])=>`
+      <div class="feat-row">
+        <span class="feat-name" title="${n}">${n}</span>
+        <div class="feat-bar-bg"><div class="feat-bar" style="width:${Math.round(c/maxFeat*100)}%;background:${col}99"></div></div>
+        <span class="feat-cnt">${c}</span>
+      </div>`).join('')}
+  </div>
+  <div class="panel">
+    <div class="panel-title">Trees &#8212; click to view</div>
+    <div class="tree-list-wrap" id="treelist">
+      ${trees.map((t,i)=>`
+        <div class="tree-row${i===selectedTreeIdx?' sel':''}" onclick="selectTree(${i})">
+          <span class="tree-idx">#${i+1}</span>
+          <div class="tree-bar-bg"><div class="tree-bar" style="width:${Math.round(t.nodes/maxNodes*100)}%;background:${col}"></div></div>
+          <span class="tree-nodes">${t.nodes} nodes</span>
+        </div>`).join('')}
+    </div>
+  </div>
+</div>
+<div class="tree-section">
+  <div class="tree-controls">
+    <button class="nbtn" onclick="shiftTree(-1)">&#8592;</button>
+    <span style="font-size:12px;color:var(--color-text-secondary)">Tree ${selectedTreeIdx+1} of ${treeCount}</span>
+    <button class="nbtn" onclick="shiftTree(1)">&#8594;</button>
+    <span class="tinfo" id="tinfo"></span>
+  </div>
+  <div class="canvas-scroll"><canvas id="tcanvas"></canvas></div>
+  <div class="legend" style="margin-top:8px">
+    <div class="leg"><div class="leg-sq" style="background:${col}"></div>Split node</div>
+    <div class="leg"><div class="leg-sq" style="background:#1D9E75"></div>Positive leaf</div>
+    <div class="leg"><div class="leg-sq" style="background:#D85A30"></div>Negative leaf</div>
+    <div class="leg"><div class="leg-sq" style="background:#8a8a8a"></div>Near-zero leaf</div>
+  </div>
+</div>`;
+  renderTree();
+}
+
+function renderTabs(){
+  document.getElementById('tabs').innerHTML=Object.keys(MODEL_META).map(k=>
+    `<button class="tab${k===activeModel?' active':''}" onclick="switchModel('${k}')">${k}</button>`).join('');
+}
+window.switchModel=function(k){activeModel=k;selectedTreeIdx=0;renderTabs();render();};
+window.selectTree=function(i){selectedTreeIdx=i;document.querySelectorAll('.tree-row').forEach((el,j)=>el.classList.toggle('sel',j===i));renderTree();document.querySelectorAll('.tree-row')[i]?.scrollIntoView({block:'nearest'});};
+window.shiftTree=function(d){const tc=XGBOOST_TREES[activeModel].t.length;selectedTreeIdx=Math.max(0,Math.min(tc-1,selectedTreeIdx+d));document.querySelectorAll('.tree-row').forEach((el,j)=>el.classList.toggle('sel',j===selectedTreeIdx));renderTree();document.querySelectorAll('.tree-row')[selectedTreeIdx]?.scrollIntoView({block:'nearest'});};
+
+renderTabs();render();
+</script>

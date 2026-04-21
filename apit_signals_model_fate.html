@@ -1,0 +1,231 @@
+
+<style>
+  .wrap { padding: 12px 0 24px; font-family: var(--font-sans); }
+  h2.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+  .leg-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-text-secondary); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th { font-size: 10px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--color-text-tertiary); padding: 6px 8px; border-bottom: 1px solid var(--color-border-tertiary); text-align: left; white-space: nowrap; }
+  tbody tr:hover td { background: var(--color-background-secondary); }
+  td { padding: 7px 8px; border-bottom: 0.5px solid var(--color-border-tertiary); vertical-align: top; }
+  .fname { font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--color-text-primary); }
+  .fdesc { font-size: 11px; color: var(--color-text-secondary); }
+  .badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 500; letter-spacing: .03em; white-space: nowrap; }
+  .b-sel  { background: #e1f5ee; color: #0f6e56; border: 0.5px solid #5dcaa580; }
+  .b-corr { background: #faeeda; color: #854f0b; border: 0.5px solid #ef9f2780; }
+  .b-vif  { background: #fcebeb; color: #a32d2d; border: 0.5px solid #e24b4a80; }
+  .b-low  { background: var(--color-background-secondary); color: var(--color-text-tertiary); border: 0.5px solid var(--color-border-secondary); }
+  @media (prefers-color-scheme: dark) {
+    .b-sel  { background: #085041; color: #5dcaa5; }
+    .b-corr { background: #3a2010; color: #f59e0b; }
+    .b-vif  { background: #3a1212; color: #ef4444; }
+  }
+  .corr-note { font-size: 10px; color: var(--color-text-tertiary); font-family: var(--font-mono); }
+  .imp-row { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }
+  .imp-chip { font-size: 10px; font-family: var(--font-mono); padding: 1px 5px; border-radius: 3px; }
+  .adr { background: #e6f1fb55; color: #185fa5; border: 0.5px solid #378add40; }
+  .pu  { background: #e1f5ee55; color: #0f6e56; border: 0.5px solid #1d9e7540; }
+  .cv  { background: #eeedfe55; color: #534ab7; border: 0.5px solid #7f77dd40; }
+  .fn  { background: #faeeda55; color: #854f0b; border: 0.5px solid #ba751740; }
+  @media (prefers-color-scheme: dark) {
+    .adr { background: #0c447c44; color: #85b7eb; }
+    .pu  { background: #08504144; color: #5dcaa5; }
+    .cv  { background: #3c348944; color: #afa9ec; }
+    .fn  { background: #63380644; color: #fac775; }
+  }
+  .section-header td { background: var(--color-background-secondary); font-size: 10px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--color-text-tertiary); padding: 5px 8px; }
+</style>
+<div class="wrap">
+  <h2 class="sr-only">APIT signals and their fate across the four XGBoost models</h2>
+  <div class="legend">
+    <div class="leg-item"><div class="dot" style="background:#1d9e75"></div> Selected — actively used</div>
+    <div class="leg-item"><div class="dot" style="background:#ba7517"></div> Corr-drop — merged into proxy</div>
+    <div class="leg-item"><div class="dot" style="background:#e24b4a"></div> VIF-drop — multicollinear, removed</div>
+    <div class="leg-item"><div class="dot" style="background:#888780"></div> Low-imp — below top-80 threshold</div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>APIT Signal</th>
+        <th>Outcome</th>
+        <th>Notes / proxy kept</th>
+        <th>Model importance</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- SELECTED -->
+      <tr class="section-header"><td colspan="4">✓ &nbsp;Selected — directly in models</td></tr>
+
+      <tr>
+        <td><div class="fname">Meeting_Space_Ratio</div><div class="fdesc">Meeting rooms ÷ attendees × 10</div></td>
+        <td><span class="badge b-sel">Selected</span></td>
+        <td class="fdesc">VIF 2.69 — clean, no collinearity issues</td>
+        <td><div class="imp-row">
+          <span class="imp-chip adr">ADR 0.23</span>
+          <span class="imp-chip pu">Pickup 0.33</span>
+          <span class="imp-chip cv">Conv 1.79</span>
+          <span class="imp-chip fn">F&amp;B 5.11 ★</span>
+        </div></td>
+      </tr>
+
+      <tr>
+        <td><div class="fname">Account_Prior_Booked</div><div class="fdesc">Prior won events for this account</div></td>
+        <td><span class="badge b-sel">Selected</span></td>
+        <td class="fdesc">VIF 3.52 — relationship history captured cleanly</td>
+        <td><div class="imp-row">
+          <span class="imp-chip adr">ADR 0.19</span>
+          <span class="imp-chip pu">Pickup 0.45</span>
+          <span class="imp-chip cv">Conv 1.27</span>
+          <span class="imp-chip fn">F&amp;B 5.00 ★</span>
+        </div></td>
+      </tr>
+
+      <tr>
+        <td><div class="fname">Rooms_Available_Peak_Date</div><div class="fdesc">220 minus committed rooms on peak night</div></td>
+        <td><span class="badge b-sel">Selected</span></td>
+        <td class="fdesc">VIF 5.04</td>
+        <td><div class="imp-row">
+          <span class="imp-chip adr">ADR 0.22</span>
+          <span class="imp-chip pu">Pickup 0.15</span>
+          <span class="imp-chip cv">Conv 1.11</span>
+          <span class="imp-chip fn">F&amp;B 1.40</span>
+        </div></td>
+      </tr>
+
+      <tr>
+        <td><div class="fname">Displacement_Risk_Score</div><div class="fdesc">Peak block ÷ rooms available (0–1)</div></td>
+        <td><span class="badge b-sel">Selected</span></td>
+        <td class="fdesc">VIF 3.3 — continuous form preferred over binary flag</td>
+        <td><div class="imp-row">
+          <span class="imp-chip adr">ADR 0.18</span>
+          <span class="imp-chip pu">Pickup 0.16</span>
+          <span class="imp-chip cv">Conv 0.91</span>
+          <span class="imp-chip fn">F&amp;B 0.82</span>
+        </div></td>
+      </tr>
+
+      <tr>
+        <td><div class="fname">Flag_Rate_Below_Baseline</div><div class="fdesc">1 if quoted ADR &lt; baseline × 0.97</div></td>
+        <td><span class="badge b-sel">Selected</span></td>
+        <td class="fdesc">VIF 8.95 — borderline; retained. Strong ADR signal</td>
+        <td><div class="imp-row">
+          <span class="imp-chip adr">ADR 2.80 ★</span>
+          <span class="imp-chip pu">Pickup 0.15</span>
+          <span class="imp-chip cv">Conv 0.00</span>
+          <span class="imp-chip fn">F&amp;B 0.49</span>
+        </div></td>
+      </tr>
+
+      <tr>
+        <td><div class="fname">Urgency_Index</div><div class="fdesc">Response due days ÷ lead time</div></td>
+        <td><span class="badge b-sel">Selected</span></td>
+        <td class="fdesc">VIF 5.69 — composite ratio; strong across all models</td>
+        <td><div class="imp-row">
+          <span class="imp-chip adr">ADR 0.17</span>
+          <span class="imp-chip pu">Pickup 1.16 ★</span>
+          <span class="imp-chip cv">Conv 2.84 ★</span>
+          <span class="imp-chip fn">F&amp;B 3.92 ★</span>
+        </div></td>
+      </tr>
+
+      <!-- CORR DROP -->
+      <tr class="section-header"><td colspan="4">⟳ &nbsp;Dropped — high correlation (signal absorbed by proxy)</td></tr>
+
+      <tr>
+        <td><div class="fname">Revenue_Per_Room_Night</div><div class="fdesc">Proposed revenue ÷ total room nights</div></td>
+        <td><span class="badge b-corr">Corr-drop</span></td>
+        <td><div class="fdesc">r = 1.00 with</div><div class="corr-note">→ revenue_intensity</div></td>
+        <td class="fdesc" style="color:var(--color-text-tertiary);font-size:11px">Perfect duplicate — same information</td>
+      </tr>
+
+      <tr>
+        <td><div class="fname">Is_Compression_Date</div><div class="fdesc">1 if forecasted occupancy ≥ 85%</div></td>
+        <td><span class="badge b-corr">Corr-drop</span></td>
+        <td><div class="fdesc">r = 0.88 with</div><div class="corr-note">→ forecasted_occupancy</div></td>
+        <td class="fdesc" style="color:var(--color-text-tertiary);font-size:11px">Continuous form carries same signal</td>
+      </tr>
+
+      <tr>
+        <td><div class="fname">Day_of_Week_Arrival</div><div class="fdesc">Arrival day of week (numeric)</div></td>
+        <td><span class="badge b-corr">Corr-drop</span></td>
+        <td><div class="fdesc">r = 1.00 with</div><div class="corr-note">→ day_of_week</div></td>
+        <td class="fdesc" style="color:var(--color-text-tertiary);font-size:11px">Exact duplicate of base feature</td>
+      </tr>
+
+      <tr>
+        <td><div class="fname">Is_Weekend_Arrival</div><div class="fdesc">1 if arrival Fri–Sun</div></td>
+        <td><span class="badge b-corr">Corr-drop</span></td>
+        <td><div class="fdesc">r = 0.87 with</div><div class="corr-note">→ day_of_week</div></td>
+        <td class="fdesc" style="color:var(--color-text-tertiary);font-size:11px">Binary collapses what day_of_week already captures</td>
+      </tr>
+
+      <tr>
+        <td><div class="fname">Account_Prior_Events</div><div class="fdesc">Total prior events for this account</div></td>
+        <td><span class="badge b-corr">Corr-drop</span></td>
+        <td><div class="fdesc">r = 0.98 with</div><div class="corr-note">→ account_booking_count</div></td>
+        <td class="fdesc" style="color:var(--color-text-tertiary);font-size:11px">Near-identical to base CRM count</td>
+      </tr>
+
+      <tr>
+        <td><div class="fname">Flag_High_Displacement</div><div class="fdesc">1 if Displacement_Risk_Score ≥ 0.60</div></td>
+        <td><span class="badge b-corr">Corr-drop</span></td>
+        <td><div class="fdesc">r = 0.87 with</div><div class="corr-note">→ Displacement_Risk_Score</div></td>
+        <td class="fdesc" style="color:var(--color-text-tertiary);font-size:11px">Continuous score selected over binary threshold</td>
+      </tr>
+
+      <!-- LOW IMP -->
+      <tr class="section-header"><td colspan="4">– &nbsp;Low importance — below top-80 threshold</td></tr>
+
+      <tr>
+        <td><div class="fname">Flag_Missing_Rate_Target</div><div class="fdesc">1 if no budget provided</div></td>
+        <td><span class="badge b-low">Low-imp</span></td>
+        <td class="fdesc">Didn't rank in top 80 features across any model</td>
+        <td class="fdesc" style="color:var(--color-text-tertiary);font-size:11px">—</td>
+      </tr>
+
+      <tr>
+        <td><div class="fname">Flag_Short_Response_Window</div><div class="fdesc">1 if ≤ 5 days to respond</div></td>
+        <td><span class="badge b-low">Low-imp</span></td>
+        <td class="fdesc">Urgency_Index likely captures this more fluidly</td>
+        <td class="fdesc" style="color:var(--color-text-tertiary);font-size:11px">—</td>
+      </tr>
+
+      <tr>
+        <td><div class="fname">Account_Prior_Revenue</div><div class="fdesc">Sum of revenue from prior wins</div></td>
+        <td><span class="badge b-low">Low-imp</span></td>
+        <td class="fdesc">Account_Prior_Booked likely dominates this signal</td>
+        <td class="fdesc" style="color:var(--color-text-tertiary);font-size:11px">—</td>
+      </tr>
+
+      <tr>
+        <td><div class="fname">Is_First_Time_Account</div><div class="fdesc">1 if no prior events for account</div></td>
+        <td><span class="badge b-low">Low-imp</span></td>
+        <td class="fdesc">Inverse of Account_Prior_Booked; redundant</td>
+        <td class="fdesc" style="color:var(--color-text-tertiary);font-size:11px">—</td>
+      </tr>
+
+      <tr>
+        <td><div class="fname">Has_Prior_Decline</div><div class="fdesc">1 if account has any prior lost event</div></td>
+        <td><span class="badge b-low">Low-imp</span></td>
+        <td class="fdesc">Not predictive enough to reach top-80</td>
+        <td class="fdesc" style="color:var(--color-text-tertiary);font-size:11px">—</td>
+      </tr>
+
+      <tr>
+        <td><div class="fname">Flag_Date_Conflict</div><div class="fdesc">1 if rooms available &lt; peak block</div></td>
+        <td><span class="badge b-low">Low-imp</span></td>
+        <td class="fdesc">Rooms_Available_Peak_Date carries this numerically</td>
+        <td class="fdesc" style="color:var(--color-text-tertiary);font-size:11px">—</td>
+      </tr>
+
+      <tr>
+        <td><div class="fname">Completeness_Score</div><div class="fdesc">% of 15 key fields populated</div></td>
+        <td><span class="badge b-low">Low-imp</span></td>
+        <td class="fdesc">No predictive lift — not correlated with outcomes</td>
+        <td class="fdesc" style="color:var(--color-text-tertiary);font-size:11px">—</td>
+      </tr>
+    </tbody>
+  </table>
+  <div style="margin-top:12px;font-size:11px;color:var(--color-text-tertiary)">★ = highest importance in that model &nbsp;|&nbsp; Importance values are XGBoost gain scores</div>
+</div>
