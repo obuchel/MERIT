@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nexus APIT — Feature Reference Dashboard v7</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0c10;--s1:#111418;--s2:#181c23;--bd:#1e2330;--bd2:#262d3d;
+  --tx:#d4d8e2;--tx2:#8a91a6;--tx3:#4a5168;
+  --g:#2dd4a0;--gd:#1a4a3a;--a:#f59e0b;--ad:#3d2e08;
+  --r:#ef4444;--rd:#3a1212;--b:#5fa8e8;--bd_:#1a2e45;
+  --p:#a78bfa;--pd:#2a1f4a;--o:#e8933a;--od:#3a2010;
+  --v7:#34d399;--v7d:#0d3325;
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:13px;min-height:100vh}
+.hdr{padding:24px 28px 18px;border-bottom:1px solid var(--bd);background:linear-gradient(180deg,#0d1018,var(--bg))}
+.hdr-title{font-size:18px;font-weight:500;color:#eef0f5;letter-spacing:-.01em;margin-bottom:2px}
+.hdr-v7{display:inline-block;background:var(--v7d);color:var(--v7);border:.5px solid #34d39940;
+  font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;
+  padding:2px 8px;border-radius:3px;margin-left:8px;vertical-align:middle;text-transform:uppercase}
+.hdr-sub{font-size:11px;color:var(--tx2);margin-bottom:14px}
+.pills{display:flex;flex-wrap:wrap;gap:7px}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:3px;
+  font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.05em}
+.pn{font-size:13px;font-weight:700;margin-right:2px}
+.pill.g{background:var(--gd);color:var(--g);border:.5px solid #2dd4a040}
+.pill.a{background:var(--ad);color:var(--a);border:.5px solid #f59e0b40}
+.pill.r{background:var(--rd);color:var(--r);border:.5px solid #ef444440}
+.pill.b{background:var(--bd_);color:var(--b);border:.5px solid #5fa8e840}
+.pill.gr{background:#1e2330;color:var(--tx2);border:.5px solid #2e3247}
+.pill.v7{background:var(--v7d);color:var(--v7);border:.5px solid #34d39940}
+.leg{display:flex;flex-wrap:wrap;gap:14px;padding:10px 28px;background:var(--s1);border-bottom:1px solid var(--bd)}
+.li{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--tx2)}
+.ld{width:8px;height:8px;border-radius:1px}
+.ctrl{padding:11px 28px;background:var(--s1);border-bottom:1px solid var(--bd);
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;position:sticky;top:0;z-index:20}
+.srch{background:var(--s2);border:1px solid var(--bd2);border-radius:3px;
+  padding:5px 11px;color:var(--tx);font-family:var(--mono);font-size:11px;width:240px;outline:none}
+.srch:focus{border-color:var(--b)}
+.srch::placeholder{color:var(--tx3)}
+.fgrp{display:flex;gap:4px;flex-wrap:wrap}
+.fb{padding:3px 9px;border-radius:3px;font-family:var(--mono);font-size:9px;font-weight:600;
+  cursor:pointer;border:1px solid var(--bd2);background:var(--s2);color:var(--tx2);
+  letter-spacing:.04em;text-transform:uppercase;transition:all .1s}
+.fb:hover{color:var(--tx)}
+.fb.on{background:var(--bd_);border-color:var(--b);color:var(--b)}
+.fb.on.g{background:var(--gd);border-color:var(--g);color:var(--g)}
+.fb.on.a{background:var(--ad);border-color:var(--a);color:var(--a)}
+.fb.on.r{background:var(--rd);border-color:var(--r);color:var(--r)}
+.fb.on.gr{background:#1e2330;border-color:var(--tx3);color:var(--tx2)}
+.fb.on.v7{background:var(--v7d);border-color:var(--v7);color:var(--v7)}
+.cb{margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--tx3)}
+.tw{overflow-x:auto;padding:0 28px 32px}
+table{width:100%;border-collapse:collapse;margin-top:14px}
+th{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--tx3);padding:7px 9px;text-align:left;border-bottom:1px solid var(--bd);
+  white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:var(--tx2)}
+th.srt .si{color:var(--b);opacity:1}
+.si{opacity:.25;font-size:8px;margin-left:2px}
+tr.fr{border-bottom:.5px solid var(--bd);animation:fi .12s ease}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+tr.fr:hover td{background:#13161e}
+td{padding:8px 9px;vertical-align:middle}
+.fn{font-family:var(--mono);font-size:11px;font-weight:500;color:#c8ccda;white-space:nowrap}
+.gt{font-size:8px;font-weight:400;color:var(--tx3);display:block;margin-top:1px;letter-spacing:.02em}
+.sb{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:2px;
+  font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.sb.sel{background:var(--gd);color:var(--g)}
+.sb.corr{background:var(--ad);color:var(--a)}
+.sb.vif{background:var(--rd);color:var(--r)}
+.sb.low{background:#1e2330;color:var(--tx3)}
+.sb.v7n{background:var(--v7d);color:var(--v7);border:.5px solid #34d39960}
+.st{display:inline-flex;align-items:center;gap:3px;padding:1px 5px;border-radius:2px;
+  font-family:var(--mono);font-size:8px;font-weight:500;letter-spacing:.04em}
+.st.apit{background:#2a1f4a55;color:var(--p);border:.5px solid #a78bfa30}
+.st.ohe{background:var(--v7d);color:var(--v7);border:.5px solid #34d39930}
+.dr{font-family:var(--mono);font-size:9px;color:var(--tx3);max-width:240px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dr .rv{color:var(--a)}.dr .kv{color:var(--tx2)}
+.vv{font-family:var(--mono);font-size:10px}
+.vv.hi{color:var(--a)}.vv.lo{color:var(--g)}.vv.na{color:var(--tx3)}
+.fd{font-size:11px;color:var(--tx2);line-height:1.45;max-width:310px}
+.fd.m{color:var(--tx3)}
+.ic{display:flex;flex-direction:column;gap:2px;min-width:160px}
+.ir{display:flex;align-items:center;gap:5px}
+.il{font-family:var(--mono);font-size:8px;color:var(--tx3);width:30px;text-align:right;flex-shrink:0;letter-spacing:.02em}
+.ib{flex:1;height:5px;background:#1e2330;border-radius:2px;overflow:hidden;min-width:70px}
+.bar{height:100%;border-radius:2px}
+.iv{font-family:var(--mono);font-size:8px;width:38px;flex-shrink:0}
+.iv.nz{color:var(--tx2)}.iv.z{color:var(--tx3)}
+.ba{background:#5fa8e8}.bp{background:#2dd4a0}.bc{background:#a78bfa}.bf{background:#f59e0b}
+.gr-row td{background:#0d1016;padding:8px 9px;border-bottom:.5px solid var(--bd2)}
+.gl{font-family:var(--mono);font-size:8px;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--tx3)}
+.gc{font-size:9px;color:var(--tx3);margin-left:8px}
+#nr{display:none;padding:36px;text-align:center;color:var(--tx3);font-family:var(--mono);font-size:11px}
+.v7-badge{display:inline-block;background:var(--v7d);color:var(--v7);
+  font-family:var(--mono);font-size:7px;font-weight:600;letter-spacing:.1em;
+  padding:1px 4px;border-radius:2px;margin-left:4px;text-transform:uppercase;vertical-align:middle}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div class="hdr-title">Nexus Hotel APIT — Feature Reference Dashboard <span class="hdr-v7">v7</span></div>
+  <div class="hdr-sub">300 candidate features evaluated &middot; 36 base pool survivors &middot; 64 pickup / 47 F&B features (inc. force-adds) &middot; 6 XGBoost assumption fixes &middot; v7: OHE market_segment · is_meeting_only · log1p transforms</div>
+  <div class="pills">
+    <span class="pill g"><span class="pn">61</span> In Base Pool / Model</span>
+    <span class="pill a"><span class="pn">107</span> Dropped &mdash; Correlation &ge;0.85</span>
+    <span class="pill r"><span class="pn">24</span> Dropped &mdash; VIF &gt;10</span>
+    <span class="pill gr"><span class="pn">~105</span> Below importance threshold (top-60)</span>
+    <span class="pill b"><span class="pn">7</span> APIT signals in base pool</span>
+    <span class="pill v7"><span class="pn">14</span> v7 new features (OHE + is_meeting_only + clean_enc)</span>
+  </div>
+</div>
+<div class="leg">
+  <div class="li"><div class="ld" style="background:#5fa8e8"></div>ADR model</div>
+  <div class="li"><div class="ld" style="background:#2dd4a0"></div>Pickup model</div>
+  <div class="li"><div class="ld" style="background:#a78bfa"></div>Conversion model</div>
+  <div class="li"><div class="ld" style="background:#f59e0b"></div>F&amp;B model</div>
+  <div class="li" style="margin-left:16px"><div class="ld" style="background:#a78bfa88"></div>APIT Signal</div>
+  <div class="li"><div class="ld" style="background:#34d399"></div>v7 New Feature</div>
+</div>
+<div class="ctrl">
+  <input class="srch" id="srch" placeholder="Search features&hellip;" oninput="af()">
+  <div class="fgrp">
+    <button class="fb on" data-f="status" data-v="ALL" onclick="sf('status','ALL',this)">All</button>
+    <button class="fb g" data-f="status" data-v="SELECTED" onclick="sf('status','SELECTED',this)">In Model</button>
+    <button class="fb a" data-f="status" data-v="CORR" onclick="sf('status','CORR',this)">Corr-Drop</button>
+    <button class="fb r" data-f="status" data-v="VIF" onclick="sf('status','VIF',this)">VIF-Drop</button>
+    <button class="fb gr" data-f="status" data-v="LOW_IMP" onclick="sf('status','LOW_IMP',this)">Low-Imp</button>
+    <button class="fb v7" data-f="group" data-v="v7" onclick="sf('group','v7',this)">v7 New</button>
+  </div>
+  <div class="fgrp" id="gf"></div>
+  <span class="cb" id="cb">191 features</span>
+</div>
+<div class="tw">
+  <table><thead><tr>
+    <th onclick="sb2('name')">Feature <span class="si">&#8597;</span></th>
+    <th>Source</th>
+    <th onclick="sb2('status')">Status <span class="si">&#8597;</span></th>
+    <th>Drop Reason / VIF</th>
+    <th>Description</th>
+    <th>Importance by Model</th>
+  </tr></thead>
+  <tbody id="tb"></tbody></table>
+  <div id="nr">No features match your filters.</div>
+</div>
+<script>
+const F=[{"name":"ADR_Discount_Pct","group":"APIT Signal","desc":"(Baseline_ADR \u2212 Quoted_ADR) / Baseline_ADR \u00d7 100","apit":true,"status":"CORR","corr_kept":"standard_rate","corr_r":0.9317},{"name":"Account_Prior_Booked","group":"APIT Signal","desc":"Count of prior won events for this account","apit":true,"status":"CORR","corr_kept":"Account_Prior_Events","corr_r":0.9871},{"name":"Account_Prior_Events","group":"APIT Signal","desc":"Total prior events for this account at the property","apit":true,"status":"SELECTED","vif":3.7},{"name":"Account_Prior_Revenue","group":"APIT Signal","desc":"Sum of actual revenue from prior bookings for this account","apit":true,"status":"SELECTED","imp":{"quoted_adr":0,"conversion":1.79,"pickup":0,"fnb":0}},{"name":"Completeness_Score","group":"APIT Signal","desc":"% of 15 key APIT fields populated","apit":true,"status":"VIF"},{"name":"Displacement_Risk_Score","group":"APIT Signal","desc":"Peak_Room_Block / Rooms_Available (0\u20131 ratio)","apit":true,"status":"CORR","corr_kept":"Flag_High_Displacement","corr_r":0.8739},{"name":"Flag_Date_Conflict","group":"APIT Signal","desc":"1 if Rooms_Available < Peak_Room_Block","apit":true,"status":"LOW_IMP"},{"name":"Flag_High_Displacement","group":"APIT Signal","desc":"1 if Displacement_Risk_Score \u2265 0.60","apit":true,"status":"LOW_IMP"},{"name":"Flag_Missing_Rate_Target","group":"APIT Signal","desc":"1 if no budget provided at inquiry","apit":true,"status":"LOW_IMP"},{"name":"Flag_Rate_Below_Baseline","group":"APIT Signal","desc":"1 if Quoted_ADR < Baseline_ADR \u00d7 0.97 \u2014 client asking for below-market rate","apit":true,"status":"SELECTED","vif":7.47,"imp":{"quoted_adr":55.42,"conversion":0,"pickup":0,"fnb":0.19}},{"name":"Flag_Short_Response_Window","group":"APIT Signal","desc":"1 if \u2264 5 days to respond to planner","apit":true,"status":"LOW_IMP"},{"name":"Is_Compression_Date","group":"APIT Signal","desc":"1 if forecasted occupancy \u2265 85% \u2014 property in compression","apit":true,"status":"SELECTED","vif":1.63,"imp":{"quoted_adr":10.47,"conversion":0,"pickup":0,"fnb":0}},{"name":"Meeting_Space_Ratio","group":"APIT Signal","desc":"Num_Meeting_Rooms / attendees \u00d7 10 \u2014 space intensity per person","apit":true,"status":"SELECTED","vif":3.42,"imp":{"quoted_adr":0,"conversion":9.05,"pickup":0,"fnb":0}},{"name":"Revenue_Per_Room_Night","group":"APIT Signal","desc":"Proposed_Revenue / Total_Room_Nights (CPOR)","apit":true,"status":"VIF"},{"name":"Rooms_Available_Peak_Date","group":"APIT Signal","desc":"220 \u2212 committed group rooms on peak night \u2014 inventory signal","apit":true,"status":"SELECTED","vif":6.97,"imp":{"quoted_adr":0,"conversion":3.33,"pickup":0,"fnb":0}},{"name":"Urgency_Index","group":"APIT Signal","desc":"Response_Due_Days / Lead_Time \u2014 urgency relative to lead time","apit":true,"status":"SELECTED","imp":{"quoted_adr":0,"conversion":0,"pickup":2.86,"fnb":0.14}},{"name":"account_booking_count","group":"Engineered","desc":"account_booking_count","apit":false,"status":"CORR","corr_kept":"Account_Prior_Events","corr_r":0.9753},{"name":"account_prior_booked","group":"Engineered","desc":"account_prior_booked","apit":false,"status":"CORR","corr_kept":"Account_Prior_Events","corr_r":0.9871},{"name":"account_prior_events","group":"Engineered","desc":"account_prior_events","apit":false,"status":"SELECTED","vif":3.7},{"name":"adr_discount_pct","group":"Engineered","desc":"adr_discount_pct","apit":false,"status":"CORR","corr_kept":"standard_rate","corr_r":0.9317},{"name":"arrival_day_of_week","group":"Temporal","desc":"Arrival day of week (0=Mon\u20266=Sun)","apit":false,"status":"SELECTED","vif":4.27,"imp":{"quoted_adr":0.64,"conversion":0,"pickup":0,"fnb":0}},{"name":"arrival_dow_cos","group":"Engineered","desc":"arrival_dow_cos","apit":false,"status":"SELECTED","vif":1.18},{"name":"arrival_dow_sin","group":"Cyclical Encoding","desc":"sin(2\u03c0\u00d7day_of_week/7) \u2014 cyclical DOW","apit":false,"status":"SELECTED","imp":{"quoted_adr":1.04,"conversion":0,"pickup":0,"fnb":0}},{"name":"arrival_month","group":"Engineered","desc":"arrival_month","apit":false,"status":"CORR","corr_kept":"arrival_week_of_year","corr_r":0.9795},{"name":"arrival_month_cos","group":"Cyclical Encoding","desc":"cos(2\u03c0\u00d7month/12)","apit":false,"status":"CORR","corr_kept":"days_to_peak_season","corr_r":0.9477},{"name":"arrival_month_sin","group":"Cyclical Encoding","desc":"sin(2\u03c0\u00d7month/12) \u2014 cyclical month representation","apit":false,"status":"SELECTED","vif":2.41,"imp":{"quoted_adr":5.46,"conversion":0,"pickup":0,"fnb":0}},{"name":"arrival_quarter","group":"Engineered","desc":"arrival_quarter","apit":false,"status":"CORR","corr_kept":"arrival_month","corr_r":0.9681},{"name":"arrival_quarter_cos","group":"Engineered","desc":"arrival_quarter_cos","apit":false,"status":"CORR","corr_kept":"days_to_peak_season","corr_r":0.8832},{"name":"arrival_quarter_sin","group":"Engineered","desc":"arrival_quarter_sin","apit":false,"status":"CORR","corr_kept":"historical_demand_this_quarter","corr_r":0.8839},{"name":"arrival_week_of_year","group":"Engineered","desc":"arrival_week_of_year","apit":false,"status":"CORR","corr_kept":"arrival_day_of_year","corr_r":0.9821},{"name":"arrival_win_rate_30d","group":"Engineered","desc":"arrival_win_rate_30d","apit":false,"status":"CORR","corr_kept":"booking_confidence_30d","corr_r":1.0},{"name":"arrival_win_rate_60d","group":"Engineered","desc":"arrival_win_rate_60d","apit":false,"status":"CORR","corr_kept":"booking_confidence_60d","corr_r":1.0},{"name":"arrival_win_rate_90d","group":"Engineered","desc":"arrival_win_rate_90d","apit":false,"status":"CORR","corr_kept":"booking_confidence_90d","corr_r":1.0},{"name":"arrival_year","group":"Engineered","desc":"arrival_year","apit":false,"status":"CORR","corr_kept":"inquiry_year","corr_r":0.8526},{"name":"association_demand_30d","group":"Engineered","desc":"association_demand_30d","apit":false,"status":"CORR","corr_kept":"room_night_demand_90d","corr_r":0.8719},{"name":"avg_discount_nearby_30d","group":"Competitive Dynamics","desc":"Avg rate discount % of similar arrivals within 15d","apit":false,"status":"SELECTED","vif":7.35,"imp":{"quoted_adr":2.41,"conversion":0,"pickup":0,"fnb":0}},{"name":"avg_displacement_90d","group":"Engineered","desc":"avg_displacement_90d","apit":false,"status":"CORR","corr_kept":"avg_displacement_60d","corr_r":0.9047},{"name":"avg_occupancy_60d","group":"Engineered","desc":"avg_occupancy_60d","apit":false,"status":"CORR","corr_kept":"avg_occupancy_30d","corr_r":0.9032},{"name":"avg_revenue_intensity_30d","group":"Engineered","desc":"avg_revenue_intensity_30d","apit":false,"status":"CORR","corr_kept":"revenue_volatility_30d","corr_r":0.9043},{"name":"avg_revenue_intensity_60d","group":"Engineered","desc":"avg_revenue_intensity_60d","apit":false,"status":"CORR","corr_kept":"revenue_volatility_60d","corr_r":0.8833},{"name":"avg_revenue_intensity_90d","group":"Engineered","desc":"avg_revenue_intensity_90d","apit":false,"status":"CORR","corr_kept":"avg_revenue_intensity_60d","corr_r":0.8663},{"name":"avg_room_utilization","group":"Meeting & F&B","desc":"Attendees / meeting room capacity ratio","apit":false,"status":"SELECTED","imp":{"quoted_adr":0,"conversion":0,"pickup":0,"fnb":0.14}},{"name":"baseline_adr","group":"Engineered","desc":"baseline_adr","apit":false,"status":"CORR","corr_kept":"tr_transient_adr","corr_r":0.9679},{"name":"budget_amount","group":"RFP Core","desc":"Stated planner budget in dollars (0 if not provided)","apit":false,"status":"SELECTED","imp":{"quoted_adr":0,"conversion":0,"pickup":0,"fnb":0.15}},{"name":"budget_provided","group":"Engineered","desc":"budget_provided","apit":false,"status":"CORR","corr_kept":"budget_ratio","corr_r":0.8601},{"name":"budget_ratio","group":"RFP Core","desc":"Budget_Amount / Proposed_Total_Revenue","apit":false,"status":"SELECTED","vif":1.73,"imp":{"quoted_adr":0,"conversion":9.06,"pickup":0,"fnb":0}},{"name":"business_momentum_score","group":"Engineered","desc":"business_momentum_score","apit":false,"status":"CORR","corr_kept":"is_hot_streak","corr_r":0.8685},{"name":"capacity_pressure","group":"Engineered","desc":"capacity_pressure","apit":false,"status":"CORR","corr_kept":"capacity_risk_score","corr_r":0.9873},{"name":"capacity_pressure_14d","group":"Engineered","desc":"capacity_pressure_14d","apit":false,"status":"CORR","corr_kept":"room_night_demand_90d","corr_r":0.8918},{"name":"capacity_pressure_30d","group":"Engineered","desc":"capacity_pressure_30d","apit":false,"status":"CORR","corr_kept":"room_night_demand_90d","corr_r":0.9569},{"name":"capacity_pressure_7d","group":"Engineered","desc":"capacity_pressure_7d","apit":false,"status":"CORR","corr_kept":"room_night_demand_7d","corr_r":1.0},{"name":"capacity_risk_score","group":"Dynamic Context","desc":"room_block / (rooms_available \u00d7 forecasted_occ)","apit":false,"status":"SELECTED","vif":4.64,"imp":{"quoted_adr":0,"conversion":3.44,"pickup":0,"fnb":0}},{"name":"capacity_utilization_pct","group":"Engineered","desc":"capacity_utilization_pct","apit":false,"status":"CORR","corr_kept":"projected_occupancy_with_group","corr_r":1.0},{"name":"competing_rfps_same_week_segment","group":"Competitive Dynamics","desc":"Other RFPs with same event type arriving same ISO week","apit":false,"status":"SELECTED","vif":6.06},{"name":"compression_indicator","group":"Engineered","desc":"compression_indicator","apit":false,"status":"CORR","corr_kept":"forecasted_occupancy","corr_r":0.9463},{"name":"confidence_ema_30d","group":"Engineered","desc":"confidence_ema_30d","apit":false,"status":"CORR","corr_kept":"confidence_ema_7d","corr_r":0.9014},{"name":"days_from_quarter_start","group":"Engineered","desc":"days_from_quarter_start","apit":false,"status":"CORR","corr_kept":"days_to_next_quarter","corr_r":1.0},{"name":"days_to_peak_season","group":"Temporal","desc":"Days to nearest peak month (June)","apit":false,"status":"SELECTED","vif":7.57,"imp":{"quoted_adr":2.53,"conversion":1.76,"pickup":0,"fnb":0}},{"name":"demand_density_14d","group":"Engineered","desc":"demand_density_14d","apit":false,"status":"CORR","corr_kept":"lead_time_days","corr_r":0.8751},{"name":"demand_density_30d","group":"Engineered","desc":"demand_density_30d","apit":false,"status":"CORR","corr_kept":"room_night_demand_14d","corr_r":0.8879},{"name":"demand_density_60d","group":"Engineered","desc":"demand_density_60d","apit":false,"status":"CORR","corr_kept":"room_night_demand_30d","corr_r":0.944},{"name":"demand_density_7d","group":"Engineered","desc":"demand_density_7d","apit":false,"status":"CORR","corr_kept":"room_night_demand_7d","corr_r":0.8654},{"name":"demand_density_90d","group":"Engineered","desc":"demand_density_90d","apit":false,"status":"CORR","corr_kept":"room_night_demand_60d","corr_r":0.9709},{"name":"demand_ema_90d","group":"Engineered","desc":"demand_ema_90d","apit":false,"status":"CORR","corr_kept":"demand_ema_30d","corr_r":0.9093},{"name":"demand_momentum_30_90d","group":"Engineered","desc":"demand_momentum_30_90d","apit":false,"status":"CORR","corr_kept":"room_night_demand_90d","corr_r":0.9705},{"name":"demand_momentum_7_30d","group":"Engineered","desc":"demand_momentum_7_30d","apit":false,"status":"CORR","corr_kept":"room_night_demand_90d","corr_r":0.9425},{"name":"displacement_ema_7d","group":"Dynamic Context","desc":"7-day EMA of displacement ratio \u2014 recent pressure trend","apit":false,"status":"SELECTED","vif":7.79,"imp":{"quoted_adr":0.97,"conversion":2.68,"pickup":0,"fnb":0}},{"name":"displacement_ema_90d","group":"Engineered","desc":"displacement_ema_90d","apit":false,"status":"CORR","corr_kept":"avg_displacement_30d","corr_r":0.8699},{"name":"displacement_occupancy_risk","group":"Engineered","desc":"displacement_occupancy_risk","apit":false,"status":"CORR","corr_kept":"displacement_ratio","corr_r":0.9831},{"name":"displacement_ratio","group":"Engineered","desc":"displacement_ratio","apit":false,"status":"CORR","corr_kept":"priority_displacement_component","corr_r":0.922},{"name":"displacement_risk_score","group":"Engineered","desc":"displacement_risk_score","apit":false,"status":"CORR","corr_kept":"Flag_High_Displacement","corr_r":0.8739},{"name":"displacement_velocity_7_30d","group":"Engineered","desc":"displacement_velocity_7_30d","apit":false,"status":"CORR","corr_kept":"displacement_acceleration","corr_r":0.8625},{"name":"event_format_enc","group":"RFP Core","desc":"Hybrid=0, In-person=1, Virtual=2 (ordinal)","apit":false,"status":"LOW_IMP"},{"name":"event_type_enc","group":"RFP Core","desc":"Corporate=0, Association=1, SMERF=2, Social=3 (ordinal)","apit":false,"status":"SELECTED","imp":{"quoted_adr":0,"conversion":0,"pickup":14.61,"fnb":0}},{"name":"expected_value","group":"Engineered","desc":"expected_value","apit":false,"status":"CORR","corr_kept":"revenue_quality_score","corr_r":0.9901},{"name":"flag_rate_below_baseline","group":"Engineered","desc":"flag_rate_below_baseline","apit":false,"status":"SELECTED","vif":7.47},{"name":"fnb_ratio","group":"Engineered","desc":"fnb_ratio","apit":false,"status":"CORR","corr_kept":"room_revenue_ratio","corr_r":0.9172},{"name":"forecasted_occupancy","group":"Engineered","desc":"forecasted_occupancy","apit":false,"status":"CORR","corr_kept":"tr_rooms_to_capacity","corr_r":1.0},{"name":"full_day_pct","group":"Meeting & F&B","desc":"% of sessions that are full-day (breakfast+lunch+afternoon)","apit":false,"status":"SELECTED","vif":3.8,"imp":{"quoted_adr":0,"conversion":0,"pickup":1.83,"fnb":12.59}},{"name":"group_size_deviation","group":"Engineered","desc":"group_size_deviation","apit":false,"status":"CORR","corr_kept":"room_block","corr_r":0.8731},{"name":"group_size_intensity","group":"Engineered","desc":"group_size_intensity","apit":false,"status":"CORR","corr_kept":"room_block","corr_r":1.0},{"name":"group_size_tier_clean_enc","group":"v7 New","desc":"Ordered size tiers: small=0, medium=1, large=2, very_large=3 (v7 FIX 2)","apit":false,"status":"SELECTED","imp":{"quoted_adr":0,"conversion":0,"pickup":0.77,"fnb":0}},{"name":"group_size_tier_enc","group":"Engineered","desc":"group_size_tier_enc","apit":false,"status":"SELECTED","vif":3.35},{"name":"has_dinner","group":"Meeting & F&B","desc":"1 if dinner service requested","apit":false,"status":"SELECTED","vif":1.78},{"name":"has_evening_session","group":"Meeting & F&B","desc":"1 if evening sessions (receptions/dinners) scheduled","apit":false,"status":"SELECTED","imp":{"quoted_adr":0.4,"conversion":0,"pickup":7.11,"fnb":14.32}},{"name":"has_fnb_requirements","group":"Meeting & F&B","desc":"1 if any F&B/catering requested","apit":false,"status":"CORR","corr_kept":"event_configuration_enc","corr_r":0.9299},{"name":"has_meeting_space","group":"Engineered","desc":"has_meeting_space","apit":false,"status":"CORR","corr_kept":"avg_room_utilization","corr_r":0.8903},{"name":"has_premium_av","group":"Meeting & F&B","desc":"1 if premium AV package selected","apit":false,"status":"LOW_IMP"},{"name":"has_reception","group":"Meeting & F&B","desc":"1 if cocktail reception requested","apit":false,"status":"SELECTED","vif":1.35,"imp":{"quoted_adr":0,"conversion":0,"pickup":3.32,"fnb":0}},{"name":"has_special_requirements","group":"Engineered","desc":"has_special_requirements","apit":false,"status":"SELECTED","vif":1.78},{"name":"has_suites","group":"Engineered","desc":"has_suites","apit":false,"status":"CORR","corr_kept":"rate_spread","corr_r":0.8563},{"name":"inquiry_dow_sin","group":"Cyclical Encoding","desc":"sin(2\u03c0\u00d7inquiry DOW/7)","apit":false,"status":"SELECTED","vif":1.01},{"name":"inquiry_week_of_year","group":"Engineered","desc":"inquiry_week_of_year","apit":false,"status":"CORR","corr_kept":"inquiry_day_of_year","corr_r":0.9845},{"name":"inquiry_year","group":"Engineered","desc":"inquiry_year","apit":false,"status":"CORR","corr_kept":"arrival_week_enc","corr_r":0.9038},{"name":"is_compression_date","group":"Engineered","desc":"is_compression_date","apit":false,"status":"SELECTED","vif":1.63},{"name":"is_meeting_only","group":"v7 New","desc":"1 if room_block=0 \u2014 group books only meeting space (v7 FIX 2)","apit":false,"status":"LOW_IMP"},{"name":"is_peak_arrival","group":"Temporal","desc":"1 if arrival in Jun/Jul/Aug/Dec","apit":false,"status":"SELECTED","vif":3.4,"imp":{"quoted_adr":3.82,"conversion":0,"pickup":0,"fnb":0}},{"name":"is_peak_season","group":"Engineered","desc":"is_peak_season","apit":false,"status":"CORR","corr_kept":"historical_demand_this_month","corr_r":0.8766},{"name":"is_repeat_client","group":"Account History","desc":"1 if account has prior booked events","apit":false,"status":"CORR","corr_kept":"days_since_last_account_rfp","corr_r":0.9816},{"name":"is_shoulder_season","group":"Temporal","desc":"1 if arrival in Mar/Apr/Sep/Oct/Nov \u2014 shoulder months","apit":false,"status":"SELECTED","imp":{"quoted_adr":7.82,"conversion":2.19,"pickup":0,"fnb":0}},{"name":"is_weekend_arrival","group":"Engineered","desc":"is_weekend_arrival","apit":false,"status":"CORR","corr_kept":"arrival_day_of_week","corr_r":0.868},{"name":"lead_source_encoded","group":"RFP Core","desc":"Channel: MeetingBroker=0, Cvent=1, Direct=2\u2026 encoded","apit":false,"status":"SELECTED","vif":3.08},{"name":"lead_time_days","group":"Engineered","desc":"lead_time_days","apit":false,"status":"CORR","corr_kept":"room_night_demand_14d","corr_r":0.8605},{"name":"lead_time_deviation","group":"Temporal","desc":"Deviation from segment average lead time","apit":false,"status":"SELECTED","imp":{"quoted_adr":0,"conversion":2.11,"pickup":0,"fnb":0}},{"name":"market_heat_index_30d","group":"Engineered","desc":"market_heat_index_30d","apit":false,"status":"CORR","corr_kept":"room_night_demand_90d","corr_r":0.9366},{"name":"market_seg_Association","group":"v7 New (OHE)","desc":"1 if market_segment=Association (v7 FIX 3)","apit":false,"status":"LOW_IMP"},{"name":"market_seg_Corporate","group":"v7 New (OHE)","desc":"1 if market_segment=Corporate (v7 FIX 3)","apit":false,"status":"LOW_IMP"},{"name":"market_seg_Education","group":"v7 New (OHE)","desc":"1 if market_segment=Education (v7 FIX 3)","apit":false,"status":"LOW_IMP"},{"name":"market_seg_Finance","group":"v7 New (OHE)","desc":"1 if market_segment=Finance (v7 FIX 3)","apit":false,"status":"LOW_IMP"},{"name":"market_seg_Government","group":"v7 New (OHE)","desc":"1 if market_segment=Government (v7 FIX 3)","apit":false,"status":"LOW_IMP"},{"name":"market_seg_Healthcare","group":"v7 New (OHE)","desc":"1 if market_segment=Healthcare (v7 FIX 3)","apit":false,"status":"LOW_IMP"},{"name":"market_seg_Other","group":"v7 New (OHE)","desc":"1 if market_segment=Other (v7 FIX 3)","apit":false,"status":"LOW_IMP"},{"name":"market_seg_Professional Services","group":"v7 New (OHE)","desc":"1 if market_segment=Professional Services (v7 FIX 3)","apit":false,"status":"LOW_IMP"},{"name":"market_seg_SMERF","group":"v7 New (OHE)","desc":"1 if market_segment=SMERF (v7 FIX 3)","apit":false,"status":"SELECTED","imp":{"quoted_adr":0,"conversion":0,"pickup":1.07,"fnb":0}},{"name":"market_seg_Social","group":"v7 New (OHE)","desc":"1 if market_segment=Social \u2014 one-hot column (v7 FIX 3)","apit":false,"status":"SELECTED","imp":{"quoted_adr":0,"conversion":0,"pickup":28.44,"fnb":0}},{"name":"market_seg_Technology","group":"v7 New (OHE)","desc":"1 if market_segment=Technology (v7 FIX 3)","apit":false,"status":"LOW_IMP"},{"name":"market_seg_Travel","group":"v7 New (OHE)","desc":"1 if market_segment=Travel (v7 FIX 3)","apit":false,"status":"SELECTED","imp":{"quoted_adr":0,"conversion":0,"pickup":1.9,"fnb":0}},{"name":"max_room_rate","group":"Engineered","desc":"max_room_rate","apit":false,"status":"CORR","corr_kept":"suite_rate","corr_r":0.8783},{"name":"meeting_ratio","group":"Meeting & F&B","desc":"Proposed meeting revenue / proposed total revenue","apit":false,"status":"SELECTED","vif":2.99,"imp":{"quoted_adr":0,"conversion":20.52,"pickup":0.65,"fnb":1.34}},{"name":"meeting_space_ratio","group":"Engineered","desc":"meeting_space_ratio","apit":false,"status":"SELECTED","vif":3.42},{"name":"min_room_rate","group":"Engineered","desc":"min_room_rate","apit":false,"status":"CORR","corr_kept":"standard_rate","corr_r":0.9999},{"name":"night_variance_pct","group":"RFP Core","desc":"% variance in room block across stay nights","apit":false,"status":"SELECTED","imp":{"quoted_adr":0,"conversion":4.63,"pickup":0,"fnb":5.08}},{"name":"num_fnb_types","group":"Meeting & F&B","desc":"Count of distinct F&B item types contracted","apit":false,"status":"SELECTED","imp":{"quoted_adr":0,"conversion":0,"pickup":1.65,"fnb":13.79}},{"name":"num_meeting_days","group":"Meeting & F&B","desc":"Days with meeting space usage","apit":false,"status":"LOW_IMP"},{"name":"num_meeting_rooms","group":"RFP Core","desc":"Conference rooms requested (0\u20134+)","apit":false,"status":"SELECTED","imp":{"quoted_adr":0,"conversion":6.06,"pickup":0.68,"fnb":34.93}},{"name":"num_room_types","group":"Engineered","desc":"num_room_types","apit":false,"status":"CORR","corr_kept":"pct_premium_rooms","corr_r":0.9028},{"name":"num_sessions","group":"Meeting & F&B","desc":"Total sessions across all meeting days","apit":false,"status":"SELECTED","imp":{"quoted_adr":0,"conversion":0,"pickup":0,"fnb":12.46}},{"name":"occupancy_acceleration","group":"Velocity & Momentum","desc":"Occupancy velocity 7-30d minus 30-90d (Winsorised p1/p99 v7)","apit":false,"status":"SELECTED","vif":1.03},{"name":"occupancy_velocity_7_30d","group":"Engineered","desc":"occupancy_velocity_7_30d","apit":false,"status":"CORR","corr_kept":"occupancy_acceleration","corr_r":0.9371},{"name":"on_books_occupancy_pct","group":"Engineered","desc":"on_books_occupancy_pct","apit":false,"status":"CORR","corr_kept":"remaining_inventory_pct","corr_r":1.0},{"name":"opportunity_cost_ratio","group":"Engineered","desc":"opportunity_cost_ratio","apit":false,"status":"CORR","corr_kept":"transient_displacement_cost","corr_r":0.9653},{"name":"pct_premium_rooms","group":"Engineered","desc":"pct_premium_rooms","apit":false,"status":"CORR","corr_kept":"max_room_rate","corr_r":0.8608},{"name":"pricing_pressure_index","group":"Engineered","desc":"pricing_pressure_index","apit":false,"status":"CORR","corr_kept":"rate_discount_pct","corr_r":0.9703},{"name":"priority_loyalty_component","group":"Engineered","desc":"priority_loyalty_component","apit":false,"status":"CORR","corr_kept":"account_win_rate","corr_r":1.0},{"name":"priority_pickup_component","group":"Engineered","desc":"priority_pickup_component","apit":false,"status":"CORR","corr_kept":"segment_expected_pickup","corr_r":1.0},{"name":"priority_score_v2","group":"Engineered","desc":"priority_score_v2","apit":false,"status":"CORR","corr_kept":"priority_revenue_component","corr_r":0.8681},{"name":"priority_strategic_component","group":"Engineered","desc":"priority_strategic_component","apit":false,"status":"CORR","corr_kept":"operational_complexity_score","corr_r":0.9146},{"name":"proposed_total_revenue","group":"RFP Core","desc":"Total proposed room+meeting+F&B revenue ($)","apit":false,"status":"SELECTED","vif":8.94},{"name":"rate_discount_pct","group":"Engineered","desc":"rate_discount_pct","apit":false,"status":"CORR","corr_kept":"min_room_rate","corr_r":0.9416},{"name":"rate_spread","group":"RFP Core","desc":"Max_Room_Rate \u2212 Min_Room_Rate across room types","apit":false,"status":"CORR","corr_kept":"max_room_rate","corr_r":0.9139},{"name":"remaining_inventory_pct","group":"Engineered","desc":"remaining_inventory_pct","apit":false,"status":"CORR","corr_kept":"projected_occupancy_with_group","corr_r":0.9059},{"name":"response_due_days","group":"RFP Core","desc":"Days until planner decision deadline","apit":false,"status":"SELECTED","vif":6.57,"imp":{"quoted_adr":0,"conversion":0,"pickup":1.45,"fnb":0}},{"name":"revenue_competition_7d","group":"Capacity Pressure","desc":"Sum of revenue_intensity of competing arrivals \u00b13.5d","apit":false,"status":"SELECTED","imp":{"quoted_adr":0,"conversion":0,"pickup":2.52,"fnb":0}},{"name":"revenue_ema_90d","group":"Engineered","desc":"revenue_ema_90d","apit":false,"status":"CORR","corr_kept":"revenue_ema_30d","corr_r":0.8582},{"name":"revenue_intensity","group":"RFP Core","desc":"Proposed_Revenue / total_room_nights (CPOR)","apit":false,"status":"SELECTED","imp":{"quoted_adr":0.5,"conversion":3.96,"pickup":0,"fnb":0.63}},{"name":"revenue_intensity_deviation","group":"Engineered","desc":"revenue_intensity_deviation","apit":false,"status":"CORR","corr_kept":"revenue_quality_score","corr_r":0.9616},{"name":"revenue_quality_score","group":"Non-linear","desc":"log1p(revenue_intensity \u00d7 (1\u2212displacement)) (v7 FIX 4)","apit":false,"status":"SELECTED","vif":1.64},{"name":"revenue_velocity_7_30d","group":"Engineered","desc":"revenue_velocity_7_30d","apit":false,"status":"CORR","corr_kept":"avg_revenue_intensity_7d","corr_r":0.8953},{"name":"revenue_volatility_60d","group":"EMA & Volatility","desc":"Std dev of revenue over 60-day window","apit":false,"status":"SELECTED","imp":{"quoted_adr":0,"conversion":0,"pickup":0,"fnb":0.18}},{"name":"rfp_count_14d","group":"Engineered","desc":"rfp_count_14d","apit":false,"status":"CORR","corr_kept":"rfp_count_30d","corr_r":0.8699},{"name":"rfp_count_30d","group":"Engineered","desc":"rfp_count_30d","apit":false,"status":"CORR","corr_kept":"rfp_count_60d","corr_r":0.9171},{"name":"rfp_count_60d","group":"Engineered","desc":"rfp_count_60d","apit":false,"status":"CORR","corr_kept":"rfp_count_90d","corr_r":0.9671},{"name":"rfp_volume_acceleration","group":"Velocity & Momentum","desc":"RFP velocity 7-30d minus 30-90d","apit":false,"status":"SELECTED","vif":1.58},{"name":"rfp_volume_velocity_30_90d","group":"Engineered","desc":"rfp_volume_velocity_30_90d","apit":false,"status":"CORR","corr_kept":"rfp_count_90d","corr_r":0.9697},{"name":"risk_adjusted_revenue","group":"Engineered","desc":"risk_adjusted_revenue","apit":false,"status":"CORR","corr_kept":"revenue_quality_score","corr_r":0.9901},{"name":"room_block","group":"RFP Core","desc":"Peak night room block size (contracted rooms)","apit":false,"status":"VIF"},{"name":"room_night_demand_14d","group":"Engineered","desc":"room_night_demand_14d","apit":false,"status":"CORR","corr_kept":"room_night_demand_30d","corr_r":0.9274},{"name":"room_night_demand_30d","group":"Engineered","desc":"room_night_demand_30d","apit":false,"status":"CORR","corr_kept":"room_night_demand_60d","corr_r":0.9661},{"name":"room_night_demand_60d","group":"Engineered","desc":"room_night_demand_60d","apit":false,"status":"CORR","corr_kept":"room_night_demand_90d","corr_r":0.9887},{"name":"rooms_available_peak_date","group":"Engineered","desc":"rooms_available_peak_date","apit":false,"status":"SELECTED","vif":6.97},{"name":"rooms_per_attendee","group":"Engineered","desc":"rooms_per_attendee","apit":false,"status":"CORR","corr_kept":"standard_rate","corr_r":0.9536},{"name":"segment_avg_lead_time","group":"Engineered","desc":"segment_avg_lead_time","apit":false,"status":"CORR","corr_kept":"lead_time_days","corr_r":0.8841},{"name":"segment_avg_room_nights","group":"Engineered","desc":"segment_avg_room_nights","apit":false,"status":"CORR","corr_kept":"segment_avg_revenue_intensity","corr_r":0.9729},{"name":"segment_expected_pickup","group":"Engineered","desc":"segment_expected_pickup","apit":false,"status":"CORR","corr_kept":"confident_expected_pickup","corr_r":0.9706},{"name":"segment_win_rate","group":"Engineered","desc":"segment_win_rate","apit":false,"status":"CORR","corr_kept":"priority_win_prob_component","corr_r":1.0},{"name":"smerf_demand_30d","group":"Segment Demand","desc":"SMERF events arriving within 15d of this group","apit":false,"status":"SELECTED","imp":{"quoted_adr":0,"conversion":0,"pickup":0,"fnb":0.4}},{"name":"surrounded_by_high_value","group":"Engineered","desc":"surrounded_by_high_value","apit":false,"status":"CORR","corr_kept":"min_room_rate","corr_r":0.8795},{"name":"tactical_compression_opportunity","group":"Non-linear","desc":"forecasted_occ \u00d7 (1/lead_time) \u2014 late compression signal","apit":false,"status":"SELECTED","imp":{"quoted_adr":0,"conversion":0,"pickup":21.14,"fnb":0.82}},{"name":"total_meeting_hours","group":"RFP Core","desc":"Sum of all session hours across meeting days","apit":false,"status":"SELECTED","vif":8.2},{"name":"total_room_nights","group":"Engineered","desc":"total_room_nights","apit":false,"status":"CORR","corr_kept":"room_block","corr_r":1.0},{"name":"total_room_nights_requested","group":"Engineered","desc":"total_room_nights_requested","apit":false,"status":"CORR","corr_kept":"proposed_total_revenue","corr_r":0.9209},{"name":"total_session_fnb","group":"Meeting & F&B","desc":"Total F&B-bearing sessions in programme","apit":false,"status":"LOW_IMP"},{"name":"tr_demand_tier_3","group":"Engineered","desc":"tr_demand_tier_3","apit":false,"status":"CORR","corr_kept":"tr_demand_tier","corr_r":0.8601},{"name":"tr_displacement_cost_per_room","group":"Engineered","desc":"tr_displacement_cost_per_room","apit":false,"status":"CORR","corr_kept":"tr_transient_adr","corr_r":1.0},{"name":"tr_displacement_pressure","group":"Transient Demand","desc":"Low/Medium/High/Sold Out \u2014 transient demand pressure (encoded)","apit":false,"status":"LOW_IMP"},{"name":"tr_group_rooms_on_books","group":"Engineered","desc":"tr_group_rooms_on_books","apit":false,"status":"CORR","corr_kept":"Rooms_Available_Peak_Date","corr_r":0.9297},{"name":"tr_market_adr","group":"Engineered","desc":"tr_market_adr","apit":false,"status":"CORR","corr_kept":"tr_transient_adr","corr_r":0.9747},{"name":"tr_market_occ_pct","group":"Engineered","desc":"tr_market_occ_pct","apit":false,"status":"CORR","corr_kept":"tr_rooms_to_capacity","corr_r":0.996},{"name":"tr_rate_strategy","group":"Engineered","desc":"tr_rate_strategy","apit":false,"status":"CORR","corr_kept":"tr_demand_tier","corr_r":0.8518},{"name":"tr_rooms_to_capacity","group":"Engineered","desc":"tr_rooms_to_capacity","apit":false,"status":"SELECTED","vif":2.49},{"name":"tr_total_occupancy_pct","group":"Engineered","desc":"tr_total_occupancy_pct","apit":false,"status":"CORR","corr_kept":"forecasted_occupancy","corr_r":1.0},{"name":"tr_transient_occ_of_available","group":"Transient Demand","desc":"Transient occupancy as % of available rooms (avg)","apit":false,"status":"SELECTED","imp":{"quoted_adr":0.93,"conversion":0,"pickup":0,"fnb":0}},{"name":"tr_transient_rooms_turned_away","group":"Transient Demand","desc":"Transient guests turned away on stay dates (avg)","apit":false,"status":"SELECTED","vif":4.78,"imp":{"quoted_adr":1.09,"conversion":1.98,"pickup":0,"fnb":0}},{"name":"tr_transient_yield_pct","group":"Engineered","desc":"tr_transient_yield_pct","apit":false,"status":"CORR","corr_kept":"tr_rooms_to_capacity","corr_r":0.9732},{"name":"transient_displacement_cost","group":"Dynamic Context","desc":"$ cost of displacing transient guests for this group","apit":false,"status":"SELECTED","vif":3.23,"imp":{"quoted_adr":2.65,"conversion":2.61,"pickup":0,"fnb":0}},{"name":"urgency_indicator","group":"Engineered","desc":"urgency_indicator","apit":false,"status":"CORR","corr_kept":"booking_pace_rooms_per_day","corr_r":0.8569},{"name":"uses_ballroom","group":"Meeting & F&B","desc":"1 if grand ballroom requested","apit":false,"status":"LOW_IMP"},{"name":"uses_boardroom","group":"Engineered","desc":"uses_boardroom","apit":false,"status":"SELECTED","vif":4.15},{"name":"win_rate_velocity_7_30d","group":"Engineered","desc":"win_rate_velocity_7_30d","apit":false,"status":"CORR","corr_kept":"win_rate_7d","corr_r":0.8705},{"name":"win_rate_volatility_30d","group":"Engineered","desc":"win_rate_volatility_30d","apit":false,"status":"CORR","corr_kept":"win_rate_30d","corr_r":0.8816},{"name":"win_rate_volatility_90d","group":"Engineered","desc":"win_rate_volatility_90d","apit":false,"status":"CORR","corr_kept":"win_rate_volatility_60d","corr_r":0.8815}];
+const MI={"quoted_adr": 55.42, "conversion": 20.52, "pickup": 28.44, "fnb": 34.93};
+const GROUPS=[...new Set(F.map(f=>f.group))].sort();
+const gf=document.getElementById('gf');
+[['ALL','All Groups'],...GROUPS.map(g=>[g,g])].forEach(([v,l])=>{
+  const b=document.createElement('button');
+  b.className='fb'+(v==='ALL'?' on':'');
+  b.dataset.f='group';b.dataset.v=v;
+  b.textContent=l;
+  b.onclick=()=>sf('group',v,b);
+  gf.appendChild(b);
+});
+
+let filters={status:'ALL',group:'ALL'};
+let sk=null,sd=1;
+
+function sf(type,val,btn){
+  if(type==='group'&&val==='v7'){
+    filters.group='ALL';
+    document.querySelectorAll('[data-f="group"]').forEach(b=>b.classList.remove('on'));
+    document.querySelectorAll('[data-f="status"]').forEach(b=>b.classList.remove('on'));
+    // filter to v7 groups
+    filters._v7=!filters._v7;
+    btn.classList.toggle('on',filters._v7);
+    af();return;
+  }
+  filters._v7=false;
+  document.querySelectorAll('.fb.v7').forEach(b=>b.classList.remove('on'));
+  filters[type]=val;
+  document.querySelectorAll(`[data-f="${type}"]`).forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  af();
+}
+
+function sb2(key){
+  if(sk===key)sd*=-1;else{sk=key;sd=1;}
+  document.querySelectorAll('th').forEach(t=>{t.classList.remove('srt');const si=t.querySelector('.si');if(si)si.textContent='↕';});
+  const th=document.querySelector(`th[onclick="sb2('${key}')"]`);
+  if(th){th.classList.add('srt');const si=th.querySelector('.si');if(si)si.textContent=sd===1?'↑':'↓';}
+  af();
+}
+
+function af(){
+  const q=document.getElementById('srch').value.toLowerCase().trim();
+  let data=F.filter(f=>{
+    if(filters._v7&&!['v7 New','v7 New (OHE)'].includes(f.group))return false;
+    if(!filters._v7){
+      if(filters.status!=='ALL'&&f.status!==filters.status)return false;
+      if(filters.group!=='ALL'&&f.group!==filters.group)return false;
+    }
+    if(q&&!f.name.toLowerCase().includes(q)&&!(f.desc||'').toLowerCase().includes(q))return false;
+    return true;
+  });
+  if(sk==='name')data.sort((a,b)=>sd*a.name.localeCompare(b.name));
+  else if(sk==='status')data.sort((a,b)=>sd*a.status.localeCompare(b.status));
+  render(data);
+  document.getElementById('cb').textContent=`${data.length} feature${data.length!==1?'s':''}`;
+}
+
+function bar(f,model,cls){
+  const val=f.imp?(f.imp[model]||0):0;
+  const max=MI[model]||100;
+  const w=Math.min(100,(val/max)*100).toFixed(1);
+  const nz=val>0.01;
+  const lbl=model==='quoted_adr'?'ADR':model==='fnb'?'F&B':model==='conversion'?'CONV':'PICK';
+  return `<div class="ir"><span class="il">${lbl}</span><div class="ib"><div class="bar ${cls}" style="width:${w}%"></div></div><span class="iv ${nz?'nz':'z'}">${nz?val.toFixed(2)+'%':'—'}</span></div>`;
+}
+
+function statusBadge(s,g){
+  if(g==='v7 New'||g==='v7 New (OHE)')return`<span class="sb v7n">v7 NEW</span>`;
+  if(s==='SELECTED')return`<span class="sb sel">&#10003; Selected</span>`;
+  if(s==='CORR')return`<span class="sb corr">Corr Drop</span>`;
+  if(s==='VIF')return`<span class="sb vif">VIF Drop</span>`;
+  return`<span class="sb low">Low Imp</span>`;
+}
+
+function dropDetail(f){
+  if(f.status==='CORR'&&f.corr_kept)
+    return`<span class="dr">r=<span class="rv">${f.corr_r}</span> → kept: <span class="kv">${f.corr_kept}</span></span>`;
+  if(f.vif){
+    const cls=f.vif>7?'hi':f.vif<4?'lo':'';
+    return`<span class="vv ${cls}">VIF ${f.vif}</span>`;
+  }
+  return`<span class="vv na">—</span>`;
+}
+
+function render(data){
+  const tb=document.getElementById('tb');
+  tb.innerHTML='';
+  if(!data.length){document.getElementById('nr').style.display='block';return;}
+  document.getElementById('nr').style.display='none';
+  const grouped={};
+  data.forEach(f=>{if(!grouped[f.group])grouped[f.group]=[];grouped[f.group].push(f);});
+  Object.keys(grouped).sort().forEach(grp=>{
+    const gdata=grouped[grp];
+    const gr=document.createElement('tr');
+    gr.className='gr-row';
+    gr.innerHTML=`<td colspan="6"><span class="gl">${grp}</span><span class="gc">${gdata.length} feature${gdata.length!==1?'s':''}</span></td>`;
+    tb.appendChild(gr);
+    gdata.forEach(f=>{
+      const tr=document.createElement('tr');
+      tr.className='fr';
+      const isV7=f.group==='v7 New'||f.group==='v7 New (OHE)';
+      const isAPIT=f.apit;
+      const isOHE=f.group==='v7 New (OHE)';
+      tr.innerHTML=`
+        <td><span class="fn">${f.name}${isV7?'<span class="v7-badge">v7</span>':''}</span>
+            <span class="gt">${f.group}</span></td>
+        <td>${isAPIT?'<span class="st apit">APIT</span>':''}${isOHE?'<span class="st ohe">OHE</span>':''}</td>
+        <td>${statusBadge(f.status,f.group)}</td>
+        <td>${dropDetail(f)}</td>
+        <td><span class="fd${!f.desc?' m':''}">${f.desc||'—'}</span></td>
+        <td><div class="ic">
+          ${bar(f,'quoted_adr','ba')}
+          ${bar(f,'conversion','bc')}
+          ${bar(f,'pickup','bp')}
+          ${bar(f,'fnb','bf')}
+        </div></td>`;
+      tb.appendChild(tr);
+    });
+  });
+}
+af();
+</script>
+</body>
+</html>
