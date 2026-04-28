@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APIT Signals — Model Fate Report</title>
+<style>
+  :root {
+    --blue-dark: #1F4E79;
+    --blue-mid:  #2E75B6;
+    --blue-light:#D6E4F0;
+    --blue-pale: #EBF4FA;
+    --green:     #1A7A4A;
+    --green-bg:  #E8F5EE;
+    --orange:    #C55A11;
+    --orange-bg: #FDF0E8;
+    --red:       #9E2A2B;
+    --red-bg:    #FDEAEA;
+    --gray:      #595959;
+    --gray-bg:   #F5F5F5;
+    --border:    #D0D7DE;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 14px; color: #222; background: #FAFBFC; }
+
+  header {
+    background: var(--blue-dark);
+    color: white;
+    padding: 32px 48px 24px;
+    border-bottom: 4px solid var(--blue-mid);
+  }
+  header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+  header p  { margin-top: 8px; opacity: 0.8; font-size: 14px; }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 32px 32px; }
+
+  /* Summary badges */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .badge {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .badge .n  { font-size: 36px; font-weight: 700; line-height: 1; }
+  .badge .lbl{ font-size: 11px; margin-top: 4px; color: var(--gray); text-transform: uppercase; letter-spacing: .5px; }
+  .badge.in    { border-top: 4px solid var(--green);  } .badge.in .n  { color: var(--green);  }
+  .badge.corr  { border-top: 4px solid var(--orange); } .badge.corr .n{ color: var(--orange); }
+  .badge.vif   { border-top: 4px solid var(--blue-mid);} .badge.vif .n { color: var(--blue-mid);}
+  .badge.excl  { border-top: 4px solid var(--red);   } .badge.excl .n { color: var(--red);    }
+  .badge.below { border-top: 4px solid #888;         } .badge.below .n{ color: #888;           }
+
+  section { margin-bottom: 40px; }
+  h2 { font-size: 18px; font-weight: 700; color: var(--blue-dark);
+       border-bottom: 2px solid var(--blue-light); padding-bottom: 8px; margin-bottom: 16px; }
+  h3 { font-size: 14px; font-weight: 600; color: var(--blue-mid); margin: 20px 0 8px; }
+
+  /* Main table */
+  .fate-table { width: 100%; border-collapse: collapse; font-size: 13px; background: white;
+                border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+                box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  .fate-table thead th {
+    background: var(--blue-dark); color: white; padding: 10px 12px;
+    text-align: left; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .4px;
+  }
+  .fate-table tbody tr { border-bottom: 1px solid #EEE; transition: background .15s; }
+  .fate-table tbody tr:hover { background: var(--blue-pale); }
+  .fate-table tbody td { padding: 9px 12px; vertical-align: top; }
+
+  /* Fate chips */
+  .chip { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .chip.in    { background: var(--green-bg);  color: var(--green);  }
+  .chip.corr  { background: var(--orange-bg); color: var(--orange); }
+  .chip.vif   { background: var(--blue-light);color: var(--blue-dark);}
+  .chip.excl  { background: var(--red-bg);    color: var(--red);    }
+  .chip.below { background: var(--gray-bg);   color: #555;          }
+
+  /* Model tag */
+  .mtag { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600;
+          margin: 1px; background: var(--blue-mid); color: white; }
+  .mtag.adr    { background: #1A7A4A; }
+  .mtag.conv   { background: #7B3FA0; }
+  .mtag.fnb    { background: #C55A11; }
+  .mtag.pickup { background: #1F4E79; }
+
+  .source-tag { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600;
+                background: #E8EEF5; color: #444; }
+
+  .corr-detail { font-size: 12px; color: var(--gray); margin-top: 3px; font-style: italic; }
+  .kept-var { color: var(--blue-mid); font-weight: 600; }
+  .corr-val { background: #FFF3CD; padding: 1px 5px; border-radius: 3px; font-family: monospace; font-size: 11px; }
+
+  /* Correlation matrix */
+  .corr-grid { display: grid; gap: 10px; }
+  .corr-block {
+    background: white; border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  }
+  .corr-block h4 { font-size: 12px; font-weight: 700; color: var(--blue-dark); margin-bottom: 10px;
+                   border-bottom: 1px solid #EEE; padding-bottom: 6px; }
+  .corr-pair { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
+  .corr-pair .var { flex: 1; min-width: 0; }
+  .corr-pair .vs  { color: #999; font-size: 10px; flex-shrink: 0; }
+  .corr-bar-wrap  { width: 80px; height: 10px; background: #EEE; border-radius: 5px; overflow: hidden; flex-shrink: 0; }
+  .corr-bar       { height: 100%; border-radius: 5px; }
+  .corr-pair .rv  { width: 42px; text-align: right; font-family: monospace; font-size: 11px; flex-shrink: 0; }
+
+  .verdict-box { background: var(--blue-pale); border-left: 4px solid var(--blue-mid);
+                 padding: 12px 16px; border-radius: 0 6px 6px 0; margin-top: 8px; font-size: 13px; }
+  .verdict-box strong { color: var(--blue-dark); }
+
+  /* VIF table */
+  .vif-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .vif-table th { background: var(--blue-dark); color: white; padding: 7px 10px; text-align: left; font-size: 11px; }
+  .vif-table td { padding: 6px 10px; border-bottom: 1px solid #EEE; }
+  .vif-table tr:hover td { background: var(--blue-pale); }
+  .vif-bar-wrap { width: 120px; height: 8px; background: #EEE; border-radius: 4px; overflow: hidden; display: inline-block; vertical-align: middle; margin-left: 6px; }
+  .vif-bar      { height: 100%; border-radius: 4px; }
+
+  /* Flow diagram */
+  .pipeline-flow { display: flex; gap: 0; align-items: stretch; margin: 16px 0; flex-wrap: wrap; }
+  .flow-step { background: white; border: 1px solid var(--border); padding: 14px 18px; flex: 1; min-width: 160px;
+               border-radius: 0; text-align: center; position: relative; }
+  .flow-step:first-child { border-radius: 8px 0 0 8px; }
+  .flow-step:last-child  { border-radius: 0 8px 8px 0; }
+  .flow-step::after { content: '→'; position: absolute; right: -12px; top: 50%; transform: translateY(-50%);
+                      font-size: 18px; color: var(--blue-mid); z-index: 1; }
+  .flow-step:last-child::after { display: none; }
+  .flow-n { font-size: 28px; font-weight: 700; color: var(--blue-dark); }
+  .flow-lbl { font-size: 11px; color: var(--gray); margin-top: 4px; }
+  .flow-sub { font-size: 10px; color: #999; margin-top: 2px; font-style: italic; }
+
+  /* Scatter-like correlation visual using SVG-in-HTML */
+  .corr-heatmap { overflow-x: auto; margin: 12px 0; }
+
+  nav { background: white; border-bottom: 1px solid var(--border); padding: 0 32px;
+        position: sticky; top: 0; z-index: 100; }
+  nav ul { display: flex; list-style: none; gap: 0; overflow-x: auto; }
+  nav ul li a { display: block; padding: 12px 16px; font-size: 13px; font-weight: 500;
+                color: var(--gray); text-decoration: none; border-bottom: 3px solid transparent;
+                white-space: nowrap; transition: all .15s; }
+  nav ul li a:hover, nav ul li a.active { color: var(--blue-dark); border-bottom-color: var(--blue-mid); }
+
+  .note { background: #FFFBEA; border-left: 4px solid #F0A500; padding: 10px 14px;
+          border-radius: 0 6px 6px 0; font-size: 12px; color: #5C4A00; margin: 12px 0; }
+  code { background: #EEF2F7; padding: 1px 5px; border-radius: 3px; font-size: 12px; font-family: monospace; }
+
+  @media (max-width: 768px) {
+    .container { padding: 16px; }
+    header { padding: 20px; }
+    .pipeline-flow { flex-direction: column; }
+    .flow-step::after { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>APIT Signals — Model Fate Analysis</h1>
+  <p>Nexus Hotel RFP Pricing Engine v7 &nbsp;|&nbsp; Which variables from the APIT parameter spec made it into the models — and why the rest didn't</p>
+</header>
+
+<nav>
+  <ul>
+    <li><a href="#summary" class="active">Summary</a></li>
+    <li><a href="#pipeline">Pruning Pipeline</a></li>
+    <li><a href="#fate-table">Variable Fate Table</a></li>
+    <li><a href="#correlations">Correlation Analysis</a></li>
+    <li><a href="#vif">VIF Table</a></li>
+    <li><a href="#force-adds">Force-Added Variables</a></li>
+    <li><a href="#v7fixes" style="color:#27AE60;font-weight:700">v7 Fixes</a></li>
+  </ul>
+</nav>
+
+<div class="container">
+
+<!-- ═══════════════════════════════════════════════════════ SUMMARY -->
+<section id="summary">
+  <h2>Summary</h2>
+
+  <div class="summary-grid">
+    <div class="badge in">   <div class="n">8</div>  <div class="lbl">In Model</div></div>
+    <div class="badge corr"> <div class="n">14</div> <div class="lbl">Dropped: Correlation</div></div>
+    <div class="badge vif">  <div class="n">13</div> <div class="lbl">Dropped: VIF</div></div>
+    <div class="badge excl"> <div class="n">4</div>  <div class="lbl">Excluded (non-numeric / leaky target)</div></div>
+    <div class="badge below"><div class="n">5</div>  <div class="lbl">Below Top-60 Importance</div></div>
+  </div>
+
+  <div class="verdict-box">
+    <strong>v7 update:</strong> Six XGBoost assumption fixes were applied. Most importantly: <code>group_size_tier</code> is now encoded as <code>is_meeting_only</code> (binary) + <code>group_size_tier_clean_enc</code> (4 ordered tiers); <code>market_segment</code> is now 13 one-hot columns. 194 meeting-only records (room_block=0) are excluded from ADR training. F&amp;B R² improved to 0.969.<br><br><strong>Original finding:</strong> Of 44 APIT document variables mapped to dataset columns, only 8 survive into the final base feature pool untouched.
+    The majority are removed by correlation pruning — they are highly redundant with engineered time-series features that carry the same information
+    in a denser form (e.g. <code>total_room_nights_requested</code> is r=0.92 with <code>proposed_total_revenue</code>).
+    Fourteen additional variables are <em>force-added</em> back into the pickup and F&B models because the ADR-proxy screening incorrectly ranked them low.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ PIPELINE -->
+<section id="pipeline">
+  <h2>Pruning Pipeline</h2>
+
+  <div class="pipeline-flow">
+    <div class="flow-step">
+      <div class="flow-n" style="color:#555">~285</div>
+      <div class="flow-lbl">Raw v3 columns</div>
+      <div class="flow-sub">After merge + encoding</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-n" style="color:#555">~200</div>
+      <div class="flow-lbl">Numeric candidate pool</div>
+      <div class="flow-sub">Zero-variance &amp; &gt;50% null excluded</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-n" style="color:var(--orange)">~110</div>
+      <div class="flow-lbl">After correlation pruning</div>
+      <div class="flow-sub">|r| ≥ 0.85 → drop lower-variance</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-n" style="color:var(--blue-mid)">60</div>
+      <div class="flow-lbl">Top-60 by importance</div>
+      <div class="flow-sub">Proxy: quoted_adr</div>
+    </div>
+    <div class="flow-step">
+      <div class="flow-n" style="color:var(--blue-dark)">36</div>
+      <div class="flow-lbl">After VIF pruning</div>
+      <div class="flow-sub">VIF ≥ 10 → drop iteratively</div>
+    </div>
+    <div class="flow-step" style="background:var(--blue-pale)">
+      <div class="flow-n" style="color:var(--green)">36–65</div>
+      <div class="flow-lbl">Final per-model features</div>
+      <div class="flow-sub">+ force-adds for pickup &amp; F&B</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Proxy bias:</strong> The importance screening in step 4 uses <code>quoted_adr</code> as a proxy target to rank features.
+    This under-ranks features that predict pickup or F&B but are irrelevant to pricing — such as <code>event_type_enc</code>, which
+    explains 34% of pickup variance but ranked 127th out of 181 by the ADR proxy. These are force-added back per model (see §Force-Added Variables).
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ FATE TABLE -->
+<section id="fate-table">
+  <h2>Variable Fate Table</h2>
+  <p style="margin-bottom:14px;color:var(--gray);font-size:13px;">All APIT document variables mapped to their dataset column equivalents and final disposition.</p>
+
+  <table class="fate-table">
+    <thead>
+      <tr>
+        <th>APIT Document Variable</th>
+        <th>Dataset Column</th>
+        <th>Source</th>
+        <th>Fate</th>
+        <th>Models Used In</th>
+        <th>Detail</th>
+      </tr>
+    </thead>
+    <tbody>
+
+    <!-- MeetingBroker / Cvent -->
+    <tr>
+      <td><strong>Inquiry received date</strong></td>
+      <td><code>inquiry_date</code></td>
+      <td><span class="source-tag">MeetingBroker</span></td>
+      <td><span class="chip below">Below top-60</span></td>
+      <td></td>
+      <td class="corr-detail">Used to build rolling-window features; raw date excluded (non-numeric). Temporal signals encoded via <code>arrival_month_sin/cos</code>, <code>days_to_peak_season</code>, <code>inquiry_dow_sin</code> which do appear in the model.</td>
+    </tr>
+    <tr>
+      <td><strong>Arrival / departure dates</strong></td>
+      <td><code>arrival_date</code>, <code>Departure_Date</code></td>
+      <td><span class="source-tag">MeetingBroker</span></td>
+      <td><span class="chip excl">Excluded (identity)</span></td>
+      <td></td>
+      <td class="corr-detail">Raw dates are identity columns — excluded from all candidate pools. Their information enters through cyclical encodings and the transient demand join over the stay window.</td>
+    </tr>
+    <tr>
+      <td><strong>Peak room block size</strong></td>
+      <td><code>room_block</code></td>
+      <td><span class="source-tag">MeetingBroker</span></td>
+      <td><span class="chip vif">Dropped: VIF</span></td>
+      <td></td>
+      <td class="corr-detail">Survived correlation pruning but removed at VIF stage (high multicollinearity with <code>proposed_total_revenue</code>, <code>attendees</code>, and <code>capacity_risk_score</code> together). Force-added to pickup model as <code>room_block</code>.</td>
+    </tr>
+    <tr>
+      <td><strong>Total room nights</strong></td>
+      <td><code>total_room_nights_requested</code></td>
+      <td><span class="source-tag">MeetingBroker</span></td>
+      <td><span class="chip corr">Dropped: Correlation</span></td>
+      <td></td>
+      <td class="corr-detail">r = <span class="corr-val">0.921</span> with <span class="kept-var">proposed_total_revenue</span>. Revenue is kept because it has higher variance and directly encodes economic scale. Room nights ≈ revenue / ADR, which is derivable from other kept features.</td>
+    </tr>
+    <tr>
+      <td><strong>Number of attendees</strong></td>
+      <td><code>attendees</code></td>
+      <td><span class="source-tag">MeetingBroker</span></td>
+      <td><span class="chip vif">Dropped: VIF</span></td>
+      <td></td>
+      <td class="corr-detail">Multicollinear cluster with room_block and proposed_total_revenue. The ratio <code>Meeting_Space_Ratio</code> (meeting rooms per 10 attendees) survives as a more informative transformation.</td>
+    </tr>
+    <tr>
+      <td><strong>Meeting space requirements</strong></td>
+      <td><code>has_meeting_space</code></td>
+      <td><span class="source-tag">MeetingBroker</span></td>
+      <td><span class="chip corr">Dropped: Correlation</span></td>
+      <td></td>
+      <td class="corr-detail">r = <span class="corr-val">0.890</span> with <span class="kept-var">avg_room_utilization</span>. Both measure session density; avg_room_utilization is continuous and more discriminative than a binary flag.</td>
+    </tr>
+    <tr>
+      <td><strong>Number of meeting rooms</strong></td>
+      <td><code>num_meeting_rooms</code></td>
+      <td><span class="source-tag">MeetingBroker</span></td>
+      <td><span class="chip vif">Dropped: VIF (base pool)</span></td>
+      <td><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td>
+      <td class="corr-detail">Dropped from base pool at VIF stage (collinear with total_meeting_hours). Force-added to F&B and pickup models as a direct scale signal for catering and attrition.</td>
+    </tr>
+    <tr>
+      <td><strong>F&B requirements (flag)</strong></td>
+      <td><code>has_fnb_requirements</code></td>
+      <td><span class="source-tag">MeetingBroker</span></td>
+      <td><span class="chip corr">Dropped: Correlation</span></td>
+      <td><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td>
+      <td class="corr-detail">r = <span class="corr-val">0.930</span> (|r|) with <span class="kept-var">event_configuration_enc</span>. Event configuration encodes whether a group is meeting-only, meeting+F&B, or F&B-only — effectively a superset of this binary flag. Force-added to F&B and pickup models.</td>
+    </tr>
+    <tr>
+      <td><strong>Number of F&B types</strong></td>
+      <td><code>num_fnb_types</code></td>
+      <td><span class="source-tag">MeetingBroker</span></td>
+      <td><span class="chip vif">Dropped: VIF (base pool)</span></td>
+      <td><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td>
+      <td class="corr-detail">Removed at VIF stage (collinear with total_meeting_hours). Force-added to F&B and pickup: meal variety is a strong per-person spend predictor.</td>
+    </tr>
+    <tr>
+      <td><strong>Client rate target / budget amount</strong></td>
+      <td><code>budget_amount</code></td>
+      <td><span class="source-tag">MeetingBroker</span></td>
+      <td><span class="chip vif">Dropped: VIF (base pool)</span></td>
+      <td><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td>
+      <td class="corr-detail">Removed at VIF stage. The ratio form <code>budget_ratio</code> (budget/proposed_revenue) survives in the base pool and is more scale-invariant. Raw budget amount force-added to F&B and pickup models.</td>
+    </tr>
+    <tr>
+      <td><strong>Budget provided (flag)</strong></td>
+      <td><code>budget_provided</code></td>
+      <td><span class="source-tag">MeetingBroker</span></td>
+      <td><span class="chip corr">Dropped: Correlation</span></td>
+      <td></td>
+      <td class="corr-detail">r = <span class="corr-val">0.860</span> with <span class="kept-var">budget_ratio</span>. When a budget is provided, budget_ratio becomes meaningful; when not, it's zero. The flag and the ratio carry nearly identical information.</td>
+    </tr>
+    <tr>
+      <td><strong>Decision deadline / response window</strong></td>
+      <td><code>response_due_days</code></td>
+      <td><span class="source-tag">MeetingBroker</span></td>
+      <td><span class="chip in">✓ In Model</span></td>
+      <td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td>
+      <td class="corr-detail">Survives all pruning stages. Response urgency is a legitimate pricing signal and not highly correlated with other features (max correlation with any kept feature ~0.35).</td>
+    </tr>
+    <tr>
+      <td><strong>Group type (corporate / assoc / social)</strong></td>
+      <td><code>event_type_enc</code></td>
+      <td><span class="source-tag">MeetingBroker</span></td>
+      <td><span class="chip corr">Dropped: Correlation (base)</span></td>
+      <td><span class="mtag pickup">Pickup</span><span class="mtag fnb">F&B</span></td>
+      <td class="corr-detail">r = <span class="corr-val">0.992</span> with <span class="kept-var">segment_avg_revenue_intensity</span> — a segment-level rolling average that compresses the same categorical signal into a continuous feature. Dropped from base pool. Force-added to pickup (34% importance) and F&B models where group type is the dominant predictor of attrition and spend patterns.</td>
+    </tr>
+    <tr>
+      <td><strong>Lead source / platform</strong></td>
+      <td><code>lead_source_encoded</code></td>
+      <td><span class="source-tag">MeetingBroker</span></td>
+      <td><span class="chip in">✓ In Model</span></td>
+      <td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td>
+      <td class="corr-detail">Survives all stages. MeetingBroker vs Cvent vs direct channels have distinct ADR and conversion patterns.</td>
+    </tr>
+
+    <!-- CRM / Delphi -->
+    <tr>
+      <td><strong>First-time vs. returning client</strong></td>
+      <td><code>is_repeat_client</code></td>
+      <td><span class="source-tag">CRM</span></td>
+      <td><span class="chip corr">Dropped: Correlation</span></td>
+      <td><span class="mtag pickup">Pickup</span></td>
+      <td class="corr-detail">r = <span class="corr-val">0.982</span> with <span class="kept-var">days_since_last_account_rfp</span>. First-time clients by definition have infinite days since last RFP; returning clients have a finite recent history. The continuous version is more informative. Force-added to pickup model.</td>
+    </tr>
+    <tr>
+      <td><strong>Prior events at property</strong></td>
+      <td><code>Account_Prior_Events</code></td>
+      <td><span class="source-tag">CRM</span></td>
+      <td><span class="chip in">✓ In Model</span></td>
+      <td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td>
+      <td class="corr-detail">The anchor CRM variable. Count of prior events is the least correlated of the account history cluster and best captures relationship depth.</td>
+    </tr>
+    <tr>
+      <td><strong>Prior pickup (booked count)</strong></td>
+      <td><code>Account_Prior_Booked</code></td>
+      <td><span class="source-tag">CRM</span></td>
+      <td><span class="chip corr">Dropped: Correlation</span></td>
+      <td><span class="mtag pickup">Pickup</span><span class="mtag fnb">F&B</span></td>
+      <td class="corr-detail">r = <span class="corr-val">0.987</span> with <span class="kept-var">Account_Prior_Events</span>. Almost all prior events are booked events in the dataset — they are nearly identical. Force-added to pickup and F&B models as domain signal.</td>
+    </tr>
+    <tr>
+      <td><strong>Prior F&B spend</strong></td>
+      <td><code>Account_Prior_Revenue</code></td>
+      <td><span class="source-tag">CRM</span></td>
+      <td><span class="chip vif">Dropped: VIF</span></td>
+      <td></td>
+      <td class="corr-detail">Removed at VIF stage: revenue accrues with event count, creating multicollinearity with Account_Prior_Events. Relative per-event average would be more informative but was not pre-computed in v3.</td>
+    </tr>
+    <tr>
+      <td><strong>Prior decline / turndown history</strong></td>
+      <td><code>Has_Prior_Decline</code></td>
+      <td><span class="source-tag">CRM</span></td>
+      <td><span class="chip vif">Dropped: VIF</span></td>
+      <td></td>
+      <td class="corr-detail">Removed at VIF stage. In this dataset 90.9% of accounts have a prior decline, making the signal low-variance. Correlation with Account_Prior_Events is only r=0.40 so it's not redundant — it's just uninformative.</td>
+    </tr>
+    <tr>
+      <td><strong>Historical win/loss rate</strong></td>
+      <td><code>account_win_rate</code></td>
+      <td><span class="source-tag">CRM</span></td>
+      <td><span class="chip vif">Dropped: VIF</span></td>
+      <td></td>
+      <td class="corr-detail">Removed at VIF stage. Collinear with Account_Prior_Events and the rolling win-rate velocity features from the time-series engineering (win_rate_ema_7d etc., which also got pruned).</td>
+    </tr>
+    <tr>
+      <td><strong>Account_Win_Rate_APIT (derived)</strong></td>
+      <td><code>Account_Win_Rate_APIT</code></td>
+      <td><span class="source-tag">CRM</span></td>
+      <td><span class="chip excl">Excluded (always)</span></td>
+      <td></td>
+      <td class="corr-detail">Explicitly added to ALWAYS_EXCLUDE — it is a recomputed version of account_win_rate with an _APIT suffix added during dataset construction. Keeping both would be exact duplication.</td>
+    </tr>
+
+    <!-- PMS -->
+    <tr>
+      <td><strong>Current occupancy on books</strong></td>
+      <td><code>forecasted_occupancy</code></td>
+      <td><span class="source-tag">PMS</span></td>
+      <td><span class="chip corr">Dropped: Correlation</span></td>
+      <td></td>
+      <td class="corr-detail">r = <span class="corr-val">1.000</span> with <span class="kept-var">tr_rooms_to_capacity</span>. The transient demand calendar and the PMS forecast encode exactly the same occupancy percentage — they were generated from the same source in the synthetic dataset. The transient version is kept as it comes with the richer stay-window join.</td>
+    </tr>
+    <tr>
+      <td><strong>Current ADR on books</strong></td>
+      <td><code>baseline_adr</code></td>
+      <td><span class="source-tag">PMS</span></td>
+      <td><span class="chip corr">Dropped: Correlation</span></td>
+      <td></td>
+      <td class="corr-detail">r = <span class="corr-val">0.968</span> with <span class="kept-var">tr_transient_adr</span>. Both measure prevailing rate levels for the dates in question; the transient ADR from the demand calendar is more granular (daily) and is kept.</td>
+    </tr>
+    <tr>
+      <td><strong>Historical group pickup rates</strong></td>
+      <td><code>actual_pickup_rate</code></td>
+      <td><span class="source-tag">PMS</span></td>
+      <td><span class="chip excl">Excluded (target / leaky)</span></td>
+      <td></td>
+      <td class="corr-detail">This IS the pickup model's target variable. Including it as a feature would be perfect leakage.</td>
+    </tr>
+    <tr>
+      <td><strong>Available room inventory</strong></td>
+      <td><code>Rooms_Available_Peak_Date</code></td>
+      <td><span class="source-tag">PMS / APIT</span></td>
+      <td><span class="chip in">✓ In Model</span></td>
+      <td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td>
+      <td class="corr-detail">Survives all pruning. Available inventory on the peak night is the most direct displacement risk signal and remains after VIF pruning (VIF=6.97).</td>
+    </tr>
+
+    <!-- RMS / Forecast -->
+    <tr>
+      <td><strong>Transient demand forecast</strong></td>
+      <td><code>tr_total_occupancy_pct</code></td>
+      <td><span class="source-tag">RMS</span></td>
+      <td><span class="chip corr">Dropped: Correlation</span></td>
+      <td></td>
+      <td class="corr-detail">r = <span class="corr-val">1.000</span> with <span class="kept-var">forecasted_occupancy</span>, which subsequently chains to r=1.000 with <span class="kept-var">tr_rooms_to_capacity</span>. Three columns encode the same occupancy signal; only tr_rooms_to_capacity survives (VIF=2.49).</td>
+    </tr>
+    <tr>
+      <td><strong>Projected transient ADR</strong></td>
+      <td><code>tr_transient_adr</code></td>
+      <td><span class="source-tag">RMS</span></td>
+      <td><span class="chip vif">Dropped: VIF</span></td>
+      <td></td>
+      <td class="corr-detail">Survived correlation pruning (kept over baseline_adr) but removed at VIF stage. Multicollinear cluster with tr_transient_revpar and tr_adr_index. The displacement and capacity risk signals that remain capture the same rate-pressure information.</td>
+    </tr>
+    <tr>
+      <td><strong>Booking pace</strong></td>
+      <td><code>tr_transient_pace_30d</code></td>
+      <td><span class="source-tag">RMS</span></td>
+      <td><span class="chip vif">Dropped: VIF</span></td>
+      <td></td>
+      <td class="corr-detail">Removed at VIF stage. The engineered feature <code>occupancy_acceleration</code> (second derivative of occupancy over time) survives and captures booking pace dynamics more efficiently.</td>
+    </tr>
+    <tr>
+      <td><strong>Displacement risk score</strong></td>
+      <td><code>Displacement_Risk_Score</code></td>
+      <td><span class="source-tag">RMS / APIT</span></td>
+      <td><span class="chip corr">Dropped: Correlation</span></td>
+      <td></td>
+      <td class="corr-detail">r = <span class="corr-val">0.874</span> with <span class="kept-var">Flag_High_Displacement</span>. The binary flag is a threshold transformation of the continuous score. The continuous score was dropped because Flag_High_Displacement had higher variance in the impurity-based importance screening. Note: <code>Rooms_Available_Peak_Date</code> captures the same underlying quantity and IS in the model.</td>
+    </tr>
+    <tr>
+      <td><strong>Demand tier (low/shoulder/peak)</strong></td>
+      <td><code>Demand_Tier</code></td>
+      <td><span class="source-tag">RMS / APIT</span></td>
+      <td><span class="chip excl">Excluded (non-numeric)</span></td>
+      <td></td>
+      <td class="corr-detail">String categorical. Its encoded numeric version would be r≈1.0 with <code>Is_Compression_Date</code> and <code>tr_rooms_to_capacity</code>. The continuous occupancy signal carries the same information more precisely.</td>
+    </tr>
+    <tr>
+      <td><strong>Rate strategy (promotional/standard/rack)</strong></td>
+      <td><code>tr_rate_strategy</code></td>
+      <td><span class="source-tag">RMS</span></td>
+      <td><span class="chip corr">Dropped: Correlation</span></td>
+      <td></td>
+      <td class="corr-detail">r = <span class="corr-val">0.852</span> with <span class="kept-var">tr_demand_tier</span> (encoded). Rate strategy is set as a function of demand tier — they are nearly deterministic transformations of each other in the synthetic dataset.</td>
+    </tr>
+
+    <!-- Event Calendar -->
+    <tr>
+      <td><strong>Is compression date / citywide events</strong></td>
+      <td><code>Is_Compression_Date</code></td>
+      <td><span class="source-tag">EventCal</span></td>
+      <td><span class="chip in">✓ In Model</span></td>
+      <td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td>
+      <td class="corr-detail">Binary flag for Forecasted_Occupancy ≥ 85%. Survives all pruning (VIF=1.63). While the continuous occupancy signal is dropped, the threshold indicator remains as a distinct nonlinear signal.</td>
+    </tr>
+
+    <!-- APIT Derived -->
+    <tr>
+      <td><strong>Completeness score</strong></td>
+      <td><code>Completeness_Score</code></td>
+      <td><span class="source-tag">APIT Derived</span></td>
+      <td><span class="chip vif">Dropped: VIF</span></td>
+      <td></td>
+      <td class="corr-detail">Removed at VIF stage. Completeness is a composite of many other features already in the pool (budget_provided, response_due_days, attendees, etc.). It's mechanistically derived from features that are already present, creating multicollinearity.</td>
+    </tr>
+    <tr>
+      <td><strong>Urgency index</strong></td>
+      <td><code>Urgency_Index</code></td>
+      <td><span class="source-tag">APIT Derived</span></td>
+      <td><span class="chip vif">Dropped: VIF (base pool)</span></td>
+      <td><span class="mtag pickup">Pickup</span><span class="mtag fnb">F&B</span></td>
+      <td class="corr-detail">Removed from base pool at VIF stage (collinear cluster with response_due_days and lead_time_days). Force-added to pickup (4th highest importance in v4, 6.1% contribution) and F&B models.</td>
+    </tr>
+    <tr>
+      <td><strong>Flag: missing rate target</strong></td>
+      <td><code>Flag_Missing_Rate_Target</code></td>
+      <td><span class="source-tag">APIT Derived</span></td>
+      <td><span class="chip vif">Dropped: VIF</span></td>
+      <td></td>
+      <td class="corr-detail">Removed at VIF stage. Collinear with <code>budget_ratio</code> (r=−0.70): when no rate target is provided, budget_ratio=0, making the flag nearly redundant with that feature.</td>
+    </tr>
+    <tr>
+      <td><strong>Flag: date conflict</strong></td>
+      <td><code>Flag_Date_Conflict</code></td>
+      <td><span class="source-tag">APIT Derived</span></td>
+      <td><span class="chip vif">Dropped: VIF</span></td>
+      <td></td>
+      <td class="corr-detail">Removed at VIF stage. Mechanistically derived from Rooms_Available_Peak_Date &lt; room_block. Both that flag and Rooms_Available_Peak_Date are in the pool; the flag is redundant given the continuous inventory signal.</td>
+    </tr>
+    <tr>
+      <td><strong>Flag: high displacement</strong></td>
+      <td><code>Flag_High_Displacement</code></td>
+      <td><span class="source-tag">APIT Derived</span></td>
+      <td><span class="chip vif">Dropped: VIF</span></td>
+      <td></td>
+      <td class="corr-detail">Removed at VIF stage. Displacement_Risk_Score was already dropped (r=0.874 correlation with this flag); then Flag_High_Displacement itself is removed due to collinearity with capacity_risk_score and Rooms_Available_Peak_Date.</td>
+    </tr>
+    <tr>
+      <td><strong>Flag: short response window</strong></td>
+      <td><code>Flag_Short_Response_Window</code></td>
+      <td><span class="source-tag">APIT Derived</span></td>
+      <td><span class="chip vif">Dropped: VIF (base pool)</span></td>
+      <td><span class="mtag pickup">Pickup</span></td>
+      <td class="corr-detail">Removed from base pool (collinear with response_due_days). Force-added to pickup model where short decision windows are associated with lower negotiation flexibility and lower pickup. Correlation with response_due_days is only r=−0.04, but VIF removes it in the context of the full cluster.</td>
+    </tr>
+    <tr>
+      <td><strong>Flag: rate below baseline</strong></td>
+      <td><code>Flag_Rate_Below_Baseline</code></td>
+      <td><span class="source-tag">APIT Derived</span></td>
+      <td><span class="chip in">✓ In Model</span></td>
+      <td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td>
+      <td class="corr-detail">The single most important feature in the ADR model (42% importance). Flags when client's stated rate is &gt;3% below the property's historical ADR for those dates. A nonlinear threshold signal not captured by continuous rate features.</td>
+    </tr>
+    <tr>
+      <td><strong>Meeting space ratio</strong></td>
+      <td><code>Meeting_Space_Ratio</code></td>
+      <td><span class="source-tag">APIT Derived</span></td>
+      <td><span class="chip in">✓ In Model</span></td>
+      <td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td>
+      <td class="corr-detail">Meeting rooms per 10 attendees. Survives all pruning (VIF=3.42). Captures the intensity of space use relative to group size — groups needing lots of rooms per person tend to have higher F&B spend and different rate sensitivity.</td>
+    </tr>
+    <tr>
+      <td><strong>ADR discount percentage</strong></td>
+      <td><code>ADR_Discount_Pct</code></td>
+      <td><span class="source-tag">APIT Derived</span></td>
+      <td><span class="chip corr">Dropped: Correlation</span></td>
+      <td></td>
+      <td class="corr-detail">r = <span class="corr-val">0.932</span> (|r|) with <span class="kept-var">standard_rate</span>. ADR discount = (baseline − quoted) / baseline. Since baseline varies little within market segments, the discount percentage is nearly a linear function of the quoted rate, which is collinear with standard_rate. Flag_Rate_Below_Baseline captures the nonlinear threshold aspect that survives.</td>
+    </tr>
+    <tr>
+      <td><strong>Revenue per room night</strong></td>
+      <td><code>Revenue_Per_Room_Night</code></td>
+      <td><span class="source-tag">APIT Derived</span></td>
+      <td><span class="chip vif">Dropped: VIF</span></td>
+      <td></td>
+      <td class="corr-detail">Removed at VIF stage. Revenue_Per_Room_Night = proposed_total_revenue / total_room_nights ≈ quoted_adr, making it nearly collinear with the ADR target itself and with proposed_total_revenue. The correlation is only r=0.08 with revenue but VIF within the full feature matrix is high.</td>
+    </tr>
+
+    </tbody>
+  </table>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ CORRELATIONS -->
+<section id="correlations">
+  <h2>Correlation Analysis</h2>
+  <p style="margin-bottom:16px;color:var(--gray);font-size:13px;">
+    Each group below shows why the dropped variable was removed and why its partner was kept instead.
+    Bar width = |r|. Colour: orange = dropped by correlation pruning, blue = both survived to VIF stage.
+  </p>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:16px;">
+
+    <!-- MeetingBroker cluster -->
+    <div class="corr-block">
+      <h4>📋 MeetingBroker — Room/Revenue cluster</h4>
+      <div class="corr-pair">
+        <div class="var" style="color:var(--orange)">total_room_nights_requested <em>(dropped)</em></div>
+        <div class="vs">vs</div>
+        <div class="var" style="color:var(--green)">proposed_total_revenue <em>(kept)</em></div>
+        <div class="corr-bar-wrap"><div class="corr-bar" style="width:92%;background:var(--orange)"></div></div>
+        <div class="rv">r=0.921</div>
+      </div>
+      <div class="corr-pair">
+        <div class="var" style="color:#888">room_block <em>(VIF removed)</em></div>
+        <div class="vs">vs</div>
+        <div class="var" style="color:var(--green)">proposed_total_revenue <em>(kept)</em></div>
+        <div class="corr-bar-wrap"><div class="corr-bar" style="width:73%;background:#888"></div></div>
+        <div class="rv">r=0.729</div>
+      </div>
+      <div class="corr-pair">
+        <div class="var" style="color:#888">attendees <em>(VIF removed)</em></div>
+        <div class="vs">vs</div>
+        <div class="var" style="color:var(--green)">proposed_total_revenue <em>(kept)</em></div>
+        <div class="corr-bar-wrap"><div class="corr-bar" style="width:63%;background:#888"></div></div>
+        <div class="rv">r=0.630</div>
+      </div>
+      <div class="verdict-box" style="margin-top:10px;font-size:12px;">
+        <strong>Why total_revenue is kept:</strong> It is the most economically direct measure of group value and has higher variance than room nights or block size alone. Rooms × nights × rate = revenue; given that rate is a model target, revenue is the purest available scale signal.
+      </div>
+    </div>
+
+    <!-- Group type / event type -->
+    <div class="corr-block">
+      <h4>🏷️ Group Type — Market Segment cluster</h4>
+      <div class="corr-pair">
+        <div class="var" style="color:var(--orange)">event_type_enc <em>(dropped from base pool)</em></div>
+        <div class="vs">vs</div>
+        <div class="var" style="color:var(--green)">segment_avg_revenue_intensity <em>(kept)</em></div>
+        <div class="corr-bar-wrap"><div class="corr-bar" style="width:99%;background:var(--orange)"></div></div>
+        <div class="rv">|r|=0.992</div>
+      </div>
+      <div class="corr-pair">
+        <div class="var" style="color:var(--orange)">has_fnb_requirements <em>(dropped)</em></div>
+        <div class="vs">vs</div>
+        <div class="var" style="color:var(--green)">event_configuration_enc <em>(kept)</em></div>
+        <div class="corr-bar-wrap"><div class="corr-bar" style="width:93%;background:var(--orange)"></div></div>
+        <div class="rv">|r|=0.930</div>
+      </div>
+      <div class="verdict-box" style="margin-top:10px;font-size:12px;">
+        <strong>Why event_type_enc is force-added to pickup/F&B:</strong> Despite r=0.992 with segment_avg_revenue_intensity in the full dataset, the <em>conditional</em> relationship differs for pickup: corporate groups have pickup rates ~0.85 vs social ~0.72 — a gap not captured by the revenue proxy. The correlation exists because both track the same market segment, but they are not interchangeable for pickup prediction.
+      </div>
+    </div>
+
+    <!-- Occupancy triple -->
+    <div class="corr-block">
+      <h4>📊 Occupancy — Triple Redundancy</h4>
+      <div class="corr-pair">
+        <div class="var" style="color:var(--orange)">tr_total_occupancy_pct <em>(dropped)</em></div>
+        <div class="vs">vs</div>
+        <div class="var" style="color:var(--orange)">forecasted_occupancy <em>(→ also dropped)</em></div>
+        <div class="corr-bar-wrap"><div class="corr-bar" style="width:100%;background:var(--orange)"></div></div>
+        <div class="rv">r=1.000</div>
+      </div>
+      <div class="corr-pair">
+        <div class="var" style="color:var(--orange)">forecasted_occupancy <em>(dropped)</em></div>
+        <div class="vs">vs</div>
+        <div class="var" style="color:var(--green)">tr_rooms_to_capacity <em>(kept)</em></div>
+        <div class="corr-bar-wrap"><div class="corr-bar" style="width:100%;background:var(--orange)"></div></div>
+        <div class="rv">r=1.000</div>
+      </div>
+      <div class="corr-pair">
+        <div class="var" style="color:var(--orange)">compression_indicator <em>(dropped)</em></div>
+        <div class="vs">vs</div>
+        <div class="var" style="color:var(--green)">forecasted_occupancy <em>(at that stage)</em></div>
+        <div class="corr-bar-wrap"><div class="corr-bar" style="width:95%;background:var(--orange)"></div></div>
+        <div class="rv">|r|=0.946</div>
+      </div>
+      <div class="verdict-box" style="margin-top:10px;font-size:12px;">
+        <strong>Chain:</strong> All three columns encode the same occupancy percentage from different sources (PMS forecast, transient calendar, derived ratio). Only <code>tr_rooms_to_capacity</code> survives (VIF=2.49) — it has the most stable relationship with other features. <code>Is_Compression_Date</code> survives separately as a nonlinear threshold (≥85%) rather than the continuous signal.
+      </div>
+    </div>
+
+    <!-- Rate / ADR cluster -->
+    <div class="corr-block">
+      <h4>💰 Rate / ADR cluster</h4>
+      <div class="corr-pair">
+        <div class="var" style="color:var(--orange)">baseline_adr <em>(dropped)</em></div>
+        <div class="vs">vs</div>
+        <div class="var" style="color:var(--green)">tr_transient_adr <em>(kept then VIF removed)</em></div>
+        <div class="corr-bar-wrap"><div class="corr-bar" style="width:97%;background:var(--orange)"></div></div>
+        <div class="rv">r=0.968</div>
+      </div>
+      <div class="corr-pair">
+        <div class="var" style="color:var(--orange)">ADR_Discount_Pct <em>(dropped)</em></div>
+        <div class="vs">vs</div>
+        <div class="var" style="color:var(--green)">standard_rate <em>(kept)</em></div>
+        <div class="corr-bar-wrap"><div class="corr-bar" style="width:93%;background:var(--orange)"></div></div>
+        <div class="rv">|r|=0.932</div>
+      </div>
+      <div class="corr-pair">
+        <div class="var" style="color:var(--green);font-weight:700">Flag_Rate_Below_Baseline <em>(IN MODEL ✓)</em></div>
+        <div class="vs">vs</div>
+        <div class="var">response_due_days (nearest corr.)</div>
+        <div class="corr-bar-wrap"><div class="corr-bar" style="width:12%;background:var(--green)"></div></div>
+        <div class="rv">r=0.12</div>
+      </div>
+      <div class="verdict-box" style="margin-top:10px;font-size:12px;">
+        <strong>Key insight:</strong> The continuous ADR signals (baseline_adr, tr_transient_adr, ADR_Discount_Pct) are all removed as a redundant cluster. The binary threshold flag — <em>is the client asking for a rate &gt;3% below market?</em> — carries orthogonal nonlinear information and is the #1 feature in the ADR model.
+      </div>
+    </div>
+
+    <!-- CRM cluster -->
+    <div class="corr-block">
+      <h4>🤝 CRM Account History cluster</h4>
+      <div class="corr-pair">
+        <div class="var" style="color:var(--orange)">Account_Prior_Booked <em>(dropped from base)</em></div>
+        <div class="vs">vs</div>
+        <div class="var" style="color:var(--green)">Account_Prior_Events <em>(kept)</em></div>
+        <div class="corr-bar-wrap"><div class="corr-bar" style="width:99%;background:var(--orange)"></div></div>
+        <div class="rv">r=0.987</div>
+      </div>
+      <div class="corr-pair">
+        <div class="var" style="color:var(--orange)">is_repeat_client <em>(dropped)</em></div>
+        <div class="vs">vs</div>
+        <div class="var" style="color:var(--green)">days_since_last_account_rfp <em>(kept)</em></div>
+        <div class="corr-bar-wrap"><div class="corr-bar" style="width:98%;background:var(--orange)"></div></div>
+        <div class="rv">|r|=0.982</div>
+      </div>
+      <div class="corr-pair">
+        <div class="var" style="color:#888">Account_Prior_Revenue <em>(VIF removed)</em></div>
+        <div class="vs">vs</div>
+        <div class="var" style="color:var(--green)">Account_Prior_Events <em>(kept)</em></div>
+        <div class="corr-bar-wrap"><div class="corr-bar" style="width:71%;background:#888"></div></div>
+        <div class="rv">r=0.712</div>
+      </div>
+      <div class="corr-pair">
+        <div class="var" style="color:#888">Has_Prior_Decline <em>(VIF removed)</em></div>
+        <div class="vs">vs</div>
+        <div class="var" style="color:var(--green)">Account_Prior_Events <em>(kept)</em></div>
+        <div class="corr-bar-wrap"><div class="corr-bar" style="width:40%;background:#888"></div></div>
+        <div class="rv">r=0.401</div>
+      </div>
+      <div class="verdict-box" style="margin-top:10px;font-size:12px;">
+        <strong>Why Account_Prior_Events wins:</strong> It is the simplest and most variance-stable of the cluster. Revenue and booked count accumulate proportionally with event count; the flag and win rate are derived downstream. Keeping the count as the anchor and the ratios as derived features is the correct parsimony choice.
+      </div>
+    </div>
+
+    <!-- Displacement cluster -->
+    <div class="corr-block">
+      <h4>⚠️ Displacement Risk cluster</h4>
+      <div class="corr-pair">
+        <div class="var" style="color:var(--orange)">Displacement_Risk_Score <em>(dropped)</em></div>
+        <div class="vs">vs</div>
+        <div class="var" style="color:var(--orange)">Flag_High_Displacement <em>(→ also removed)</em></div>
+        <div class="corr-bar-wrap"><div class="corr-bar" style="width:88%;background:var(--orange)"></div></div>
+        <div class="rv">r=0.878</div>
+      </div>
+      <div class="corr-pair">
+        <div class="var" style="color:var(--green);font-weight:700">Rooms_Available_Peak_Date <em>(IN MODEL ✓)</em></div>
+        <div class="vs">vs</div>
+        <div class="var">Flag_High_Displacement</div>
+        <div class="corr-bar-wrap"><div class="corr-bar" style="width:45%;background:var(--green)"></div></div>
+        <div class="rv">r=0.45</div>
+      </div>
+      <div class="corr-pair">
+        <div class="var" style="color:var(--green);font-weight:700">capacity_risk_score <em>(IN MODEL ✓)</em></div>
+        <div class="vs">vs</div>
+        <div class="var">Flag_High_Displacement</div>
+        <div class="corr-bar-wrap"><div class="corr-bar" style="width:52%;background:var(--green)"></div></div>
+        <div class="rv">r=0.52</div>
+      </div>
+      <div class="verdict-box" style="margin-top:10px;font-size:12px;">
+        <strong>All three displacement signals removed</strong> from the base pool (Displacement_Risk_Score, Flag_High_Displacement, Flag_Date_Conflict). But the two underlying quantities they are computed from — <code>Rooms_Available_Peak_Date</code> and <code>capacity_risk_score</code> — survive with VIF=6.97 and VIF=4.64 respectively.
+      </div>
+    </div>
+
+  </div><!-- end corr grid -->
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ VIF TABLE -->
+<section id="vif">
+  <h2>Final VIF Table — 33-Feature Base Pool</h2>
+  <p style="margin-bottom:14px;color:var(--gray);font-size:13px;">All features that survived correlation pruning and the top-60 importance cutoff, after iterative VIF pruning (threshold = 10). Ordered by VIF descending.</p>
+  <table class="vif-table">
+    <thead>
+      <tr>
+        <th>#</th><th>Feature</th><th>VIF</th><th style="min-width:160px">Collinearity level</th>
+        <th>Models</th><th>APIT Source</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- generated from data -->
+      <tr><td>1</td><td>proposed_total_revenue</td><td>8.94</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:89%;background:#E67E22"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">MeetingBroker</span></td></tr>
+      <tr><td>2</td><td>total_meeting_hours</td><td>8.20</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:82%;background:#E67E22"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">MeetingBroker</span></td></tr>
+      <tr><td>3</td><td>displacement_ema_7d</td><td>7.79</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:78%;background:#E67E22"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">RMS / Engineered</span></td></tr>
+      <tr><td>4</td><td>days_to_peak_season</td><td>7.57</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:76%;background:#E67E22"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">EventCal / Derived</span></td></tr>
+      <tr><td>5</td><td><strong>Flag_Rate_Below_Baseline</strong></td><td>7.47</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:75%;background:#E67E22"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">APIT Derived ★</span></td></tr>
+      <tr><td>6</td><td>avg_discount_nearby_30d</td><td>7.35</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:74%;background:#E67E22"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">Engineered</span></td></tr>
+      <tr><td>7</td><td><strong>Rooms_Available_Peak_Date</strong></td><td>6.97</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:70%;background:#E8A228"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">PMS / APIT ★</span></td></tr>
+      <tr><td>8</td><td><strong>response_due_days</strong></td><td>6.57</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:66%;background:#E8A228"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">MeetingBroker ★</span></td></tr>
+      <tr><td>9</td><td>competing_rfps_same_week_segment</td><td>6.06</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:61%;background:#E8A228"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">Engineered</span></td></tr>
+      <tr><td>10</td><td>tr_transient_rooms_turned_away</td><td>4.78</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:48%;background:#5DADE2"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">RMS / Transient</span></td></tr>
+      <tr><td>11</td><td>capacity_risk_score</td><td>4.64</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:46%;background:#5DADE2"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">APIT Derived</span></td></tr>
+      <tr><td>12</td><td>arrival_day_of_week</td><td>4.27</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:43%;background:#5DADE2"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">MeetingBroker</span></td></tr>
+      <tr><td>13</td><td>uses_boardroom</td><td>4.15</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:42%;background:#5DADE2"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">MeetingBroker</span></td></tr>
+      <tr><td>14</td><td>full_day_pct</td><td>3.80</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:38%;background:#5DADE2"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">MeetingBroker</span></td></tr>
+      <tr><td>15</td><td><strong>Account_Prior_Events</strong></td><td>3.70</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:37%;background:#5DADE2"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">CRM ★</span></td></tr>
+      <tr><td>16</td><td><strong>Meeting_Space_Ratio</strong></td><td>3.42</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:34%;background:#5DADE2"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">APIT Derived ★</span></td></tr>
+      <tr><td>17</td><td>is_peak_arrival</td><td>3.40</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:34%;background:#5DADE2"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">EventCal / Derived</span></td></tr>
+      <tr><td>18</td><td>group_size_tier_enc</td><td>3.35</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:34%;background:#5DADE2"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">MeetingBroker</span></td></tr>
+      <tr><td>19</td><td>transient_displacement_cost</td><td>3.23</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:32%;background:#5DADE2"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">RMS / Transient</span></td></tr>
+      <tr><td>20</td><td><strong>lead_source_encoded</strong></td><td>3.08</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:31%;background:#5DADE2"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">MeetingBroker ★</span></td></tr>
+      <tr><td>21</td><td>meeting_ratio</td><td>2.99</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:30%;background:#5DADE2"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">MeetingBroker</span></td></tr>
+      <tr><td>22</td><td>tr_rooms_to_capacity</td><td>2.49</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:25%;background:#27AE60"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">RMS / PMS</span></td></tr>
+      <tr><td>23</td><td>arrival_month_sin</td><td>2.41</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:24%;background:#27AE60"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">EventCal / Derived</span></td></tr>
+      <tr><td>24</td><td>has_special_requirements</td><td>1.78</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:18%;background:#27AE60"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">MeetingBroker</span></td></tr>
+      <tr><td>25</td><td>has_dinner</td><td>1.78</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:18%;background:#27AE60"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">MeetingBroker</span></td></tr>
+      <tr><td>26</td><td>budget_ratio</td><td>1.73</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:17%;background:#27AE60"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">MeetingBroker</span></td></tr>
+      <tr><td>27</td><td>revenue_quality_score</td><td>1.64</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:16%;background:#27AE60"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">APIT Derived</span></td></tr>
+      <tr><td>28</td><td><strong>Is_Compression_Date</strong></td><td>1.63</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:16%;background:#27AE60"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">EventCal ★</span></td></tr>
+      <tr><td>29</td><td>rfp_volume_acceleration</td><td>1.58</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:16%;background:#27AE60"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">Engineered</span></td></tr>
+      <tr><td>30</td><td>has_reception</td><td>1.35</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:14%;background:#27AE60"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">MeetingBroker</span></td></tr>
+      <tr><td>31</td><td>arrival_dow_cos</td><td>1.18</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:12%;background:#27AE60"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">Derived</span></td></tr>
+      <tr><td>32</td><td>occupancy_acceleration</td><td>1.03</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:10%;background:#27AE60"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">Engineered</span></td></tr>
+      <tr><td>36</td><td>inquiry_dow_sin</td><td>1.01</td><td><div class="vif-bar-wrap"><div class="vif-bar" style="width:10%;background:#27AE60"></div></div></td><td><span class="mtag adr">ADR</span><span class="mtag conv">Conv</span><span class="mtag fnb">F&B</span><span class="mtag pickup">Pickup</span></td><td><span class="source-tag">Derived</span></td></tr>
+    </tbody>
+  </table>
+  <p style="margin-top:8px;font-size:11px;color:var(--gray);">★ = direct APIT document variable surviving into the final pool. Bar colour: orange = VIF 7–10 (caution), blue = 3–7 (moderate), green = &lt;3 (clean).</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ FORCE ADDS -->
+<section id="force-adds">
+  <h2>Force-Added Variables</h2>
+  <p style="margin-bottom:14px;color:var(--gray);font-size:13px;">
+    14 additional APIT variables are injected back into specific models after the base pool is built,
+    bypassing the ADR-proxy importance screen. These are variables that the screen misranked because they
+    are irrelevant to pricing but critical for pickup or F&B prediction.
+  </p>
+
+  <h3>Pickup model force-adds</h3>
+  <table class="vif-table">
+    <thead><tr><th>Variable</th><th>Dataset Column</th><th>v4 Rank</th><th>Pool Screen Rank</th><th>Why Force-Added</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Group type</strong></td><td><code>event_type_enc</code></td><td>#1 (62% imp.)</td><td>#127 / 181</td><td>Corporate vs social groups have systematically different attrition (~0.85 vs ~0.72). Irrelevant to ADR → misranked by proxy.</td></tr>
+      <tr><td><strong>Market segment (OHE)</strong></td><td><code>market_seg_Social, market_seg_SMERF, market_seg_Travel…</code></td><td><span style="color:#27AE60">#1 in v7! (28.4%)</span></td><td>v7: 13 one-hot cols</td><td>Replacing market_segment_enc (false ordinal) with 13 binary columns. market_seg_Social became the #1 pickup predictor at 28.4% — it had been masked by ordinal encoding.</td></tr>
+      <tr><td><strong>Number of F&B types</strong></td><td><code>num_fnb_types</code></td><td>#3</td><td>VIF removed</td><td>Groups with more meal types have more complex logistics → lower attrition. Removed from base pool but reintroduced.</td></tr>
+      <tr><td><strong>Urgency Index</strong></td><td><code>Urgency_Index</code></td><td>#4 (6.1%)</td><td>VIF removed</td><td>Short decision windows correlate with looser room block commitments.</td></tr>
+      <tr><td><strong>F&B requirements flag</strong></td><td><code>has_fnb_requirements</code></td><td>#5</td><td>Corr. dropped</td><td>Groups with F&B requirements have higher pickup (invested in the programme).</td></tr>
+      <tr><td><strong>Num meeting rooms</strong></td><td><code>num_meeting_rooms</code></td><td>#6</td><td>VIF removed</td><td>More sessions = more committed attendees = higher pickup.</td></tr>
+      <tr><td><strong>Budget amount</strong></td><td><code>budget_amount</code></td><td>#11</td><td>VIF removed</td><td>Higher stated budget → confirmed commitment → higher pickup.</td></tr>
+      <tr><td><strong>Event format</strong></td><td><code>event_format_enc</code></td><td>#12</td><td>Below top-60</td><td>Training vs conference formats have different attrition profiles.</td></tr>
+      <tr><td><strong>Has premium AV</strong></td><td><code>has_premium_av</code></td><td>#14</td><td>Below top-60</td><td>Premium AV signals a high-commitment, often conference-type group.</td></tr>
+      <tr><td><strong>Displacement pressure (transient)</strong></td><td><code>tr_displacement_pressure</code></td><td>#15</td><td>Corr. dropped</td><td>High transient pressure at time of booking correlates with stricter pickup enforcement.</td></tr>
+      <tr><td><strong>Prior booked events</strong></td><td><code>Account_Prior_Booked</code></td><td>#16</td><td>Corr. dropped</td><td>Accounts with history of confirmed bookings show higher attrition discipline.</td></tr>
+      <tr><td><strong>Uses ballroom</strong></td><td><code>uses_ballroom</code></td><td>#18</td><td>Below top-60</td><td>Ballroom events are large-format → pickup patterns differ from breakout-only groups.</td></tr>
+      <tr><td><strong>Repeat client flag</strong></td><td><code>is_repeat_client</code></td><td>#20</td><td>Corr. dropped</td><td>Returning clients have established attrition patterns tracked in CRM.</td></tr>
+      <tr><td><strong>Short response window flag</strong></td><td><code>Flag_Short_Response_Window</code></td><td>—</td><td>VIF removed</td><td>Last-minute bookings correlate with less rigorous room block planning.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>F&B model force-adds (additional)</h3>
+  <table class="vif-table" style="margin-top:10px;">
+    <thead><tr><th>Variable</th><th>Dataset Column</th><th>Why Force-Added</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Avg room utilization</strong></td><td><code>avg_room_utilization</code></td><td>Session density signal; groups that fill their booked rooms spend more per person on catering.</td></tr>
+      <tr><td><strong>Total session F&B</strong></td><td><code>total_session_fnb</code></td><td>Direct count of F&B-bearing sessions in the programme.</td></tr>
+      <tr><td><strong>Num meeting sessions</strong></td><td><code>num_sessions</code></td><td>More sessions = more meal breaks = higher per-person spend.</td></tr>
+      <tr><td><strong>Num meeting days</strong></td><td><code>num_meeting_days</code></td><td>Multi-day events require meals; single-day events often skip dinner/reception.</td></tr>
+      <tr><td><strong>Has evening session</strong></td><td><code>has_evening_session</code></td><td>Evening sessions are almost always receptions/dinners — the highest per-person spend items.</td></tr>
+      <tr><td><strong>Num meeting rooms</strong></td><td><code>Num_Meeting_Rooms</code></td><td>Catering scale tracks meeting space scale.</td></tr>
+      <tr><td><strong>Average AV level</strong></td><td><code>Avg_AV_Level</code></td><td>Premium AV groups tend to have premium catering — shared sophistication signal.</td></tr>
+      <tr><td><strong>Uses ballroom</strong></td><td><code>Uses_Ballroom</code></td><td>Ballroom events are almost always banquet-format with highest per-person F&B spend.</td></tr>
+      <tr><td><strong>Rate spread</strong></td><td><code>rate_spread</code></td><td>Wide spread between min and max room rates proxies for group sophistication level.</td></tr>
+      <tr><td><strong>SMERF demand 30d</strong></td><td><code>smerf_demand_30d</code></td><td>Social/Military/Education/Religious/Fraternal groups have systematically lower per-person F&B spend than corporate.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note" style="margin-top:16px;">
+    <strong>Why does this work?</strong> Force-adding variables that were removed by correlation pruning does NOT violate the pruning logic — correlation pruning only ran on the base candidate pool. The force-adds are appended <em>after</em> pruning, for specific models only. If two force-added variables are themselves correlated with each other, the model's regularisation (L1/L2 penalties tuned by Optuna) handles the remaining redundancy without causing coefficient instability, because XGBoost's tree structure is inherently more robust to multicollinearity than linear models.
+  </div>
+</section>
+
+</div><!-- end container -->
+
+<script>
+// Highlight active nav section on scroll
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('nav a');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => { if (window.scrollY >= s.offsetTop - 80) current = s.id; });
+  navLinks.forEach(a => { a.classList.toggle('active', a.getAttribute('href') === '#' + current); });
+});
+</script>
+</body>
+</html>
