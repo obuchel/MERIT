@@ -23,7 +23,7 @@ Output format (mirrors the existing JS file):
 
 Usage:
   python convert_xgboost_to_js.py \
-      --input  rfp_models_v5.pkl \
+      --input  rfp_models_v7.pkl \
       --output xgboost_trees_data.js \
       [--precision 6]             # decimal places for floats (default: 6)
 """
