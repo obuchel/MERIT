@@ -1,0 +1,148 @@
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:1.25rem 0;font-family:var(--font-sans)}
+h2{font-size:15px;font-weight:500;color:var(--color-text-primary);margin-bottom:1.25rem}
+.section{margin-bottom:2rem}
+.section-head{font-size:12px;font-weight:500;letter-spacing:.04em;color:var(--color-text-secondary);text-transform:uppercase;padding:0 0 6px;border-bottom:.5px solid var(--color-border-tertiary);display:grid;grid-template-columns:160px 1fr 200px;gap:12px;margin-bottom:2px}
+.row{display:grid;grid-template-columns:160px 1fr 200px;gap:12px;padding:10px 0;border-bottom:.5px solid var(--color-border-tertiary);align-items:start}
+.metric{font-size:13px;font-weight:500;color:var(--color-text-primary);line-height:1.4}
+.val{font-size:12px;color:var(--color-text-secondary);margin-top:2px}
+.source{font-size:12px;color:var(--color-text-secondary);line-height:1.5}
+code{font-family:var(--font-mono);font-size:11px;background:var(--color-background-secondary);color:var(--color-text-primary);padding:1px 5px;border-radius:4px;border:.5px solid var(--color-border-tertiary)}
+.status{font-size:12px;line-height:1.5}
+.ok{color:var(--color-text-success)}
+.ok-badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;color:var(--color-text-success)}
+.ok-icon{width:15px;height:15px;border-radius:50%;background:var(--color-background-success);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.ok-icon svg{width:9px;height:9px;stroke:var(--color-text-success);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.pill{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;margin-top:3px;font-weight:500}
+.pill-xgb{background:var(--color-background-info);color:var(--color-text-info)}
+.pill-cfg{background:var(--color-background-warning);color:var(--color-text-warning)}
+.pill-formula{background:var(--color-background-secondary);color:var(--color-text-secondary);border:.5px solid var(--color-border-secondary)}
+.section-banner{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:var(--color-text-success);background:var(--color-background-success);border-radius:var(--border-radius-md);padding:8px 12px;margin-bottom:12px}
+.section-banner .ok-icon{background:var(--color-text-success)}
+.section-banner .ok-icon svg{stroke:#fff}
+</style>
+
+<div class="wrap">
+  <div class="section">
+    <div class="section-head">
+      <span>Metric</span><span>Source</span><span>Status</span>
+    </div>
+
+    <div class="row">
+      <div><div class="metric">Baseline ADR</div><div class="val">$164</div></div>
+      <div class="source"><code>hotel_config/settings</code><br><code>baseline_adr</code> — editable in Firestore console</div>
+      <div class="status ok-badge"><div class="ok-icon"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>Config-sourced</div>
+    </div>
+
+    <div class="row">
+      <div><div class="metric">Quoted ADR</div><div class="val">$144</div></div>
+      <div class="source">
+        <code>quoted_adr</code> XGBoost model (primary)<br>
+        Falls back to <code>baseline_adr × (1 − group_discount_pct)</code> from config when model is out of range<br>
+        <span class="pill pill-xgb">XGBoost</span> <span class="pill pill-cfg">config fallback</span>
+      </div>
+      <div class="status ok-badge"><div class="ok-icon"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>ML-predicted</div>
+    </div>
+
+    <div class="row">
+      <div><div class="metric">Room Revenue</div><div class="val">$32K</div></div>
+      <div class="source"><code>quotedADR × room_nights × pickup</code><br>Pickup from <code>pickup_ipw</code> model fed by live Firestore market signals<br><span class="pill pill-xgb">XGBoost</span></div>
+      <div class="status ok-badge"><div class="ok-icon"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>XGBoost pickup</div>
+    </div>
+
+    <div class="row">
+      <div><div class="metric">F&B Revenue</div><div class="val">$0–$XX</div></div>
+      <div class="source">
+        <code>fnb</code> XGBoost model → <code>fnbPP × attendees</code><br>
+        Floor: <code>$25/pax</code> when meeting space present (prevents $0 when model undershoots)<br>
+        <span class="pill pill-xgb">XGBoost</span>
+      </div>
+      <div class="status ok-badge"><div class="ok-icon"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>XGBoost + floor</div>
+    </div>
+
+    <div class="row">
+      <div><div class="metric">Meeting Rev.</div><div class="val">$6K</div></div>
+      <div class="source">
+        <code>rooms × meeting_rate_per_room_night × nights</code><br>
+        Rate from <code>hotel_config/settings</code> — editable without code change<br>
+        <span class="pill pill-cfg">config</span>
+      </div>
+      <div class="status ok-badge"><div class="ok-icon"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>Config-sourced</div>
+    </div>
+
+    <div class="row">
+      <div><div class="metric">Gross Revenue</div><div class="val">$38K</div></div>
+      <div class="source"><code>roomRev + fnbRev + mtgRev</code></div>
+      <div class="status ok-badge"><div class="ok-icon"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>Derived</div>
+    </div>
+
+    <div class="row">
+      <div><div class="metric">Displacement</div><div class="val">−$14K</div></div>
+      <div class="source">
+        <code>baseline_adr × rooms × nights × displacement_factor × occ%</code><br>
+        Factor from <code>hotel_config/settings</code> — scales with forecasted occupancy<br>
+        <span class="pill pill-cfg">config</span>
+      </div>
+      <div class="status ok-badge"><div class="ok-icon"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>Config-sourced</div>
+    </div>
+
+    <div class="row">
+      <div><div class="metric">Net Value</div><div class="val">$25K</div></div>
+      <div class="source"><code>grossRev − dispCost</code></div>
+      <div class="status ok-badge"><div class="ok-icon"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>Derived</div>
+    </div>
+
+    <div class="row">
+      <div><div class="metric">Exp. Value</div><div class="val">$16K</div></div>
+      <div class="source"><code>netValue × conv × (feasible ? 1 : 0.35)</code><br>Conversion from <code>conversion</code> XGBoost model<br><span class="pill pill-xgb">XGBoost</span></div>
+      <div class="status ok-badge"><div class="ok-icon"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>XGBoost conv.</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-banner">
+      <div class="ok-icon"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>
+      All method scores — all calculated
+    </div>
+    <div class="section-head">
+      <span>Score</span><span>Computed via</span><span>Status</span>
+    </div>
+
+    <div class="row">
+      <div><div class="metric">Composite</div><div class="val">12.8</div></div>
+      <div class="source"><code>(expValue/1500)×0.45 + conv×35×0.20 + hasMtg×0.15 + season×0.10 + feasible×0.10</code></div>
+      <div class="status ok-badge"><div class="ok-icon"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>Calculated</div>
+    </div>
+
+    <div class="row">
+      <div><div class="metric">Expected Value</div><div class="val">$16K</div></div>
+      <div class="source"><code>score.expValue</code> directly</div>
+      <div class="status ok-badge"><div class="ok-icon"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>Calculated</div>
+    </div>
+
+    <div class="row">
+      <div><div class="metric">Risk-Adj EV</div><div class="val">$16K</div></div>
+      <div class="source"><code>EV − λ × √(EV² × (1−conv)) × 0.01</code><br>Panel always uses default λ=0.5</div>
+      <div class="status ok-badge"><div class="ok-icon"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>λ=0.5 default</div>
+    </div>
+
+    <div class="row">
+      <div><div class="metric">RevPAR Uplift</div><div class="val">$69/rn</div></div>
+      <div class="source"><code>netValue / total_room_nights</code></div>
+      <div class="status ok-badge"><div class="ok-icon"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>Calculated</div>
+    </div>
+
+    <div class="row">
+      <div><div class="metric">Displacement-First</div><div class="val">1.83×</div></div>
+      <div class="source"><code>(grossRev − dispCost) / dispCost</code><br>dispCost uses configured factor</div>
+      <div class="status ok-badge"><div class="ok-icon"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>Calculated</div>
+    </div>
+
+    <div class="row">
+      <div><div class="metric">Time-Discounted EV</div><div class="val">$16K</div></div>
+      <div class="source"><code>expValue × e^(−δ × daysUntilArrival / 365)</code><br>Panel always uses default δ=0.4</div>
+      <div class="status ok-badge"><div class="ok-icon"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg></div>δ=0.4 default</div>
+    </div>
+  </div>
+</div>
