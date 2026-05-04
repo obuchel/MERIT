@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recordings Manager — ourhome</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/aws-sdk/2.1691.0/aws-sdk.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0f0e;
+  --bg2:#121614;
+  --surface:#171c1a;
+  --surface2:#1e2422;
+  --surface3:#252c29;
+  --border:#232b28;
+  --border2:#2e3835;
+  --text:#cdd8d4;
+  --muted:#5a706a;
+  --accent:#c8a96e;
+  --accent2:#e8c48a;
+  --green:#4caf82;
+  --red:#d96b6b;
+  --blue:#6aabcc;
+  --wave:#c8a96e;
+  --mono:'DM Mono',monospace;
+  --serif:'Playfair Display',serif;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px}
+
+/* ── LOGIN ── */
+#login{display:flex;align-items:center;justify-content:center;height:100vh;
+  background:radial-gradient(ellipse 100% 80% at 50% 100%,#1a1208 0%,transparent 65%)}
+.lbox{width:460px;background:var(--surface);border:1px solid var(--border2)}
+.lhead{padding:32px 36px 24px;border-bottom:1px solid var(--border);
+  background:linear-gradient(160deg,#1a1f1d 0%,var(--surface) 100%)}
+.llogo{font-family:var(--serif);font-size:26px;font-weight:700;letter-spacing:-0.02em;margin-bottom:4px}
+.llogo em{color:var(--accent);font-style:normal}
+.lsub{color:var(--muted);font-size:11px;letter-spacing:0.12em;text-transform:uppercase}
+.lbody{padding:28px 36px}
+.field{margin-bottom:18px}
+.field label{display:block;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+.field input,.field select{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);
+  font-family:var(--mono);font-size:12px;padding:10px 14px;outline:none;transition:border-color .15s}
+.field input:focus,.field select:focus{border-color:var(--accent)}
+.field select option{background:var(--bg)}
+.lbtn{width:100%;margin-top:4px;padding:13px;background:var(--accent);color:#0d0f0e;border:none;
+  cursor:pointer;font-family:var(--serif);font-weight:600;font-size:14px;letter-spacing:0.02em;transition:opacity .15s}
+.lbtn:hover{opacity:.88}
+.lerr{color:var(--red);font-size:11px;margin-top:12px;padding:9px 12px;
+  border:1px solid rgba(217,107,107,.2);background:rgba(217,107,107,.05)}
+
+/* ── APP SHELL ── */
+#app{display:none;height:100vh;flex-direction:column}
+
+/* topbar */
+.topbar{display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;height:48px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.tl{display:flex;align-items:center;gap:16px}
+.tlogo{font-family:var(--serif);font-size:17px;font-weight:700;letter-spacing:-0.02em}
+.tlogo em{color:var(--accent);font-style:normal}
+.tbadge{font-size:10px;letter-spacing:.08em;color:var(--muted);border:1px solid var(--border2);padding:2px 9px}
+.tr{display:flex;align-items:center;gap:14px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+.disc{background:none;border:1px solid var(--border2);color:var(--muted);font-family:var(--mono);
+  font-size:11px;padding:5px 14px;cursor:pointer;transition:all .15s}
+.disc:hover{border-color:var(--red);color:var(--red)}
+
+/* main */
+.main{display:flex;flex:1;overflow:hidden}
+
+/* sidebar */
+.sidebar{width:260px;border-right:1px solid var(--border);background:var(--surface);
+  display:flex;flex-direction:column;flex-shrink:0}
+.sh{display:flex;align-items:center;justify-content:space-between;
+  padding:16px 18px 12px;border-bottom:1px solid var(--border)}
+.sh-title{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.sh-btn{background:none;border:1px solid var(--border2);color:var(--accent);
+  width:24px;height:24px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.sh-btn:hover{background:var(--accent);color:#0d0f0e}
+.folder-list{overflow-y:auto;flex:1;padding:6px 0}
+.folder-item{display:flex;align-items:center;gap:10px;padding:10px 18px;cursor:pointer;
+  transition:background .1s;border-left:2px solid transparent}
+.folder-item:hover{background:var(--surface2)}
+.folder-item.active{background:var(--surface2);border-left-color:var(--accent)}
+.folder-icon{font-size:15px;flex-shrink:0}
+.folder-info{flex:1;overflow:hidden}
+.folder-name{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.folder-count{font-size:10px;color:var(--muted);margin-top:1px}
+.folder-del{margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;
+  font-size:13px;padding:2px 4px;opacity:0;transition:all .15s}
+.folder-item:hover .folder-del{opacity:1}
+.folder-del:hover{color:var(--red)}
+
+/* player panel */
+.player-panel{border-top:1px solid var(--border);flex-shrink:0;padding:16px 18px;background:var(--bg2)}
+.now-playing-label{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.now-playing-title{font-family:var(--serif);font-size:13px;color:var(--accent2);margin-bottom:12px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+audio{width:100%;height:28px;filter:invert(0);accent-color:var(--accent)}
+audio::-webkit-media-controls-panel{background:var(--surface3)}
+.no-track{font-size:11px;color:var(--muted);padding:8px 0}
+
+/* content */
+.content{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.toolbar{display:flex;align-items:center;gap:10px;padding:11px 20px;
+  border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;flex-wrap:wrap}
+.breadcrumb{display:flex;align-items:center;gap:6px;flex:1;min-width:180px;overflow:hidden}
+.bc-sep{color:var(--muted)}
+.bc-item{color:var(--muted);cursor:pointer;font-size:12px;white-space:nowrap}
+.bc-item:hover{color:var(--accent)}
+.bc-item.cur{color:var(--text);cursor:default}
+.search{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border2);padding:6px 11px}
+.search input{background:none;border:none;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;width:160px}
+.search input::placeholder{color:var(--muted)}
+.tactions{display:flex;gap:8px}
+.btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--border2);
+  background:none;color:var(--text);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:hover{border-color:var(--text)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#0d0f0e}
+.btn.pri:hover{opacity:.85}
+.btn.danger{border-color:transparent;color:var(--red)}
+.btn.danger:hover{border-color:var(--red);background:rgba(217,107,107,.08)}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+
+/* recordings grid */
+.grid-wrap{flex:1;overflow-y:auto;padding:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.rec-card{background:var(--surface);border:1px solid var(--border);padding:0;cursor:pointer;
+  transition:all .18s;position:relative;overflow:hidden}
+.rec-card:hover{border-color:var(--border2);background:var(--surface2);transform:translateY(-1px)}
+.rec-card.playing{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 4px 20px rgba(200,169,110,.15)}
+.rec-card-top{padding:16px 16px 12px;border-bottom:1px solid var(--border)}
+.rec-type-icon{font-size:28px;margin-bottom:10px}
+.rec-name{font-size:12px;font-weight:500;color:var(--text);margin-bottom:4px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3}
+.rec-meta{font-size:10px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.rec-card-bot{display:flex;align-items:center;justify-content:space-between;padding:8px 12px}
+.rec-play{background:none;border:none;color:var(--accent);font-size:18px;cursor:pointer;
+  padding:2px 4px;transition:transform .15s;line-height:1}
+.rec-play:hover{transform:scale(1.15)}
+.rec-actions{display:flex;gap:4px}
+.ic{background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;
+  padding:3px 5px;transition:color .15s;line-height:1}
+.ic:hover{color:var(--text)}
+.ic.del:hover{color:var(--red)}
+.playing-bar{position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);
+  transform-origin:left;animation:progress 1s linear infinite alternate}
+@keyframes progress{from{transform:scaleX(.3)}to{transform:scaleX(.9)}}
+
+/* list view */
+.list-wrap{flex:1;overflow-y:auto}
+.list-table{width:100%;border-collapse:collapse}
+.list-table thead{position:sticky;top:0;z-index:5}
+.list-table th{text-align:left;padding:10px 20px;font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);
+  background:var(--surface2);font-weight:400;white-space:nowrap}
+.list-table td{padding:10px 20px;border-bottom:1px solid var(--border);vertical-align:middle}
+.list-table tr:hover td{background:var(--surface2)}
+.list-table tr.playing td{background:rgba(200,169,110,.06)}
+.fname{display:flex;align-items:center;gap:10px}
+.ficon{font-size:16px;flex-shrink:0}
+.fntext{font-size:12px}
+.fmuted{color:var(--muted);font-size:11px;white-space:nowrap}
+.row-actions{display:flex;gap:6px;justify-content:flex-end}
+.sel-cb{cursor:pointer;accent-color:var(--accent)}
+
+/* folder row */
+.folder-row{cursor:pointer}
+.folder-row:hover td{background:var(--surface2)}
+
+/* states */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  flex:1;color:var(--muted);gap:12px;padding:40px}
+.empty-icon{font-size:48px;opacity:.35}
+.empty-text{font-size:12px;text-align:center;line-height:1.6}
+.loading{display:flex;align-items:center;justify-content:center;flex:1;color:var(--muted);gap:10px}
+.spin{width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* statusbar */
+.statusbar{display:flex;align-items:center;justify-content:space-between;
+  padding:5px 20px;border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.sl{color:var(--muted);font-size:10px;letter-spacing:.04em}
+.sr{display:flex;align-items:center;gap:12px}
+.view-toggle{display:flex;gap:0}
+.vbtn{background:none;border:1px solid var(--border2);color:var(--muted);
+  font-size:13px;padding:3px 8px;cursor:pointer;transition:all .15s}
+.vbtn:first-child{border-right:none}
+.vbtn.active{background:var(--surface2);color:var(--text)}
+
+/* modals */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);
+  align-items:center;justify-content:center;z-index:100}
+.overlay.show{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);min-width:380px;max-width:500px;
+  width:90%;box-shadow:0 24px 64px rgba(0,0,0,.6)}
+.mhead{padding:20px 26px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between}
+.mtitle{font-family:var(--serif);font-size:16px;font-weight:600}
+.mclose{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px}
+.mclose:hover{color:var(--text)}
+.mbody{padding:22px 26px}
+.mfooter{padding:14px 26px 22px;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--border)}
+.dropzone{border:2px dashed var(--border2);padding:36px;text-align:center;cursor:pointer;
+  transition:all .15s;color:var(--muted);font-size:12px;line-height:1.6}
+.dropzone:hover,.dropzone.drag{border-color:var(--accent);color:var(--text);background:rgba(200,169,110,.04)}
+.dropzone input{display:none}
+.dropzone-icon{font-size:32px;margin-bottom:10px}
+.flist{margin-top:12px;max-height:140px;overflow-y:auto}
+.flist-item{display:flex;justify-content:space-between;padding:5px 0;
+  border-bottom:1px solid var(--border);font-size:11px}
+.prog-bar{width:100%;height:3px;background:var(--border);margin-top:10px;overflow:hidden}
+.prog-fill{height:100%;background:var(--accent);transition:width .3s}
+.prog-text{font-size:10px;color:var(--muted);margin-top:4px}
+.video-modal .mbody{padding:0}
+video{width:100%;display:block;max-height:70vh;background:#000}
+
+/* toast */
+.toasts{position:fixed;bottom:44px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:200}
+.toast{padding:10px 16px;font-size:12px;border-left:3px solid;
+  background:var(--surface2);transform:translateX(24px);opacity:0;transition:all .25s;max-width:320px}
+.toast.show{transform:translateX(0);opacity:1}
+.toast.ok{border-color:var(--green)}
+.toast.err{border-color:var(--red)}
+.toast.info{border-color:var(--blue)}
+
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="lbox">
+    <div class="lhead">
+      <div class="llogo">Our<em>Home</em> Recordings</div>
+      <div class="lsub">S3 Studio Manager</div>
+    </div>
+    <div class="lbody">
+      <div class="field">
+        <label>Access Key ID</label>
+        <input id="k-id" type="text" placeholder="AKIAIOSFODNN7EXAMPLE" autocomplete="off"/>
+      </div>
+      <div class="field">
+        <label>Secret Access Key</label>
+        <input id="k-sec" type="password" placeholder="wJalrXUtn/K7MDENG/bPxRfiCY…" autocomplete="off"/>
+      </div>
+      <div class="field">
+        <label>Bucket Name</label>
+        <input id="k-bucket" type="text" value="ourhome-recordings"/>
+      </div>
+      <div class="field">
+        <label>Region</label>
+        <select id="k-region">
+          <option value="us-east-1" selected>us-east-1 — US East (N. Virginia)</option>
+          <option value="us-east-2">us-east-2 — US East (Ohio)</option>
+          <option value="us-west-1">us-west-1 — US West (N. California)</option>
+          <option value="us-west-2">us-west-2 — US West (Oregon)</option>
+          <option value="eu-west-1">eu-west-1 — Europe (Ireland)</option>
+          <option value="eu-west-2">eu-west-2 — Europe (London)</option>
+          <option value="eu-central-1">eu-central-1 — Europe (Frankfurt)</option>
+          <option value="ap-southeast-1">ap-southeast-1 — Asia Pacific (Singapore)</option>
+          <option value="ca-central-1">ca-central-1 — Canada (Central)</option>
+        </select>
+      </div>
+      <button class="lbtn" onclick="doLogin()">Open Studio →</button>
+      <div class="lerr" id="lerr" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="tl">
+      <div class="tlogo">Our<em>Home</em> Recordings</div>
+      <div class="tbadge" id="region-lbl">us-east-1</div>
+      <div class="tbadge" id="bucket-lbl">ourhome-recordings</div>
+    </div>
+    <div class="tr">
+      <div class="dot"></div>
+      <span style="color:var(--muted);font-size:11px" id="id-lbl"></span>
+      <button class="disc" onclick="doLogout()">Disconnect</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sh">
+        <span class="sh-title">Folders</span>
+        <button class="sh-btn" onclick="showFolderModal()" title="New folder">+</button>
+      </div>
+      <div class="folder-list" id="folder-list">
+        <div class="loading" style="height:80px"><div class="spin"></div></div>
+      </div>
+      <!-- PLAYER -->
+      <div class="player-panel">
+        <div class="now-playing-label">Now Playing</div>
+        <div class="now-playing-title" id="np-title">—</div>
+        <audio id="audio-player" controls preload="none" style="width:100%"></audio>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+      <div class="toolbar">
+        <div class="breadcrumb" id="breadcrumb">
+          <span class="bc-item cur">Select a folder</span>
+        </div>
+        <div class="search">
+          <span style="color:var(--muted)">⌕</span>
+          <input type="text" placeholder="Search recordings…" oninput="filterFiles()" id="search"/>
+        </div>
+        <div class="tactions">
+          <button class="btn" id="btn-folder" onclick="showFolderModal()" disabled>📁 Folder</button>
+          <button class="btn pri" id="btn-upload" onclick="showUpload()" disabled>▲ Upload</button>
+          <button class="btn danger" id="btn-del-sel" style="display:none" onclick="deleteSelected()">🗑 Delete</button>
+          <button class="btn" id="btn-refresh" onclick="loadFiles()" disabled style="color:var(--muted)">↺</button>
+        </div>
+      </div>
+
+      <!-- grid view -->
+      <div id="view-grid" style="display:none;flex:1;overflow-y:auto">
+        <div class="grid-wrap" style="padding:20px">
+          <div class="grid" id="grid-inner"></div>
+        </div>
+      </div>
+
+      <!-- list view -->
+      <div id="view-list" style="display:none;flex:1;overflow-y:auto">
+        <table class="list-table" id="list-table">
+          <thead>
+            <tr>
+              <th style="width:32px"><input type="checkbox" class="sel-cb" id="sel-all" onchange="toggleSelAll()"/></th>
+              <th>Name</th>
+              <th>Size</th>
+              <th>Modified</th>
+              <th>Type</th>
+              <th style="text-align:right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="list-body"></tbody>
+        </table>
+      </div>
+
+      <!-- empty / loading states -->
+      <div id="state-empty" class="empty" style="display:none">
+        <div class="empty-icon">🎙</div>
+        <div class="empty-text">No recordings here yet.<br>Upload your first file to get started.</div>
+      </div>
+      <div id="state-loading" class="loading" style="display:none">
+        <div class="spin"></div> Loading recordings…
+      </div>
+      <div id="state-init" class="empty">
+        <div class="empty-icon">🎵</div>
+        <div class="empty-text">Select a folder from the sidebar<br>or browse all recordings.</div>
+      </div>
+
+      <div class="statusbar">
+        <div class="sl" id="status-l">Ready</div>
+        <div class="sr">
+          <div class="view-toggle">
+            <button class="vbtn" id="vbtn-grid" onclick="setView('grid')" title="Grid view">⊞</button>
+            <button class="vbtn active" id="vbtn-list" onclick="setView('list')" title="List view">☰</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- UPLOAD MODAL -->
+<div class="overlay" id="m-upload">
+  <div class="modal">
+    <div class="mhead"><div class="mtitle">Upload Recordings</div><button class="mclose" onclick="closeModal('m-upload')">✕</button></div>
+    <div class="mbody">
+      <div class="dropzone" id="dz" onclick="document.getElementById('fi').click()"
+           ondragover="event.preventDefault();this.classList.add('drag')"
+           ondragleave="this.classList.remove('drag')"
+           ondrop="dropFiles(event)">
+        <input type="file" id="fi" multiple accept="audio/*,video/*,.mp3,.mp4,.wav,.m4a,.aac,.flac,.ogg,.mov,.avi,.mkv,.wma" onchange="pickFiles(event)"/>
+        <div class="dropzone-icon">🎙</div>
+        <div>Drop audio or video files here</div>
+        <div style="font-size:10px;margin-top:4px;color:var(--muted)">MP3, WAV, M4A, MP4, MOV, FLAC, OGG…</div>
+      </div>
+      <div class="flist" id="flist"></div>
+      <div class="prog-bar" id="prog-bar" style="display:none"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+      <div class="prog-text" id="prog-text"></div>
+    </div>
+    <div class="mfooter">
+      <button class="btn" onclick="closeModal('m-upload')">Cancel</button>
+      <button class="btn pri" onclick="doUpload()">Upload Files</button>
+    </div>
+  </div>
+</div>
+
+<!-- FOLDER MODAL -->
+<div class="overlay" id="m-folder">
+  <div class="modal">
+    <div class="mhead"><div class="mtitle">New Folder</div><button class="mclose" onclick="closeModal('m-folder')">✕</button></div>
+    <div class="mbody">
+      <div class="field"><label>Folder Name</label><input type="text" id="folder-inp" placeholder="2024-recordings"/></div>
+    </div>
+    <div class="mfooter">
+      <button class="btn" onclick="closeModal('m-folder')">Cancel</button>
+      <button class="btn pri" onclick="doCreateFolder()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- RENAME MODAL -->
+<div class="overlay" id="m-rename">
+  <div class="modal">
+    <div class="mhead"><div class="mtitle">Rename File</div><button class="mclose" onclick="closeModal('m-rename')">✕</button></div>
+    <div class="mbody">
+      <div class="field"><label>New Name</label><input type="text" id="rename-inp" placeholder="recording.mp3"/></div>
+      <div style="font-size:10px;color:var(--muted);line-height:1.5">Renames by copying to new key and deleting original.</div>
+    </div>
+    <div class="mfooter">
+      <button class="btn" onclick="closeModal('m-rename')">Cancel</button>
+      <button class="btn pri" onclick="doRename()">Rename</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIDEO MODAL -->
+<div class="overlay" id="m-video">
+  <div class="modal video-modal" style="max-width:720px">
+    <div class="mhead"><div class="mtitle" id="vid-title">Video</div><button class="mclose" onclick="closeVideoModal()">✕</button></div>
+    <div class="mbody"><video id="vid-player" controls></video></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+// ── STATE ──────────────────────────────────────────
+let s3=null, BUCKET='', PREFIX='', allFiles=[], selected=new Set(), renameKey='', uploadFiles=[], currentView='list', playingKey='';
+
+// ── AUTH ───────────────────────────────────────────
+function doLogin(){
+  const id=v('k-id'), sec=v('k-sec'), region=v('k-region'), bucket=v('k-bucket');
+  hide('lerr');
+  if(!id||!sec){show2('lerr','Please enter Access Key ID and Secret Access Key.');return;}
+  if(!bucket){show2('lerr','Please enter a bucket name.');return;}
+  AWS.config.update({accessKeyId:id,secretAccessKey:sec,region});
+  s3=new AWS.S3({region,signatureVersion:'v4'});
+  BUCKET=bucket;
+  el('region-lbl').textContent=region;
+  el('bucket-lbl').textContent=bucket;
+  el('id-lbl').textContent=id.slice(0,8)+'…';
+  el('login').style.display='none';
+  el('app').style.display='flex';
+  setView('list');
+  loadFolders();
+}
+function doLogout(){
+  s3=null;BUCKET='';PREFIX='';
+  el('login').style.display='flex';
+  el('app').style.display='none';
+  el('audio-player').src='';
+  el('np-title').textContent='—';
+}
+
+// ── FOLDERS (sidebar) ──────────────────────────────
+async function loadFolders(){
+  const fl=el('folder-list');
+  fl.innerHTML='<div class="loading" style="height:80px"><div class="spin"></div></div>';
+  try{
+    const data=await s3.listObjectsV2({Bucket:BUCKET,Delimiter:'/'}).promise();
+    const prefixes=(data.CommonPrefixes||[]).map(p=>p.Prefix);
+    fl.innerHTML='';
+    // root option
+    const root=mkFolderItem('🏠','All Recordings','');
+    fl.appendChild(root);
+    prefixes.forEach(p=>fl.appendChild(mkFolderItem('📁',p.replace('/',''),p)));
+    setStatus(`${prefixes.length} folder${prefixes.length!==1?'s':''} + root`);
+  }catch(e){
+    fl.innerHTML=`<div style="padding:16px;color:var(--red);font-size:11px">Error: ${e.message}</div>`;
+    toast(e.message,'err');
+  }
+}
+
+function mkFolderItem(icon,name,prefix){
+  const d=document.createElement('div');
+  d.className='folder-item';
+  d.dataset.prefix=prefix;
+  d.innerHTML=`<span class="folder-icon">${icon}</span><div class="folder-info"><div class="folder-name">${name}</div></div>${prefix?`<button class="folder-del" onclick="event.stopPropagation();rmFolder('${prefix}')">✕</button>`:''}`;
+  d.addEventListener('click',()=>selectFolder(prefix,d));
+  return d;
+}
+
+function selectFolder(prefix,el_){
+  document.querySelectorAll('.folder-item').forEach(x=>x.classList.remove('active'));
+  if(el_)el_.classList.add('active');
+  PREFIX=prefix;
+  el('btn-upload').disabled=false;
+  el('btn-folder').disabled=false;
+  el('btn-refresh').disabled=false;
+  el('search').value='';
+  selected.clear();
+  el('btn-del-sel').style.display='none';
+  loadFiles();
+}
+
+async function rmFolder(prefix){
+  if(!confirm(`Delete folder "${prefix.replace('/','')}" and all its contents?`))return;
+  try{
+    const data=await s3.listObjectsV2({Bucket:BUCKET,Prefix:prefix}).promise();
+    if(data.Contents.length){
+      await s3.deleteObjects({Bucket:BUCKET,Delete:{Objects:data.Contents.map(o=>({Key:o.Key}))}}).promise();
+    }
+    toast('Folder deleted','ok');
+    loadFolders();
+    if(PREFIX===prefix){PREFIX='';showState('init');}
+  }catch(e){toast(e.message,'err');}
+}
+
+// ── FILES ──────────────────────────────────────────
+async function loadFiles(){
+  showState('loading');
+  selected.clear();
+  el('btn-del-sel').style.display='none';
+  updateBreadcrumb();
+  try{
+    const data=await s3.listObjectsV2({Bucket:BUCKET,Prefix:PREFIX,Delimiter:'/'}).promise();
+    allFiles=[];
+    (data.CommonPrefixes||[]).forEach(p=>allFiles.push({Key:p.Prefix,isFolder:true,Size:0}));
+    (data.Contents||[]).forEach(o=>{if(o.Key!==PREFIX&&o.Key!==PREFIX+'/')allFiles.push({...o,isFolder:false});});
+    if(!allFiles.length){showState('empty');}else{showState('');renderFiles(allFiles);}
+    const total=allFiles.filter(f=>!f.isFolder).reduce((s,f)=>s+f.Size,0);
+    setStatus(`${allFiles.length} item${allFiles.length!==1?'s':''}  ·  ${fmtSize(total)}`);
+  }catch(e){
+    showState('empty');
+    toast(e.message,'err');
+  }
+}
+
+function filterFiles(){
+  const q=el('search').value.toLowerCase();
+  const filtered=allFiles.filter(f=>f.Key.replace(PREFIX,'').toLowerCase().includes(q));
+  renderFiles(filtered);
+}
+
+function renderFiles(files){
+  if(currentView==='grid') renderGrid(files);
+  else renderList(files);
+}
+
+// ── GRID VIEW ─────────────────────────────────────
+function renderGrid(files){
+  const g=el('grid-inner');g.innerHTML='';
+  files.forEach(f=>{
+    const name=f.Key.replace(PREFIX,'').replace('/','');
+    if(!name)return;
+    const card=document.createElement('div');
+    card.className='rec-card'+(f.Key===playingKey?' playing':'');
+    card.dataset.key=f.Key;
+    const icon=f.isFolder?'📁':getIcon(name);
+    const isAudio=isAud(name);const isVideo=isVid(name);
+    card.innerHTML=`
+      ${f.Key===playingKey?'<div class="playing-bar"></div>':''}
+      <div class="rec-card-top">
+        <div class="rec-type-icon">${icon}</div>
+        <div class="rec-name" title="${name}">${name}</div>
+        <div class="rec-meta">
+          <span>${f.isFolder?'Folder':fmtSize(f.Size)}</span>
+          ${f.LastModified?`<span>${new Date(f.LastModified).toLocaleDateString()}</span>`:''}
+        </div>
+      </div>
+      <div class="rec-card-bot">
+        ${isAudio?`<button class="rec-play" onclick="event.stopPropagation();playAudio('${esc(f.Key)}','${esc(name)}')" title="Play">▶</button>`:''}
+        ${isVideo?`<button class="rec-play" onclick="event.stopPropagation();playVideo('${esc(f.Key)}','${esc(name)}')" title="Play video">▶</button>`:''}
+        ${!isAudio&&!isVideo&&!f.isFolder?'<span></span>':''}
+        <div class="rec-actions">
+          ${f.isFolder?'':`<button class="ic" title="Download" onclick="event.stopPropagation();doDownload('${esc(f.Key)}')">↓</button>`}
+          ${f.isFolder?'':`<button class="ic" title="Rename" onclick="event.stopPropagation();showRename('${esc(f.Key)}')">✎</button>`}
+          <button class="ic del" title="Delete" onclick="event.stopPropagation();doDelete('${esc(f.Key)}',${f.isFolder})">🗑</button>
+        </div>
+      </div>`;
+    if(f.isFolder) card.addEventListener('click',()=>{PREFIX=f.Key;loadFiles();});
+    g.appendChild(card);
+  });
+  el('view-grid').style.display='flex';el('view-list').style.display='none';
+}
+
+// ── LIST VIEW ─────────────────────────────────────
+function renderList(files){
+  const tbody=el('list-body');tbody.innerHTML='';
+  files.forEach(f=>{
+    const name=f.Key.replace(PREFIX,'').replace(/\/$/,'');
+    if(!name)return;
+    const tr=document.createElement('tr');
+    tr.className=(f.isFolder?'folder-row':'')+(f.Key===playingKey?' playing':'');
+    tr.dataset.key=f.Key;
+    const icon=f.isFolder?'📁':getIcon(name);
+    const isAudio=isAud(name);const isVideo=isVid(name);
+    const ext=f.isFolder?'Folder':name.split('.').pop().toUpperCase();
+    const safeKey=esc(f.Key);const safeName=esc(name);
+    tr.innerHTML=`
+      <td><input type="checkbox" class="sel-cb row-cb" data-key="${f.Key}" onchange="toggleSel(this)" onclick="event.stopPropagation()"/></td>
+      <td><div class="fname">
+        <span class="ficon">${icon}</span>
+        <span class="fntext">${name}</span>
+        ${isAudio?`<button class="ic" style="color:var(--accent);margin-left:4px" onclick="event.stopPropagation();playAudio('${safeKey}','${safeName}')" title="Play">▶</button>`:''}
+        ${isVideo?`<button class="ic" style="color:var(--accent);margin-left:4px" onclick="event.stopPropagation();playVideo('${safeKey}','${safeName}')" title="Play video">▶</button>`:''}
+      </div></td>
+      <td class="fmuted">${f.isFolder?'—':fmtSize(f.Size)}</td>
+      <td class="fmuted">${f.LastModified?new Date(f.LastModified).toLocaleDateString():'—'}</td>
+      <td class="fmuted">${ext}</td>
+      <td><div class="row-actions">
+        ${f.isFolder?'':`<button class="ic" title="Download" onclick="event.stopPropagation();doDownload('${safeKey}')">↓</button>`}
+        ${f.isFolder?'':`<button class="ic" title="Rename" onclick="event.stopPropagation();showRename('${safeKey}')">✎</button>`}
+        <button class="ic del" title="Delete" onclick="event.stopPropagation();doDelete('${safeKey}',${f.isFolder})">🗑</button>
+      </div></td>`;
+    if(f.isFolder) tr.addEventListener('click',()=>{PREFIX=f.Key;loadFiles();});
+    tbody.appendChild(tr);
+  });
+  el('view-list').style.display='flex';el('view-grid').style.display='none';
+}
+
+// ── PLAYBACK ───────────────────────────────────────
+async function playAudio(key,name){
+  try{
+    const url=s3.getSignedUrl('getObject',{Bucket:BUCKET,Key:key,Expires:3600});
+    const ap=el('audio-player');
+    ap.src=url; ap.play();
+    el('np-title').textContent=name;
+    playingKey=key;
+    renderFiles(allFiles);
+    toast(`Playing: ${name}`,'info');
+  }catch(e){toast(e.message,'err');}
+}
+
+async function playVideo(key,name){
+  try{
+    const url=s3.getSignedUrl('getObject',{Bucket:BUCKET,Key:key,Expires:3600});
+    el('vid-player').src=url;
+    el('vid-title').textContent=name;
+    showModal('m-video');
+  }catch(e){toast(e.message,'err');}
+}
+
+function closeVideoModal(){
+  el('vid-player').pause();
+  el('vid-player').src='';
+  closeModal('m-video');
+}
+
+// ── UPLOAD ─────────────────────────────────────────
+function showUpload(){if(!BUCKET)return;el('flist').innerHTML='';uploadFiles=[];showModal('m-upload');}
+function pickFiles(e){uploadFiles=[...e.target.files];renderFList();}
+function dropFiles(e){e.preventDefault();e.currentTarget.classList.remove('drag');uploadFiles=[...e.dataTransfer.files];renderFList();}
+function renderFList(){
+  el('flist').innerHTML=uploadFiles.map(f=>`<div class="flist-item"><span>${f.name}</span><span style="color:var(--muted)">${fmtSize(f.size)}</span></div>`).join('');
+}
+
+async function doUpload(){
+  if(!uploadFiles.length){toast('No files selected','err');return;}
+  const bar=el('prog-bar'),fill=el('prog-fill'),txt=el('prog-text');
+  bar.style.display='block';let done=0;
+  for(const f of uploadFiles){
+    txt.textContent=`Uploading ${f.name}…`;
+    try{
+      await s3.upload({Bucket:BUCKET,Key:PREFIX+f.name,Body:f,ContentType:f.type||'application/octet-stream'}).promise();
+      done++;fill.style.width=((done/uploadFiles.length)*100)+'%';
+    }catch(e){toast(`${f.name}: ${e.message}`,'err');}
+  }
+  bar.style.display='none';fill.style.width='0%';txt.textContent='';
+  closeModal('m-upload');uploadFiles=[];el('flist').innerHTML='';el('fi').value='';
+  toast(`${done} file${done!==1?'s':''} uploaded`,'ok');
+  loadFiles();loadFolders();
+}
+
+// ── FOLDER CREATE ──────────────────────────────────
+function showFolderModal(){showModal('m-folder');}
+async function doCreateFolder(){
+  const name=el('folder-inp').value.trim().replace(/\//g,'');
+  if(!name)return;
+  try{
+    await s3.putObject({Bucket:BUCKET,Key:PREFIX+name+'/',Body:''}).promise();
+    closeModal('m-folder');el('folder-inp').value='';
+    toast(`Folder "${name}" created`,'ok');
+    loadFolders();loadFiles();
+  }catch(e){toast(e.message,'err');}
+}
+
+// ── DELETE ─────────────────────────────────────────
+async function doDelete(key,isFolder){
+  const label=isFolder?`folder "${key.replace(/\//g,'')}"`:key.split('/').pop();
+  if(!confirm(`Delete ${label}?`))return;
+  try{
+    if(isFolder){
+      const data=await s3.listObjectsV2({Bucket:BUCKET,Prefix:key}).promise();
+      if(data.Contents.length){
+        await s3.deleteObjects({Bucket:BUCKET,Delete:{Objects:data.Contents.map(o=>({Key:o.Key}))}}).promise();
+      } else await s3.deleteObject({Bucket:BUCKET,Key:key}).promise();
+    } else await s3.deleteObject({Bucket:BUCKET,Key:key}).promise();
+    toast('Deleted','ok');loadFiles();loadFolders();
+  }catch(e){toast(e.message,'err');}
+}
+
+async function deleteSelected(){
+  if(!selected.size)return;
+  if(!confirm(`Delete ${selected.size} file(s)?`))return;
+  try{
+    await s3.deleteObjects({Bucket:BUCKET,Delete:{Objects:[...selected].map(k=>({Key:k}))}}).promise();
+    toast(`Deleted ${selected.size} file${selected.size!==1?'s':''}`,'ok');
+    selected.clear();el('btn-del-sel').style.display='none';
+    loadFiles();
+  }catch(e){toast(e.message,'err');}
+}
+
+// ── RENAME ─────────────────────────────────────────
+function showRename(key){renameKey=key;el('rename-inp').value=key.split('/').pop();showModal('m-rename');}
+async function doRename(){
+  const newName=el('rename-inp').value.trim();
+  if(!newName)return;
+  const prefix=renameKey.substring(0,renameKey.lastIndexOf('/')+1);
+  const newKey=prefix+newName;
+  if(newKey===renameKey){closeModal('m-rename');return;}
+  try{
+    await s3.copyObject({Bucket:BUCKET,CopySource:`${BUCKET}/${renameKey}`,Key:newKey}).promise();
+    await s3.deleteObject({Bucket:BUCKET,Key:renameKey}).promise();
+    closeModal('m-rename');toast(`Renamed to "${newName}"`,'ok');loadFiles();
+  }catch(e){toast(e.message,'err');}
+}
+
+// ── DOWNLOAD ───────────────────────────────────────
+function doDownload(key){
+  try{
+    const url=s3.getSignedUrl('getObject',{Bucket:BUCKET,Key:key,Expires:60});
+    const a=document.createElement('a');a.href=url;a.download=key.split('/').pop();a.click();
+  }catch(e){toast(e.message,'err');}
+}
+
+// ── SELECTION ──────────────────────────────────────
+function toggleSel(cb){
+  if(cb.checked)selected.add(cb.dataset.key);else selected.delete(cb.dataset.key);
+  el('btn-del-sel').style.display=selected.size>0?'':'none';
+  el('sel-all').indeterminate=selected.size>0&&selected.size<allFiles.filter(f=>!f.isFolder).length;
+}
+function toggleSelAll(){
+  const checked=el('sel-all').checked;
+  document.querySelectorAll('.row-cb').forEach(cb=>{cb.checked=checked;const k=cb.dataset.key;if(checked)selected.add(k);else selected.delete(k);});
+  el('btn-del-sel').style.display=selected.size>0?'':'none';
+}
+
+// ── BREADCRUMB ─────────────────────────────────────
+function updateBreadcrumb(){
+  const bc=el('breadcrumb');bc.innerHTML='';
+  const add=(label,fn,cur=false)=>{
+    if(bc.children.length){const s=document.createElement('span');s.className='bc-sep';s.textContent='/';bc.appendChild(s);}
+    const e=document.createElement('span');e.className='bc-item'+(cur?' cur':'');e.textContent=label;
+    if(fn)e.addEventListener('click',fn);bc.appendChild(e);
+  };
+  add(BUCKET,()=>{PREFIX='';loadFiles();});
+  if(PREFIX){PREFIX.split('/').filter(Boolean).forEach((p,i,arr)=>{
+    const pref=arr.slice(0,i+1).join('/')+'/';
+    add(p,i<arr.length-1?()=>{PREFIX=pref;loadFiles();}:null,i===arr.length-1);
+  });}
+}
+
+// ── VIEW ───────────────────────────────────────────
+function setView(v){
+  currentView=v;
+  el('vbtn-grid').classList.toggle('active',v==='grid');
+  el('vbtn-list').classList.toggle('active',v==='list');
+  if(allFiles.length) renderFiles(allFiles);
+}
+
+// ── STATE HELPERS ──────────────────────────────────
+function showState(s){
+  ['grid','list','empty','loading','init'].forEach(x=>{
+    const eg=el('view-grid'),el2=el('view-list');
+    el('state-empty').style.display='none';
+    el('state-loading').style.display='none';
+    el('state-init').style.display='none';
+    eg.style.display='none';el2.style.display='none';
+  });
+  if(s==='loading'){el('state-loading').style.display='flex';}
+  else if(s==='empty'){el('state-empty').style.display='flex';}
+  else if(s==='init'){el('state-init').style.display='flex';}
+  // '' = let renderFiles handle it
+}
+
+// ── MODALS ─────────────────────────────────────────
+function showModal(id){el(id).classList.add('show');}
+function closeModal(id){el(id).classList.remove('show');}
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o&&o.id!=='m-video')o.classList.remove('show');}));
+
+// ── UTILS ──────────────────────────────────────────
+function el(id){return document.getElementById(id);}
+function v(id){return el(id).value.trim();}
+function hide(id){el(id).style.display='none';}
+function show2(id,msg){el(id).textContent=msg;el(id).style.display='block';}
+function esc(s){return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+function setStatus(msg){el('status-l').textContent=msg;}
+function fmtSize(b){if(!b)return'0 B';const k=1024,s=['B','KB','MB','GB','TB'];const i=Math.floor(Math.log(b)/Math.log(k));return parseFloat((b/Math.pow(k,i)).toFixed(1))+' '+s[i];}
+function isAud(n){return/\.(mp3|wav|m4a|aac|flac|ogg|wma|opus|aiff)$/i.test(n);}
+function isVid(n){return/\.(mp4|mov|avi|mkv|webm|m4v|wmv|3gp)$/i.test(n);}
+function getIcon(n){
+  if(isAud(n))return'🎵';
+  if(isVid(n))return'🎬';
+  const ext=n.split('.').pop().toLowerCase();
+  return{pdf:'📄',doc:'📝',docx:'📝',txt:'📃',jpg:'🖼',jpeg:'🖼',png:'🖼',zip:'📦',csv:'📊'}[ext]||'📄';
+}
+function toast(msg,type='info'){
+  const a=el('toasts'),d=document.createElement('div');
+  d.className=`toast ${type}`;d.textContent=msg;a.appendChild(d);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>d.classList.add('show')));
+  setTimeout(()=>{d.classList.remove('show');setTimeout(()=>d.remove(),300);},3500);
+}
+el('k-sec').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+el('folder-inp').addEventListener('keydown',e=>{if(e.key==='Enter')doCreateFolder();});
+el('rename-inp').addEventListener('keydown',e=>{if(e.key==='Enter')doRename();});
+</script>
+</body>
+</html>
