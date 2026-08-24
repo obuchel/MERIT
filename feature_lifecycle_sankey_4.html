@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature Lifecycle Across Models</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;650&family=IBM+Plex+Sans:wght@400;500;600;650&display=swap');
+
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --border: #e3e6ec;
+    --text-primary: #1a2030;
+    --text-secondary: #4a5268;
+    --text-muted: #838ca0;
+
+    --groupA: #6366f1;   /* used by all 4 models */
+    --groupB: #9333ea;   /* Pickup + F&B only */
+    --groupC: #d97706;   /* Pickup only */
+    --groupD: #db2777;   /* F&B only */
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text-primary);
+    font-family: "IBM Plex Sans", -apple-system, sans-serif;
+  }
+  .mono { font-family: "IBM Plex Mono", monospace; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 36px 28px 56px; }
+
+  .hdr-title { font-size: 22px; font-weight: 650; letter-spacing: -0.01em; }
+  .hdr-sub {
+    font-size: 13.5px; color: var(--text-secondary); margin-top: 8px;
+    max-width: 82ch; line-height: 1.55;
+  }
+  .hdr-sub code {
+    font-family: "IBM Plex Mono", monospace; font-size: 12.5px;
+    background: #eef0f4; padding: 1px 5px; border-radius: 4px;
+  }
+
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 18px; margin: 20px 0 6px;
+    padding: 12px 16px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; font-size: 12.5px; color: var(--text-secondary);
+  }
+  .legend-item { display: flex; align-items: center; gap: 7px; }
+  .legend-sw { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+
+  figure { margin: 22px 0 0; }
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 6px 20px; overflow-x: auto;
+  }
+  svg.sankey { display: block; overflow: visible; }
+
+  .node-rect { }
+  .link-path { transition: opacity .15s; }
+  .link-path:hover { opacity: 0.75 !important; }
+  .lbl { font-family: "IBM Plex Mono", monospace; font-size: 9.3px; fill: var(--text-primary); }
+  .lbl-halo { fill: var(--surface); opacity: 0.86; }
+  .lvl-hdr { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; font-weight: 650; fill: var(--text-primary); }
+  .lvl-sub { font-family: "IBM Plex Mono", monospace; font-size: 10px; fill: var(--text-muted); }
+
+  figcaption { font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 10px; }
+
+  .findings {
+    margin-top: 26px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 22px;
+  }
+  .findings h2 { font-size: 14px; margin: 0 0 10px; font-weight: 650; }
+  .findings p { font-size: 13px; color: var(--text-secondary); line-height: 1.65; margin: 8px 0; }
+  .findings b { color: var(--text-primary); }
+
+  .tooltip {
+    position: fixed; pointer-events: none; z-index: 20;
+    background: #1a2030; color: #eef0f4; font-family: "IBM Plex Mono", monospace;
+    font-size: 11.5px; padding: 7px 10px; border-radius: 7px; line-height: 1.5;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18); opacity: 0; transition: opacity .1s;
+    max-width: 280px;
+  }
+  .tooltip.show { opacity: 1; }
+  .tooltip b { color: #fff; }
+
+  footer.note {
+    max-width: 1220px; margin: 22px auto 0; padding: 0 4px 4px;
+    font-size: 11.5px; color: var(--text-muted); line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr-title">Feature Lifecycle Across Models</div>
+  <div class="hdr-sub">
+    The same 4 models as before — ADR, Conversion, Pickup, F&amp;B — but now laid out as 4
+    sequential levels, one feature per node, so you can trace each feature's journey model by
+    model instead of collapsing the reuse pattern into a summary bucket. A ribbon means the
+    feature is used in both models it connects; a node with no incoming ribbon is a fresh entry
+    at that level, and a node with no outgoing ribbon drops out after that level. Built from the
+    same real per-model feature lists and split counts as <code>feature_distributions.html</code>.
+    <b>Both nodes and ribbons now carry real importance twice over</b> — opacity and thickness,
+    both scaled to the feature's real share of that model's total splits (<code>importance /
+    total_splits × 100</code>, the same "% of splits" figure the original dashboard reports).
+    Solid and full-height means a large percentage, faint and thin means it barely gets split on
+    (or is unused). The % scale is shared across all four levels, so a bar's size means the same
+    thing everywhere — 7% at ADR draws exactly as thick as 7% at F&amp;B. Ribbons taper between
+    the two models they connect, so a feature that matters a lot in one model and barely at all
+    in the next visibly narrows and dims as it crosses. Row position stays fixed either way —
+    only the drawn band grows or shrinks around it.
+  </div>
+
+  <div class="legend" id="legend">
+    <div class="legend-item"><span class="legend-sw" style="background:var(--groupA)"></span>Used by all 4 models (36)</div>
+    <div class="legend-item"><span class="legend-sw" style="background:var(--groupB)"></span>Pickup + F&amp;B only (6)</div>
+    <div class="legend-item" style="gap:8px">
+      <span style="display:flex; width:56px; height:11px; border-radius:3px; overflow:hidden; border:1px solid var(--border);">
+        <span style="flex:1; background:#6366f1; opacity:0.14"></span><span style="flex:1; background:#6366f1; opacity:0.42"></span><span style="flex:1; background:#6366f1; opacity:0.7"></span><span style="flex:1; background:#6366f1; opacity:1"></span>
+      </span>
+      opacity + thickness = % of that model's splits, nodes &amp; ribbons alike (0% → 15%+)
+    </div>
+    <div class="legend-item"><span class="legend-sw" style="background:var(--groupC)"></span>Pickup only (22)</div>
+    <div class="legend-item"><span class="legend-sw" style="background:var(--groupD)"></span>F&amp;B only (5)</div>
+  </div>
+
+  <figure>
+    <div class="chart-card">
+      <svg class="sankey" id="sankey" role="img" aria-label="Four-level alluvial diagram tracing each feature through ADR, Conversion, Pickup, and F&amp;B: 36 features flow straight through all four, 6 more join at Pickup and continue to F&amp;B, 22 join at Pickup and stop there, and 5 join fresh at F&amp;B."></svg>
+    </div>
+    <figcaption>Each node is one feature. Hover a node or ribbon for its name and real split count in that model.</figcaption>
+  </figure>
+
+  <div class="findings">
+    <h2>What this shows</h2>
+    <p><b>36 features run straight through all four models unchanged</b> — same feature, same relative position, at every level. That's the indigo band spanning the full width.</p>
+    <p><b>6 features join at Pickup and carry on to F&amp;B</b> (purple) — <span class="mono">num_fnb_types</span>, <span class="mono">Urgency_Index</span>, <span class="mono">Account_Prior_Booked</span>, <span class="mono">budget_amount</span>, <span class="mono">has_fnb_requirements</span>, <span class="mono">is_meeting_only</span> — never used by ADR or Conversion at all.</p>
+    <p><b>22 features join at Pickup and go no further</b> (amber) — mostly the 13 <span class="mono">market_seg_*</span> one-hot columns plus <span class="mono">event_type_enc</span>, <span class="mono">room_block</span>, <span class="mono">event_format_enc</span> and a handful of others. They're Pickup-exclusive dead ends.</p>
+    <p><b>5 features appear only at the very last level</b> (pink) — <span class="mono">num_sessions</span>, <span class="mono">rate_spread</span>, <span class="mono">avg_room_utilization</span>, <span class="mono">smerf_demand_30d</span>, <span class="mono">has_dinner</span> — F&amp;B-specific signals with no upstream presence.</p>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<footer class="note">
+  Source: real per-model feature lists and split counts from <span class="mono">feature_distributions.html</span> (itself read from the exported <span class="mono">xgboost_trees_data_v7.js</span>) — nothing here is estimated. Node height is uniform per feature (one row = one feature), not weighted by split count, since this view is about membership across models, not magnitude — split counts are still real and shown on hover. Within each of the 4 color groups, features are ordered by combined real split count across the models that use them, so the busiest shared features sit at the top of their band.
+</footer>
+
+<script>
+// ── real data, extracted from feature_distributions.html ───────────────────
+const GROUP_A = ['revenue_intensity','meeting_ratio','days_to_peak_season','Rooms_Available_Peak_Date','transient_displacement_cost','capacity_risk_score','displacement_ema_7d','Meeting_Space_Ratio','avg_discount_nearby_30d','occupancy_velocity_7_30d','revenue_volatility_60d','night_variance_pct','lead_time_deviation','tr_transient_rooms_turned_away','revenue_competition_7d','Account_Prior_Revenue','occupancy_acceleration','tactical_compression_opportunity','budget_ratio','tr_transient_occ_of_available','arrival_dow_sin','arrival_month_sin','full_day_pct','lead_source_enc','arrival_day_of_week','has_evening_session','num_meeting_rooms','inquiry_month_sin','response_due_days','days_since_last_rfp','Flag_Rate_Below_Baseline','is_shoulder_season','is_peak_arrival','arrival_dow_cos','Is_Compression_Date','has_reception'];
+
+const GROUP_B = ['num_fnb_types','Urgency_Index','Account_Prior_Booked','budget_amount','has_fnb_requirements','is_meeting_only'];
+
+const GROUP_C = ['event_type_enc','market_seg_Travel','room_block','market_seg_Social','market_seg_SMERF','event_format_enc','has_premium_av','tr_displacement_pressure','market_seg_Healthcare','Flag_Short_Response_Window','market_seg_Finance','market_seg_Professional Services','market_seg_Technology','is_repeat_client','market_seg_Government','market_seg_Other','uses_ballroom','group_size_tier_clean_enc','market_seg_Association','market_seg_Education','market_seg_Legal','market_seg_Trade/Manufacturing'];
+
+const GROUP_D = ['num_sessions','rate_spread','avg_room_utilization','smerf_demand_30d','has_dinner'];
+
+const GROUP_COLOR = { A: 'var(--groupA)', B: 'var(--groupB)', C: 'var(--groupC)', D: 'var(--groupD)' };
+
+const LEVELS = [
+  { key: 'adr',    label: 'ADR',        sub: 'room rate · 36',         feats: [...GROUP_A] },
+  { key: 'conv',   label: 'Conversion', sub: 'booking probability · 36', feats: [...GROUP_A] },
+  { key: 'pickup', label: 'Pickup',     sub: 'production rate · 64',   feats: [...GROUP_A, ...GROUP_B, ...GROUP_C] },
+  { key: 'fnb',    label: 'F&B',        sub: 'per person · 47',        feats: [...GROUP_A, ...GROUP_B, ...GROUP_D] },
+];
+
+function groupOf(name) {
+  if (GROUP_A.includes(name)) return 'A';
+  if (GROUP_B.includes(name)) return 'B';
+  if (GROUP_C.includes(name)) return 'C';
+  return 'D';
+}
+
+// ── layout ───────────────────────────────────────────────────────────────
+const rowH = 11, rowGap = 2, pitch = rowH + rowGap;
+const PAD_TOP = 56, PAD_LEFT = 210, PAD_RIGHT = 70;
+const nodeW = 15;
+const colGap = [200, 300, 260];  // adr-conv, conv-pickup, pickup-fnb
+const xs = [PAD_LEFT];
+colGap.forEach(g => xs.push(xs[xs.length - 1] + nodeW + g));
+const maxRows = Math.max(...LEVELS.map(l => l.feats.length));
+const H = PAD_TOP + maxRows * pitch + 30;
+const W = xs[xs.length - 1] + nodeW + PAD_RIGHT;
+
+// per-level index lookup: name -> row index
+LEVELS.forEach(l => { l.idx = {}; l.feats.forEach((n, i) => l.idx[n] = i); });
+
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+const svg = document.getElementById('sankey');
+svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+svg.setAttribute('width', W);
+svg.setAttribute('height', H);
+
+function rowY(i) { return PAD_TOP + i * pitch; }
+
+// level headers
+LEVELS.forEach((l, li) => {
+  const x = xs[li];
+  svg.appendChild(Object.assign(el('text', { x, y: 22, class: 'lvl-hdr' }), { textContent: l.label }));
+  svg.appendChild(Object.assign(el('text', { x, y: 37, class: 'lvl-sub' }), { textContent: l.sub }));
+});
+
+// ── importance data + gradient helpers (used by both links and nodes) ────
+const IMPORTANCE = {"revenue_intensity": {"adr": {"n": 735, "pct": 7.328}, "conv": {"n": 234, "pct": 11.074}, "pickup": {"n": 45, "pct": 2.974}, "fnb": {"n": 683, "pct": 7.559}}, "days_to_peak_season": {"adr": {"n": 687, "pct": 6.849}, "conv": {"n": 69, "pct": 3.265}, "pickup": {"n": 44, "pct": 2.908}, "fnb": {"n": 325, "pct": 3.597}}, "transient_displacement_cost": {"adr": {"n": 513, "pct": 5.115}, "conv": {"n": 68, "pct": 3.218}, "pickup": {"n": 50, "pct": 3.305}, "fnb": {"n": 311, "pct": 3.442}}, "Rooms_Available_Peak_Date": {"adr": {"n": 485, "pct": 4.835}, "conv": {"n": 218, "pct": 10.317}, "pickup": {"n": 35, "pct": 2.313}, "fnb": {"n": 231, "pct": 2.557}}, "displacement_ema_7d": {"adr": {"n": 473, "pct": 4.716}, "conv": {"n": 87, "pct": 4.117}, "pickup": {"n": 48, "pct": 3.173}, "fnb": {"n": 282, "pct": 3.121}}, "meeting_ratio": {"adr": {"n": 438, "pct": 4.367}, "conv": {"n": 312, "pct": 14.766}, "pickup": {"n": 49, "pct": 3.239}, "fnb": {"n": 501, "pct": 5.545}}, "tr_transient_rooms_turned_away": {"adr": {"n": 429, "pct": 4.277}, "conv": {"n": 54, "pct": 2.556}, "pickup": {"n": 38, "pct": 2.512}, "fnb": {"n": 173, "pct": 1.915}}, "avg_discount_nearby_30d": {"adr": {"n": 418, "pct": 4.167}, "conv": {"n": 23, "pct": 1.088}, "pickup": {"n": 47, "pct": 3.106}, "fnb": {"n": 330, "pct": 3.652}}, "Meeting_Space_Ratio": {"adr": {"n": 411, "pct": 4.098}, "conv": {"n": 86, "pct": 4.07}, "pickup": {"n": 43, "pct": 2.842}, "fnb": {"n": 291, "pct": 3.221}}, "lead_time_deviation": {"adr": {"n": 408, "pct": 4.068}, "conv": {"n": 65, "pct": 3.076}, "pickup": {"n": 70, "pct": 4.627}, "fnb": {"n": 185, "pct": 2.048}}, "capacity_risk_score": {"adr": {"n": 384, "pct": 3.829}, "conv": {"n": 233, "pct": 11.027}, "pickup": {"n": 41, "pct": 2.71}, "fnb": {"n": 236, "pct": 2.612}}, "Account_Prior_Revenue": {"adr": {"n": 383, "pct": 3.819}, "conv": {"n": 54, "pct": 2.556}, "pickup": {"n": 36, "pct": 2.379}, "fnb": {"n": 197, "pct": 2.18}}, "revenue_volatility_60d": {"adr": {"n": 363, "pct": 3.619}, "conv": {"n": 56, "pct": 2.65}, "pickup": {"n": 51, "pct": 3.371}, "fnb": {"n": 317, "pct": 3.509}}, "revenue_competition_7d": {"adr": {"n": 358, "pct": 3.569}, "conv": {"n": 36, "pct": 1.704}, "pickup": {"n": 63, "pct": 4.164}, "fnb": {"n": 223, "pct": 2.468}}, "occupancy_velocity_7_30d": {"adr": {"n": 351, "pct": 3.5}, "conv": {"n": 46, "pct": 2.177}, "pickup": {"n": 49, "pct": 3.239}, "fnb": {"n": 359, "pct": 3.973}}, "occupancy_acceleration": {"adr": {"n": 318, "pct": 3.17}, "conv": {"n": 27, "pct": 1.278}, "pickup": {"n": 58, "pct": 3.833}, "fnb": {"n": 179, "pct": 1.981}}, "tactical_compression_opportunity": {"adr": {"n": 291, "pct": 2.901}, "conv": {"n": 58, "pct": 2.745}, "pickup": {"n": 78, "pct": 5.155}, "fnb": {"n": 152, "pct": 1.682}}, "tr_transient_occ_of_available": {"adr": {"n": 275, "pct": 2.742}, "conv": {"n": 20, "pct": 0.947}, "pickup": {"n": 20, "pct": 1.322}, "fnb": {"n": 157, "pct": 1.738}}, "night_variance_pct": {"adr": {"n": 261, "pct": 2.602}, "conv": {"n": 59, "pct": 2.792}, "pickup": {"n": 25, "pct": 1.652}, "fnb": {"n": 413, "pct": 4.571}}, "arrival_month_sin": {"adr": {"n": 252, "pct": 2.512}, "conv": {"n": 12, "pct": 0.568}, "pickup": {"n": 19, "pct": 1.256}, "fnb": {"n": 101, "pct": 1.118}}, "arrival_dow_sin": {"adr": {"n": 246, "pct": 2.453}, "conv": {"n": 7, "pct": 0.331}, "pickup": {"n": 17, "pct": 1.124}, "fnb": {"n": 117, "pct": 1.295}}, "budget_ratio": {"adr": {"n": 202, "pct": 2.014}, "conv": {"n": 106, "pct": 5.017}, "pickup": {"n": 30, "pct": 1.983}, "fnb": {"n": 184, "pct": 2.037}}, "arrival_day_of_week": {"adr": {"n": 179, "pct": 1.785}, "conv": {"n": 11, "pct": 0.521}, "pickup": {"n": 10, "pct": 0.661}, "fnb": {"n": 91, "pct": 1.007}}, "lead_source_enc": {"adr": {"n": 167, "pct": 1.665}, "conv": {"n": 15, "pct": 0.71}, "pickup": {"n": 20, "pct": 1.322}, "fnb": {"n": 119, "pct": 1.317}}, "inquiry_month_sin": {"adr": {"n": 128, "pct": 1.276}, "conv": {"n": 13, "pct": 0.615}, "pickup": {"n": 19, "pct": 1.256}, "fnb": {"n": 89, "pct": 0.985}}, "Flag_Rate_Below_Baseline": {"adr": {"n": 123, "pct": 1.226}, "conv": {"n": 0, "pct": 0.0}, "pickup": {"n": 7, "pct": 0.463}, "fnb": {"n": 21, "pct": 0.232}}, "full_day_pct": {"adr": {"n": 115, "pct": 1.147}, "conv": {"n": 35, "pct": 1.656}, "pickup": {"n": 10, "pct": 0.661}, "fnb": {"n": 204, "pct": 2.258}}, "response_due_days": {"adr": {"n": 109, "pct": 1.087}, "conv": {"n": 3, "pct": 0.142}, "pickup": {"n": 33, "pct": 2.181}, "fnb": {"n": 100, "pct": 1.107}}, "days_since_last_rfp": {"adr": {"n": 90, "pct": 0.897}, "conv": {"n": 4, "pct": 0.189}, "pickup": {"n": 8, "pct": 0.529}, "fnb": {"n": 87, "pct": 0.963}}, "is_shoulder_season": {"adr": {"n": 88, "pct": 0.877}, "conv": {"n": 1, "pct": 0.047}, "pickup": {"n": 4, "pct": 0.264}, "fnb": {"n": 40, "pct": 0.443}}, "Is_Compression_Date": {"adr": {"n": 84, "pct": 0.837}, "conv": {"n": 0, "pct": 0.0}, "pickup": {"n": 0, "pct": 0.0}, "fnb": {"n": 3, "pct": 0.033}}, "is_peak_arrival": {"adr": {"n": 82, "pct": 0.818}, "conv": {"n": 1, "pct": 0.047}, "pickup": {"n": 10, "pct": 0.661}, "fnb": {"n": 36, "pct": 0.398}}, "arrival_dow_cos": {"adr": {"n": 66, "pct": 0.658}, "conv": {"n": 9, "pct": 0.426}, "pickup": {"n": 8, "pct": 0.529}, "fnb": {"n": 23, "pct": 0.255}}, "has_evening_session": {"adr": {"n": 52, "pct": 0.518}, "conv": {"n": 8, "pct": 0.379}, "pickup": {"n": 4, "pct": 0.264}, "fnb": {"n": 200, "pct": 2.214}}, "num_meeting_rooms": {"adr": {"n": 46, "pct": 0.459}, "conv": {"n": 83, "pct": 3.928}, "pickup": {"n": 6, "pct": 0.397}, "fnb": {"n": 127, "pct": 1.406}}, "has_reception": {"adr": {"n": 20, "pct": 0.199}, "conv": {"n": 0, "pct": 0.0}, "pickup": {"n": 1, "pct": 0.066}, "fnb": {"n": 24, "pct": 0.266}}, "event_type_enc": {"pickup": {"n": 88, "pct": 5.816}}, "Urgency_Index": {"pickup": {"n": 66, "pct": 4.362}, "fnb": {"n": 221, "pct": 2.446}}, "market_seg_Travel": {"pickup": {"n": 57, "pct": 3.767}}, "Account_Prior_Booked": {"pickup": {"n": 53, "pct": 3.503}, "fnb": {"n": 190, "pct": 2.103}}, "room_block": {"pickup": {"n": 47, "pct": 3.106}}, "market_seg_Social": {"pickup": {"n": 28, "pct": 1.851}}, "budget_amount": {"pickup": {"n": 22, "pct": 1.454}, "fnb": {"n": 184, "pct": 2.037}}, "num_fnb_types": {"pickup": {"n": 18, "pct": 1.19}, "fnb": {"n": 365, "pct": 4.04}}, "market_seg_SMERF": {"pickup": {"n": 6, "pct": 0.397}}, "event_format_enc": {"pickup": {"n": 5, "pct": 0.33}}, "has_premium_av": {"pickup": {"n": 4, "pct": 0.264}}, "tr_displacement_pressure": {"pickup": {"n": 4, "pct": 0.264}}, "market_seg_Healthcare": {"pickup": {"n": 4, "pct": 0.264}}, "Flag_Short_Response_Window": {"pickup": {"n": 3, "pct": 0.198}}, "market_seg_Finance": {"pickup": {"n": 3, "pct": 0.198}}, "market_seg_Professional Services": {"pickup": {"n": 3, "pct": 0.198}}, "market_seg_Technology": {"pickup": {"n": 3, "pct": 0.198}}, "is_repeat_client": {"pickup": {"n": 1, "pct": 0.066}}, "market_seg_Government": {"pickup": {"n": 1, "pct": 0.066}}, "market_seg_Other": {"pickup": {"n": 1, "pct": 0.066}}, "has_fnb_requirements": {"pickup": {"n": 0, "pct": 0.0}, "fnb": {"n": 0, "pct": 0.0}}, "uses_ballroom": {"pickup": {"n": 0, "pct": 0.0}}, "is_meeting_only": {"pickup": {"n": 0, "pct": 0.0}, "fnb": {"n": 0, "pct": 0.0}}, "group_size_tier_clean_enc": {"pickup": {"n": 0, "pct": 0.0}}, "market_seg_Association": {"pickup": {"n": 0, "pct": 0.0}}, "market_seg_Education": {"pickup": {"n": 0, "pct": 0.0}}, "market_seg_Legal": {"pickup": {"n": 0, "pct": 0.0}}, "market_seg_Trade/Manufacturing": {"pickup": {"n": 0, "pct": 0.0}}, "num_sessions": {"fnb": {"n": 595, "pct": 6.586}}, "rate_spread": {"fnb": {"n": 232, "pct": 2.568}}, "avg_room_utilization": {"fnb": {"n": 71, "pct": 0.786}}, "smerf_demand_30d": {"fnb": {"n": 59, "pct": 0.653}}, "has_dinner": {"fnb": {"n": 7, "pct": 0.077}}};
+
+// ── importance (% of that model's total real splits) → opacity + thickness ──
+const GROUP_HEX = { A: '#6366f1', B: '#9333ea', C: '#d97706', D: '#db2777' };
+// one global % scale (not per-level), so a bar's size means the same thing
+// everywhere in the diagram — 7% at ADR looks exactly like 7% at F&B.
+const PCT_CAP = 15; // just above the real global max (~14.8%), so the biggest bar isn't clipped
+const FLOOR = 0.14; // faintest opacity / thinnest sliver — keeps 0%-importance marks visible
+function pctOf(name, levelKey) { const e = (IMPORTANCE[name] || {})[levelKey]; return e ? e.pct : 0; }
+function nOf(name, levelKey) { const e = (IMPORTANCE[name] || {})[levelKey]; return e ? e.n : 0; }
+function ratioOf(name, levelKey) {
+  return FLOOR + (1 - FLOOR) * Math.sqrt(Math.min(1, pctOf(name, levelKey) / PCT_CAP));
+}
+function tipLine(name, levelKey, label) {
+  return `${label}: ${pctOf(name, levelKey).toFixed(1)}% of splits (${nOf(name, levelKey).toLocaleString()})`;
+}
+
+// thickness (node height / ribbon cross-section) also scales with importance,
+// centered on the row's fixed pitch line so vertical alignment across levels
+// is untouched — only the drawn band shrinks/grows around that center.
+const MIN_THICK = 2;
+function thickOf(name, levelKey) { return MIN_THICK + (rowH - MIN_THICK) * ratioOf(name, levelKey); }
+function centerY(i) { return rowY(i) + rowH / 2; }
+
+// ── links (drawn first, opacity + thickness fading between the two connected models) ──
+const defs = el('defs', {});
+svg.appendChild(defs);
+const linkLayer = el('g', {});
+svg.appendChild(linkLayer);
+
+let gradId = 0;
+for (let li = 0; li < LEVELS.length - 1; li++) {
+  const a = LEVELS[li], b = LEVELS[li + 1];
+  const x0 = xs[li] + nodeW, x1 = xs[li + 1];
+  const xc = (x0 + x1) / 2;
+  a.feats.forEach(name => {
+    if (!(name in b.idx)) return; // drops out here
+    const cA = centerY(a.idx[name]), cB = centerY(b.idx[name]);
+    const thickA = thickOf(name, a.key), thickB = thickOf(name, b.key);
+    const sy0 = cA - thickA / 2, sy1 = cA + thickA / 2;
+    const ty0 = cB - thickB / 2, ty1 = cB + thickB / 2;
+    const d = `M ${x0},${sy0} C ${xc},${sy0} ${xc},${ty0} ${x1},${ty0} ` +
+              `L ${x1},${ty1} C ${xc},${ty1} ${xc},${sy1} ${x0},${sy1} Z`;
+
+    const g = groupOf(name);
+    const rA = ratioOf(name, a.key), rB = ratioOf(name, b.key);
+    const gid = `lg${gradId++}`;
+    const grad = el('linearGradient', { id: gid, gradientUnits: 'userSpaceOnUse', x1: x0, x2: x1, y1: 0, y2: 0 });
+    grad.appendChild(el('stop', { offset: '0%', 'stop-color': GROUP_HEX[g], 'stop-opacity': rA }));
+    grad.appendChild(el('stop', { offset: '100%', 'stop-color': GROUP_HEX[g], 'stop-opacity': rB }));
+    defs.appendChild(grad);
+
+    const path = el('path', { d, fill: `url(#${gid})`, class: 'link-path' });
+    path.dataset.tip = `${name}\n${tipLine(name, a.key, a.label)} → ${tipLine(name, b.key, b.label)}`;
+    linkLayer.appendChild(path);
+  });
+}
+
+// ── nodes + labels ───────────────────────────────────────────────────────
+LEVELS.forEach((l, li) => {
+  l.feats.forEach((name, i) => {
+    const g = groupOf(name);
+    const thick = thickOf(name, l.key);
+    const y = centerY(i) - thick / 2;
+    const rect = el('rect', { x: xs[li], y, width: nodeW, height: thick, fill: GROUP_HEX[g],
+      'fill-opacity': ratioOf(name, l.key), stroke: GROUP_HEX[g], 'stroke-width': 0.5, rx: 1, class: 'node-rect' });
+    rect.dataset.tip = `${name}\n${tipLine(name, l.key, l.label)}`;
+    svg.appendChild(rect);
+
+    // label only at the feature's first appearance (its "entry" level)
+    const isEntry = (li === 0) || !(name in LEVELS[li - 1].idx);
+    if (!isEntry) return;
+
+    const labelY = rowY(i) + rowH - 2; // anchored to the fixed row pitch, independent of this node's own thickness
+    let labelX, anchor;
+    if (li === 0) {
+      labelX = xs[li] - 10; anchor = 'end';
+    } else {
+      labelX = xs[li] - 10; anchor = 'end';
+    }
+    const text = name.length > 30 ? name.slice(0, 29) + '…' : name;
+    // halo behind text for legibility over any crossing ribbons
+    const halo = el('text', { x: labelX, y: labelY, class: 'lbl', 'text-anchor': anchor,
+      stroke: 'var(--surface)', 'stroke-width': 3, 'paint-order': 'stroke' });
+    halo.textContent = text;
+    svg.appendChild(halo);
+  });
+});
+
+// ── legend already in HTML; tooltip wiring ──────────────────────────────
+const tooltip = document.getElementById('tooltip');
+svg.querySelectorAll('[data-tip]').forEach(node => {
+  node.addEventListener('mousemove', (e) => {
+    tooltip.innerHTML = node.dataset.tip.split('\n').map((t, i) => i === 0 ? `<b>${t}</b>` : t).join('<br>');
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top = (e.clientY - 10) + 'px';
+    tooltip.classList.add('show');
+  });
+  node.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+});
+</script>
+</body>
+</html>
