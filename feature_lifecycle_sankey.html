@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature Lifecycle Across Models</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;650&family=IBM+Plex+Sans:wght@400;500;600;650&display=swap');
+
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --border: #e3e6ec;
+    --text-primary: #1a2030;
+    --text-secondary: #4a5268;
+    --text-muted: #838ca0;
+
+    --groupA: #6366f1;   /* used by all 4 models */
+    --groupB: #9333ea;   /* Pickup + F&B only */
+    --groupC: #d97706;   /* Pickup only */
+    --groupD: #db2777;   /* F&B only */
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text-primary);
+    font-family: "IBM Plex Sans", -apple-system, sans-serif;
+  }
+  .mono { font-family: "IBM Plex Mono", monospace; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 36px 28px 56px; }
+
+  .hdr-title { font-size: 22px; font-weight: 650; letter-spacing: -0.01em; }
+  .hdr-sub {
+    font-size: 13.5px; color: var(--text-secondary); margin-top: 8px;
+    max-width: 82ch; line-height: 1.55;
+  }
+  .hdr-sub code {
+    font-family: "IBM Plex Mono", monospace; font-size: 12.5px;
+    background: #eef0f4; padding: 1px 5px; border-radius: 4px;
+  }
+
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 18px; margin: 20px 0 6px;
+    padding: 12px 16px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; font-size: 12.5px; color: var(--text-secondary);
+  }
+  .legend-item { display: flex; align-items: center; gap: 7px; }
+  .legend-sw { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+
+  figure { margin: 22px 0 0; }
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 6px 20px; overflow-x: auto;
+  }
+  svg.sankey { display: block; overflow: visible; }
+
+  .node-rect { }
+  .link-path { transition: opacity .15s; }
+  .link-path:hover { opacity: 0.75 !important; }
+  .lbl { font-family: "IBM Plex Mono", monospace; font-size: 9.3px; fill: var(--text-primary); }
+  .lbl-halo { fill: var(--surface); opacity: 0.86; }
+  .lvl-hdr { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; font-weight: 650; fill: var(--text-primary); }
+  .lvl-sub { font-family: "IBM Plex Mono", monospace; font-size: 10px; fill: var(--text-muted); }
+
+  figcaption { font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 10px; }
+
+  .findings {
+    margin-top: 26px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 22px;
+  }
+  .findings h2 { font-size: 14px; margin: 0 0 10px; font-weight: 650; }
+  .findings p { font-size: 13px; color: var(--text-secondary); line-height: 1.65; margin: 8px 0; }
+  .findings b { color: var(--text-primary); }
+
+  .tooltip {
+    position: fixed; pointer-events: none; z-index: 20;
+    background: #1a2030; color: #eef0f4; font-family: "IBM Plex Mono", monospace;
+    font-size: 11.5px; padding: 7px 10px; border-radius: 7px; line-height: 1.5;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18); opacity: 0; transition: opacity .1s;
+    max-width: 280px;
+  }
+  .tooltip.show { opacity: 1; }
+  .tooltip b { color: #fff; }
+
+  footer.note {
+    max-width: 1220px; margin: 22px auto 0; padding: 0 4px 4px;
+    font-size: 11.5px; color: var(--text-muted); line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr-title">Feature Lifecycle Across Models</div>
+  <div class="hdr-sub">
+    The same 4 models as before — ADR, Conversion, Pickup, F&amp;B — but now laid out as 4
+    sequential levels, one feature per node, so you can trace each feature's journey model by
+    model instead of collapsing the reuse pattern into a summary bucket. A ribbon means the
+    feature is used in both models it connects; a node with no incoming ribbon is a fresh entry
+    at that level, and a node with no outgoing ribbon drops out after that level. Built from the
+    same real per-model feature lists and split counts as <code>feature_distributions.html</code>.
+  </div>
+
+  <div class="legend" id="legend">
+    <div class="legend-item"><span class="legend-sw" style="background:var(--groupA)"></span>Used by all 4 models (36)</div>
+    <div class="legend-item"><span class="legend-sw" style="background:var(--groupB)"></span>Pickup + F&amp;B only (6)</div>
+    <div class="legend-item"><span class="legend-sw" style="background:var(--groupC)"></span>Pickup only (22)</div>
+    <div class="legend-item"><span class="legend-sw" style="background:var(--groupD)"></span>F&amp;B only (5)</div>
+  </div>
+
+  <figure>
+    <div class="chart-card">
+      <svg class="sankey" id="sankey" role="img" aria-label="Four-level alluvial diagram tracing each feature through ADR, Conversion, Pickup, and F&amp;B: 36 features flow straight through all four, 6 more join at Pickup and continue to F&amp;B, 22 join at Pickup and stop there, and 5 join fresh at F&amp;B."></svg>
+    </div>
+    <figcaption>Each node is one feature. Hover a node or ribbon for its name and real split count in that model.</figcaption>
+  </figure>
+
+  <div class="findings">
+    <h2>What this shows</h2>
+    <p><b>36 features run straight through all four models unchanged</b> — same feature, same relative position, at every level. That's the indigo band spanning the full width.</p>
+    <p><b>6 features join at Pickup and carry on to F&amp;B</b> (purple) — <span class="mono">num_fnb_types</span>, <span class="mono">Urgency_Index</span>, <span class="mono">Account_Prior_Booked</span>, <span class="mono">budget_amount</span>, <span class="mono">has_fnb_requirements</span>, <span class="mono">is_meeting_only</span> — never used by ADR or Conversion at all.</p>
+    <p><b>22 features join at Pickup and go no further</b> (amber) — mostly the 13 <span class="mono">market_seg_*</span> one-hot columns plus <span class="mono">event_type_enc</span>, <span class="mono">room_block</span>, <span class="mono">event_format_enc</span> and a handful of others. They're Pickup-exclusive dead ends.</p>
+    <p><b>5 features appear only at the very last level</b> (pink) — <span class="mono">num_sessions</span>, <span class="mono">rate_spread</span>, <span class="mono">avg_room_utilization</span>, <span class="mono">smerf_demand_30d</span>, <span class="mono">has_dinner</span> — F&amp;B-specific signals with no upstream presence.</p>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<footer class="note">
+  Source: real per-model feature lists and split counts from <span class="mono">feature_distributions.html</span> (itself read from the exported <span class="mono">xgboost_trees_data_v7.js</span>) — nothing here is estimated. Node height is uniform per feature (one row = one feature), not weighted by split count, since this view is about membership across models, not magnitude — split counts are still real and shown on hover. Within each of the 4 color groups, features are ordered by combined real split count across the models that use them, so the busiest shared features sit at the top of their band.
+</footer>
+
+<script>
+// ── real data, extracted from feature_distributions.html ───────────────────
+const GROUP_A = ['revenue_intensity','meeting_ratio','days_to_peak_season','Rooms_Available_Peak_Date','transient_displacement_cost','capacity_risk_score','displacement_ema_7d','Meeting_Space_Ratio','avg_discount_nearby_30d','occupancy_velocity_7_30d','revenue_volatility_60d','night_variance_pct','lead_time_deviation','tr_transient_rooms_turned_away','revenue_competition_7d','Account_Prior_Revenue','occupancy_acceleration','tactical_compression_opportunity','budget_ratio','tr_transient_occ_of_available','arrival_dow_sin','arrival_month_sin','full_day_pct','lead_source_enc','arrival_day_of_week','has_evening_session','num_meeting_rooms','inquiry_month_sin','response_due_days','days_since_last_rfp','Flag_Rate_Below_Baseline','is_shoulder_season','is_peak_arrival','arrival_dow_cos','Is_Compression_Date','has_reception'];
+
+const GROUP_B = ['num_fnb_types','Urgency_Index','Account_Prior_Booked','budget_amount','has_fnb_requirements','is_meeting_only'];
+
+const GROUP_C = ['event_type_enc','market_seg_Travel','room_block','market_seg_Social','market_seg_SMERF','event_format_enc','has_premium_av','tr_displacement_pressure','market_seg_Healthcare','Flag_Short_Response_Window','market_seg_Finance','market_seg_Professional Services','market_seg_Technology','is_repeat_client','market_seg_Government','market_seg_Other','uses_ballroom','group_size_tier_clean_enc','market_seg_Association','market_seg_Education','market_seg_Legal','market_seg_Trade/Manufacturing'];
+
+const GROUP_D = ['num_sessions','rate_spread','avg_room_utilization','smerf_demand_30d','has_dinner'];
+
+const GROUP_COLOR = { A: 'var(--groupA)', B: 'var(--groupB)', C: 'var(--groupC)', D: 'var(--groupD)' };
+
+const LEVELS = [
+  { key: 'adr',    label: 'ADR',        sub: 'room rate · 36',         feats: [...GROUP_A] },
+  { key: 'conv',   label: 'Conversion', sub: 'booking probability · 36', feats: [...GROUP_A] },
+  { key: 'pickup', label: 'Pickup',     sub: 'production rate · 64',   feats: [...GROUP_A, ...GROUP_B, ...GROUP_C] },
+  { key: 'fnb',    label: 'F&B',        sub: 'per person · 47',        feats: [...GROUP_A, ...GROUP_B, ...GROUP_D] },
+];
+
+function groupOf(name) {
+  if (GROUP_A.includes(name)) return 'A';
+  if (GROUP_B.includes(name)) return 'B';
+  if (GROUP_C.includes(name)) return 'C';
+  return 'D';
+}
+
+// ── layout ───────────────────────────────────────────────────────────────
+const rowH = 11, rowGap = 2, pitch = rowH + rowGap;
+const PAD_TOP = 56, PAD_LEFT = 210, PAD_RIGHT = 70;
+const nodeW = 15;
+const colGap = [200, 300, 260];  // adr-conv, conv-pickup, pickup-fnb
+const xs = [PAD_LEFT];
+colGap.forEach(g => xs.push(xs[xs.length - 1] + nodeW + g));
+const maxRows = Math.max(...LEVELS.map(l => l.feats.length));
+const H = PAD_TOP + maxRows * pitch + 30;
+const W = xs[xs.length - 1] + nodeW + PAD_RIGHT;
+
+// per-level index lookup: name -> row index
+LEVELS.forEach(l => { l.idx = {}; l.feats.forEach((n, i) => l.idx[n] = i); });
+
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+const svg = document.getElementById('sankey');
+svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+svg.setAttribute('width', W);
+svg.setAttribute('height', H);
+
+function rowY(i) { return PAD_TOP + i * pitch; }
+
+// level headers
+LEVELS.forEach((l, li) => {
+  const x = xs[li];
+  svg.appendChild(Object.assign(el('text', { x, y: 22, class: 'lvl-hdr' }), { textContent: l.label }));
+  svg.appendChild(Object.assign(el('text', { x, y: 37, class: 'lvl-sub' }), { textContent: l.sub }));
+});
+
+// ── links (drawn first) ──────────────────────────────────────────────────
+const linkLayer = el('g', {});
+svg.appendChild(linkLayer);
+
+for (let li = 0; li < LEVELS.length - 1; li++) {
+  const a = LEVELS[li], b = LEVELS[li + 1];
+  const x0 = xs[li] + nodeW, x1 = xs[li + 1];
+  const xc = (x0 + x1) / 2;
+  a.feats.forEach(name => {
+    if (!(name in b.idx)) return; // drops out here
+    const y0 = rowY(a.idx[name]), y1 = rowY(b.idx[name]);
+    const sy0 = y0, sy1 = y0 + rowH, ty0 = y1, ty1 = y1 + rowH;
+    const d = `M ${x0},${sy0} C ${xc},${sy0} ${xc},${ty0} ${x1},${ty0} ` +
+              `L ${x1},${ty1} C ${xc},${ty1} ${xc},${sy1} ${x0},${sy1} Z`;
+    const path = el('path', { d, fill: GROUP_COLOR[groupOf(name)], opacity: 0.32, class: 'link-path' });
+    path.dataset.tip = `${name}\n${LEVELS[li].label} → ${LEVELS[li+1].label}`;
+    linkLayer.appendChild(path);
+  });
+}
+
+// ── nodes + labels ───────────────────────────────────────────────────────
+const IMPORTANCE = {"revenue_intensity": {"adr": 735, "conv": 234, "pickup": 45, "fnb": 683}, "days_to_peak_season": {"adr": 687, "conv": 69, "pickup": 44, "fnb": 325}, "transient_displacement_cost": {"adr": 513, "conv": 68, "pickup": 50, "fnb": 311}, "Rooms_Available_Peak_Date": {"adr": 485, "conv": 218, "pickup": 35, "fnb": 231}, "displacement_ema_7d": {"adr": 473, "conv": 87, "pickup": 48, "fnb": 282}, "meeting_ratio": {"adr": 438, "conv": 312, "pickup": 49, "fnb": 501}, "tr_transient_rooms_turned_away": {"adr": 429, "conv": 54, "pickup": 38, "fnb": 173}, "avg_discount_nearby_30d": {"adr": 418, "conv": 23, "pickup": 47, "fnb": 330}, "Meeting_Space_Ratio": {"adr": 411, "conv": 86, "pickup": 43, "fnb": 291}, "lead_time_deviation": {"adr": 408, "conv": 65, "pickup": 70, "fnb": 185}, "capacity_risk_score": {"adr": 384, "conv": 233, "pickup": 41, "fnb": 236}, "Account_Prior_Revenue": {"adr": 383, "conv": 54, "pickup": 36, "fnb": 197}, "revenue_volatility_60d": {"adr": 363, "conv": 56, "pickup": 51, "fnb": 317}, "revenue_competition_7d": {"adr": 358, "conv": 36, "pickup": 63, "fnb": 223}, "occupancy_velocity_7_30d": {"adr": 351, "conv": 46, "pickup": 49, "fnb": 359}, "occupancy_acceleration": {"adr": 318, "conv": 27, "pickup": 58, "fnb": 179}, "tactical_compression_opportunity": {"adr": 291, "conv": 58, "pickup": 78, "fnb": 152}, "tr_transient_occ_of_available": {"adr": 275, "conv": 20, "pickup": 20, "fnb": 157}, "night_variance_pct": {"adr": 261, "conv": 59, "pickup": 25, "fnb": 413}, "arrival_month_sin": {"adr": 252, "conv": 12, "pickup": 19, "fnb": 101}, "arrival_dow_sin": {"adr": 246, "conv": 7, "pickup": 17, "fnb": 117}, "budget_ratio": {"adr": 202, "conv": 106, "pickup": 30, "fnb": 184}, "arrival_day_of_week": {"adr": 179, "conv": 11, "pickup": 10, "fnb": 91}, "lead_source_enc": {"adr": 167, "conv": 15, "pickup": 20, "fnb": 119}, "inquiry_month_sin": {"adr": 128, "conv": 13, "pickup": 19, "fnb": 89}, "Flag_Rate_Below_Baseline": {"adr": 123, "conv": 0, "pickup": 7, "fnb": 21}, "full_day_pct": {"adr": 115, "conv": 35, "pickup": 10, "fnb": 204}, "response_due_days": {"adr": 109, "conv": 3, "pickup": 33, "fnb": 100}, "days_since_last_rfp": {"adr": 90, "conv": 4, "pickup": 8, "fnb": 87}, "is_shoulder_season": {"adr": 88, "conv": 1, "pickup": 4, "fnb": 40}, "Is_Compression_Date": {"adr": 84, "conv": 0, "pickup": 0, "fnb": 3}, "is_peak_arrival": {"adr": 82, "conv": 1, "pickup": 10, "fnb": 36}, "arrival_dow_cos": {"adr": 66, "conv": 9, "pickup": 8, "fnb": 23}, "has_evening_session": {"adr": 52, "conv": 8, "pickup": 4, "fnb": 200}, "num_meeting_rooms": {"adr": 46, "conv": 83, "pickup": 6, "fnb": 127}, "has_reception": {"adr": 20, "conv": 0, "pickup": 1, "fnb": 24}, "event_type_enc": {"pickup": 88}, "Urgency_Index": {"pickup": 66, "fnb": 221}, "market_seg_Travel": {"pickup": 57}, "Account_Prior_Booked": {"pickup": 53, "fnb": 190}, "room_block": {"pickup": 47}, "market_seg_Social": {"pickup": 28}, "budget_amount": {"pickup": 22, "fnb": 184}, "num_fnb_types": {"pickup": 18, "fnb": 365}, "market_seg_SMERF": {"pickup": 6}, "event_format_enc": {"pickup": 5}, "has_premium_av": {"pickup": 4}, "tr_displacement_pressure": {"pickup": 4}, "market_seg_Healthcare": {"pickup": 4}, "Flag_Short_Response_Window": {"pickup": 3}, "market_seg_Finance": {"pickup": 3}, "market_seg_Professional Services": {"pickup": 3}, "market_seg_Technology": {"pickup": 3}, "is_repeat_client": {"pickup": 1}, "market_seg_Government": {"pickup": 1}, "market_seg_Other": {"pickup": 1}, "has_fnb_requirements": {"pickup": 0, "fnb": 0}, "uses_ballroom": {"pickup": 0}, "is_meeting_only": {"pickup": 0, "fnb": 0}, "group_size_tier_clean_enc": {"pickup": 0}, "market_seg_Association": {"pickup": 0}, "market_seg_Education": {"pickup": 0}, "market_seg_Legal": {"pickup": 0}, "market_seg_Trade/Manufacturing": {"pickup": 0}, "num_sessions": {"fnb": 595}, "rate_spread": {"fnb": 232}, "avg_room_utilization": {"fnb": 71}, "smerf_demand_30d": {"fnb": 59}, "has_dinner": {"fnb": 7}};
+
+LEVELS.forEach((l, li) => {
+  l.feats.forEach((name, i) => {
+    const y = rowY(i);
+    const g = groupOf(name);
+    const rect = el('rect', { x: xs[li], y, width: nodeW, height: rowH, fill: GROUP_COLOR[g], rx: 1.5, class: 'node-rect' });
+    const imp = (IMPORTANCE[name] || {})[l.key];
+    rect.dataset.tip = `${name}\n${l.label}: ${imp != null ? imp.toLocaleString() + ' splits' : '—'}`;
+    svg.appendChild(rect);
+
+    // label only at the feature's first appearance (its "entry" level)
+    const isEntry = (li === 0) || !(name in LEVELS[li - 1].idx);
+    if (!isEntry) return;
+
+    const labelY = y + rowH - 2;
+    let labelX, anchor;
+    if (li === 0) {
+      labelX = xs[li] - 10; anchor = 'end';
+    } else {
+      labelX = xs[li] - 10; anchor = 'end';
+    }
+    const text = name.length > 30 ? name.slice(0, 29) + '…' : name;
+    // halo behind text for legibility over any crossing ribbons
+    const halo = el('text', { x: labelX, y: labelY, class: 'lbl', 'text-anchor': anchor,
+      stroke: 'var(--surface)', 'stroke-width': 3, 'paint-order': 'stroke' });
+    halo.textContent = text;
+    svg.appendChild(halo);
+  });
+});
+
+// ── legend already in HTML; tooltip wiring ──────────────────────────────
+const tooltip = document.getElementById('tooltip');
+svg.querySelectorAll('[data-tip]').forEach(node => {
+  node.addEventListener('mousemove', (e) => {
+    tooltip.innerHTML = node.dataset.tip.split('\n').map((t, i) => i === 0 ? `<b>${t}</b>` : t).join('<br>');
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top = (e.clientY - 10) + 'px';
+    tooltip.classList.add('show');
+  });
+  node.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+});
+</script>
+</body>
+</html>
