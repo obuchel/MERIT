@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MERIT — Two Interfaces</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f2f2f8;
+  --bg-alt:#e9e9f4;
+  --surface:#ffffff;
+  --border:#e2e3ec;
+  --border-strong:#c9cbdb;
+  --ink:#15161f;
+  --ink-soft:#585d70;
+  --ink-faint:#8c90a1;
+  --accent:#5b4fe0;
+  --accent-ink:#4636c4;
+  --accent-bg:#efedfd;
+  --good:#12784c;
+  --good-bg:#e2f5ec;
+  --good-border:#a9dcc2;
+  --watch:#93620a;
+  --watch-bg:#fbf0d8;
+  --watch-border:#eecf8f;
+  --risk:#ad2942;
+  --risk-bg:#fbe7ec;
+  --risk-border:#f0b7c4;
+  --shadow: 0 1px 2px rgba(20,20,40,0.04), 0 6px 20px -10px rgba(20,20,40,0.16);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121319;
+    --bg-alt:#191b23;
+    --surface:#1b1d26;
+    --border:#2c2e3a;
+    --border-strong:#3a3d4d;
+    --ink:#e9e9f2;
+    --ink-soft:#aeb1c2;
+    --ink-faint:#787c8f;
+    --accent:#9b90f5;
+    --accent-ink:#b4abf8;
+    --accent-bg:#26243f;
+    --good:#5fd6a0;
+    --good-bg:#123527;
+    --good-border:#215c42;
+    --watch:#e8bc5c;
+    --watch-bg:#3a2f13;
+    --watch-border:#61501e;
+    --risk:#ff8fa3;
+    --risk-bg:#3a1620;
+    --risk-border:#63212f;
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 24px -12px rgba(0,0,0,0.6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121319; --bg-alt:#191b23; --surface:#1b1d26; --border:#2c2e3a; --border-strong:#3a3d4d;
+  --ink:#e9e9f2; --ink-soft:#aeb1c2; --ink-faint:#787c8f;
+  --accent:#9b90f5; --accent-ink:#b4abf8; --accent-bg:#26243f;
+  --good:#5fd6a0; --good-bg:#123527; --good-border:#215c42;
+  --watch:#e8bc5c; --watch-bg:#3a2f13; --watch-border:#61501e;
+  --risk:#ff8fa3; --risk-bg:#3a1620; --risk-border:#63212f;
+  --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 24px -12px rgba(0,0,0,0.6);
+  color-scheme: dark;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"Inter","Segoe UI",system-ui,sans-serif;
+  font-size:14.5px; line-height:1.5;
+}
+.mono{ font-family:"IBM Plex Mono",monospace; }
+::selection{ background:var(--accent); color:#fff; }
+
+/* ---------- App chrome ---------- */
+.app{ max-width:1320px; margin:0 auto; padding:0 20px 64px; }
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:18px 0; border-bottom:1px solid var(--border); margin-bottom:22px;
+}
+.brand{ display:flex; align-items:center; gap:10px; font-weight:700; font-size:1.05rem; }
+.brand .mark{ width:26px; height:26px; border-radius:7px; background:var(--accent); display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; font-weight:700; }
+.brand small{ display:block; font-weight:500; color:var(--ink-faint); font-size:11.5px; margin-top:1px; }
+
+.view-switch{
+  display:flex; gap:2px; background:var(--bg-alt); border:1px solid var(--border); border-radius:9px; padding:3px;
+}
+.view-switch button{
+  border:0; background:transparent; padding:8px 16px; border-radius:7px; font:inherit; font-weight:600;
+  font-size:13px; color:var(--ink-soft); cursor:pointer;
+}
+.view-switch button.active{ background:var(--surface); color:var(--accent-ink); box-shadow:var(--shadow); }
+
+.persona-note{ color:var(--ink-faint); font-size:12.5px; }
+
+.view{ display:none; }
+.view.active{ display:block; }
+
+h1,h2,h3{ margin:0; font-weight:700; letter-spacing:-0.01em; }
+.section-eyebrow{
+  font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:0.07em; text-transform:uppercase;
+  color:var(--ink-faint); margin:0 0 6px;
+}
+.page-head{ margin-bottom:22px; }
+.page-head h1{ font-size:1.5rem; }
+.page-head p{ margin:6px 0 0; color:var(--ink-soft); max-width:60ch; font-size:13.5px; }
+
+/* ---------- generic card ---------- */
+.card{ background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); }
+.card-pad{ padding:18px 20px; }
+
+/* ================= DECISION VIEW ================= */
+.decision-layout{ display:grid; grid-template-columns:300px 1fr; gap:20px; align-items:start; }
+@media (max-width:900px){ .decision-layout{ grid-template-columns:1fr; } }
+
+.queue-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:10px; }
+.queue-head h3{ font-size:0.95rem; }
+.queue-head .count{ color:var(--ink-faint); font-size:12px; }
+.queue-sort{ font-size:11.5px; color:var(--ink-faint); margin:0 0 12px; }
+
+.queue-list{ display:flex; flex-direction:column; gap:8px; }
+.queue-item{
+  display:block; width:100%; text-align:left; background:var(--surface); border:1px solid var(--border);
+  border-radius:10px; padding:11px 12px; cursor:pointer; font:inherit; color:inherit;
+}
+.queue-item:hover{ border-color:var(--border-strong); }
+.queue-item.selected{ border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+.queue-item .qtop{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px; }
+.queue-item .qname{ font-weight:600; font-size:13.3px; }
+.verdict-dot{ width:9px; height:9px; border-radius:50%; flex:none; }
+.verdict-dot.good{ background:var(--good); }
+.verdict-dot.watch{ background:var(--watch); }
+.verdict-dot.risk{ background:var(--risk); }
+.queue-item .qmeta{ display:flex; justify-content:space-between; font-size:11.8px; color:var(--ink-faint); }
+.queue-item .qdue{ font-family:"IBM Plex Mono",monospace; }
+.queue-item .qdue.soon{ color:var(--risk); }
+
+.queue-resolved{ margin-top:16px; padding-top:14px; border-top:1px dashed var(--border); }
+.queue-resolved summary{ font-size:12px; color:var(--ink-faint); cursor:pointer; }
+.queue-resolved .qr-row{ display:flex; justify-content:space-between; font-size:12px; color:var(--ink-faint); padding:6px 2px; }
+
+/* opportunity detail */
+.opp-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; padding:20px; }
+.opp-head h2{ font-size:1.28rem; }
+.opp-head .opp-sub{ color:var(--ink-soft); font-size:13px; margin-top:4px; }
+.opp-stats{ display:flex; gap:22px; flex-wrap:wrap; margin-top:14px; }
+.opp-stat{ min-width:80px; }
+.opp-stat .k{ font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-faint); margin-bottom:2px; }
+.opp-stat .v{ font-weight:700; font-size:1.02rem; font-variant-numeric:tabular-nums; }
+
+.verdict-banner{
+  display:flex; gap:14px; align-items:flex-start; margin:0 20px 18px; padding:16px 18px; border-radius:11px; border:1px solid;
+}
+.verdict-banner.good{ background:var(--good-bg); border-color:var(--good-border); }
+.verdict-banner.watch{ background:var(--watch-bg); border-color:var(--watch-border); }
+.verdict-icon{ width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px; flex:none; color:#fff; }
+.verdict-banner.good .verdict-icon{ background:var(--good); }
+.verdict-banner.watch .verdict-icon{ background:var(--watch); }
+.verdict-banner h3{ font-size:1.02rem; margin-bottom:4px; }
+.verdict-why{ list-style:none; margin:8px 0 0; padding:0; display:grid; gap:4px; font-size:12.8px; color:var(--ink-soft); }
+.verdict-why li{ padding-left:14px; position:relative; }
+.verdict-why li::before{ content:"—"; position:absolute; left:0; color:var(--ink-faint); }
+
+.grid2{ display:grid; grid-template-columns:1.15fr 0.85fr; gap:18px; padding:0 20px 20px; }
+@media (max-width:760px){ .grid2{ grid-template-columns:1fr; } }
+
+.subcard{ border:1px solid var(--border); border-radius:11px; padding:16px 17px; }
+.subcard h4{ font-size:0.85rem; margin-bottom:12px; display:flex; align-items:center; gap:7px; }
+.subcard h4 .tag{ font-size:10px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-faint); font-weight:600; }
+
+.refpoints{ list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+.refpoints li{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:12.8px; border-bottom:1px dashed var(--border); padding-bottom:8px; }
+.refpoints li:last-child{ border-bottom:0; padding-bottom:0; }
+.refpoints .rp-label{ color:var(--ink-soft); }
+.refpoints .rp-val{ font-weight:600; font-variant-numeric:tabular-nums; text-align:right; }
+.refpoints .rp-sub{ display:block; color:var(--ink-faint); font-size:11px; font-weight:400; }
+
+.flags{ list-style:none; margin:0; padding:0; display:grid; gap:8px; }
+.flags li{ display:flex; gap:9px; align-items:flex-start; font-size:12.6px; padding:9px 10px; border-radius:8px; }
+.flags li.risk{ background:var(--risk-bg); color:var(--risk); }
+.flags li.watch{ background:var(--watch-bg); color:var(--watch); }
+.flags li .fdot{ margin-top:1px; }
+
+.rec-box{ margin:0 20px 20px; border:1.5px solid var(--accent); border-radius:12px; padding:20px; background:var(--accent-bg); }
+.rec-top{ display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:14px; }
+.rec-top h4{ font-size:0.98rem; color:var(--accent-ink); }
+.rec-nums{ display:flex; gap:26px; margin-top:10px; }
+.rec-num .k{ font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-faint); }
+.rec-num .v{ font-size:1.5rem; font-weight:700; font-variant-numeric:tabular-nums; color:var(--ink); }
+.rec-why{ margin:12px 0 0; font-size:12.6px; color:var(--ink-soft); max-width:64ch; }
+
+.flex-row{ display:flex; gap:22px; margin-top:16px; padding-top:16px; border-top:1px solid var(--border-strong); flex-wrap:wrap; align-items:center; }
+.flex-field{ display:flex; flex-direction:column; gap:6px; }
+.flex-field label{ font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-faint); }
+.flex-field input[type=range]{ width:150px; accent-color:var(--accent); }
+.flex-field .fv{ font-weight:600; font-variant-numeric:tabular-nums; font-size:13px; }
+.flex-result{ margin-left:auto; text-align:right; }
+.flex-result .k{ font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-faint); }
+.flex-result .v{ font-size:1.15rem; font-weight:700; font-variant-numeric:tabular-nums; }
+.flex-result .v.down{ color:var(--risk); }
+.flex-result .v.up{ color:var(--good); }
+
+.decision-actions{ display:flex; gap:10px; padding:0 20px 22px; }
+.btn{ font:inherit; font-weight:600; font-size:13px; padding:10px 18px; border-radius:8px; border:1px solid var(--border-strong); background:var(--surface); color:var(--ink); cursor:pointer; }
+.btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+.btn.ghost{ background:transparent; }
+
+/* ================= ANALYST VIEW ================= */
+.analyst-grid{ display:grid; grid-template-columns:1.3fr 1fr; gap:18px; }
+@media (max-width:980px){ .analyst-grid{ grid-template-columns:1fr; } }
+.analyst-grid .card-pad{ padding:18px 20px 20px; }
+.analyst-grid h3{ font-size:0.92rem; margin-bottom:3px; }
+.chart-sub{ color:var(--ink-faint); font-size:11.5px; margin:0 0 14px; }
+.span2{ grid-column:1 / -1; }
+
+/* pacing chart */
+.pace-legend{ display:flex; gap:16px; font-size:11.5px; color:var(--ink-soft); margin-top:10px; }
+.pace-legend span{ display:inline-flex; align-items:center; gap:6px; }
+.pace-legend i{ width:14px; height:2.5px; border-radius:2px; display:inline-block; }
+
+/* segment bars */
+.seg-rows{ display:grid; gap:10px; }
+.seg-row{ display:grid; grid-template-columns:100px 1fr 60px; align-items:center; gap:10px; font-size:12.3px; }
+.seg-row .bar-track{ height:9px; background:var(--bg-alt); border-radius:5px; overflow:hidden; }
+.seg-row .bar-fill{ height:100%; border-radius:5px; background:var(--accent); }
+.seg-row .val{ text-align:right; font-variant-numeric:tabular-nums; color:var(--ink-soft); }
+
+/* win/loss matrix */
+table.matrix{ width:100%; border-collapse:collapse; font-size:12.3px; }
+table.matrix th, table.matrix td{ padding:8px 9px; text-align:center; border-bottom:1px solid var(--border); }
+table.matrix th{ color:var(--ink-faint); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:0.03em; }
+table.matrix td:first-child, table.matrix th:first-child{ text-align:left; font-weight:600; color:var(--ink); }
+.cell-rate{ font-variant-numeric:tabular-nums; font-weight:600; border-radius:6px; padding:3px 0; }
+
+/* demand heat calendar */
+.heat-cal{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-top:6px; }
+.heat-cal .dow{ font-size:10px; color:var(--ink-faint); text-align:center; padding-bottom:2px; }
+.heat-day{ aspect-ratio:1; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:10.5px; font-variant-numeric:tabular-nums; cursor:default; position:relative; }
+.heat-day.blank{ visibility:hidden; }
+.heat-day.peak{ background:var(--risk-bg); color:var(--risk); font-weight:700; border:1px solid var(--risk-border); }
+.heat-day.shoulder{ background:var(--watch-bg); color:var(--watch); border:1px solid var(--watch-border); }
+.heat-day.soft{ background:var(--good-bg); color:var(--good); border:1px solid var(--good-border); font-weight:700; }
+.heat-legend{ display:flex; gap:14px; margin-top:12px; font-size:11.5px; color:var(--ink-soft); flex-wrap:wrap; }
+.heat-legend span{ display:inline-flex; align-items:center; gap:6px; }
+.heat-legend i{ width:11px; height:11px; border-radius:3px; display:inline-block; }
+.heat-note{ margin-top:10px; font-size:11.8px; color:var(--ink-faint); }
+
+/* drilldown table */
+table.drill{ width:100%; border-collapse:collapse; font-size:12.4px; }
+table.drill th{ text-align:left; font-size:10.8px; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-faint); padding:0 10px 8px; border-bottom:1px solid var(--border); }
+table.drill td{ padding:9px 10px; border-bottom:1px solid var(--border); }
+table.drill tr:last-child td{ border-bottom:0; }
+.pill{ font-size:10.8px; font-weight:600; padding:2px 8px; border-radius:999px; display:inline-block; }
+.pill.won{ background:var(--good-bg); color:var(--good); }
+.pill.lost{ background:var(--risk-bg); color:var(--risk); }
+.pill.pending{ background:var(--watch-bg); color:var(--watch); }
+.num{ font-variant-numeric:tabular-nums; text-align:right; }
+
+footer.foot{ margin-top:36px; padding-top:16px; border-top:1px solid var(--border); font-size:11.5px; color:var(--ink-faint); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div class="brand"><span class="mark">M</span><div>MERIT<small>Two proposed interfaces — same engine, different audience</small></div></div>
+    <div class="view-switch">
+      <button id="btn-decision" class="active" onclick="showView('decision')">Decision View</button>
+      <button id="btn-analyst" onclick="showView('analyst')">Analyst View</button>
+    </div>
+  </div>
+
+  <!-- ================= DECISION VIEW ================= -->
+  <section id="view-decision" class="view active">
+    <div class="page-head">
+      <p class="section-eyebrow">For the person answering the RFP</p>
+      <h1>Today's queue</h1>
+      <p>Worked by response deadline, not a score. Each opportunity gets a plain read — good fit, needs a look, or weak fit — with the reasoning one click away.</p>
+    </div>
+
+    <div class="decision-layout">
+      <div>
+        <div class="queue-head"><h3>Awaiting a decision</h3><span class="count">3 open</span></div>
+        <p class="queue-sort">Sorted by response due date</p>
+        <div class="queue-list">
+          <div class="queue-item selected" onclick="selectOpp(this)">
+            <div class="qtop"><span class="qname">Biotech Startup Summit</span><span class="verdict-dot watch"></span></div>
+            <div class="qmeta"><span>Nov 20–26 · 147 attn</span><span class="qdue soon">Due in 14 hrs</span></div>
+          </div>
+          <div class="queue-item" onclick="selectOpp(this)">
+            <div class="qtop"><span class="qname">Great Lakes Manufacturing Expo</span><span class="verdict-dot good"></span></div>
+            <div class="qmeta"><span>Jan 12–15 · 210 attn</span><span class="qdue">Due in 2 days</span></div>
+          </div>
+          <div class="queue-item" onclick="selectOpp(this)">
+            <div class="qtop"><span class="qname">Downtown Legal Symposium</span><span class="verdict-dot risk"></span></div>
+            <div class="qmeta"><span>Feb 3–4 · 60 attn</span><span class="qdue">Due in 4 days</span></div>
+          </div>
+        </div>
+
+        <details class="queue-resolved">
+          <summary>Already decided (8)</summary>
+          <div class="qr-row"><span>Ohio Agribusiness Council</span><span>Booked</span></div>
+          <div class="qr-row"><span>Vertex Pharmaceuticals Regional Meeting</span><span>Booked</span></div>
+          <div class="qr-row"><span>American Bankers Conference</span><span>Lost</span></div>
+          <div class="qr-row"><span>WP Engine Corporate Events</span><span>Declined</span></div>
+        </details>
+      </div>
+
+      <div class="card">
+        <div class="opp-head">
+          <div>
+            <h2>Biotech Startup Summit</h2>
+            <p class="opp-sub">Association · Nov 20–26, 2026 (6 nights) · via Cvent, pulled automatically</p>
+          </div>
+          <div class="opp-stats">
+            <div class="opp-stat"><div class="k">Attendees</div><div class="v">147</div></div>
+            <div class="opp-stat"><div class="k">Room block</div><div class="v">120 pk</div></div>
+            <div class="opp-stat"><div class="k">Response due</div><div class="v" style="color:var(--risk)">14 hrs</div></div>
+          </div>
+        </div>
+
+        <div class="verdict-banner watch">
+          <div class="verdict-icon">!</div>
+          <div>
+            <h3>Worth pursuing — but resolve the space conflict first</h3>
+            <ul class="verdict-why">
+              <li>These dates are running soft: 61% on the books vs. 84% this week last year</li>
+              <li>F&amp;B and meeting-space mix matches your best-performing association groups</li>
+              <li>Peak-night room block overlaps a tentative hold — needs a look before you quote</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="subcard">
+            <h4>Reference points for these dates <span class="tag">Nov 20–26</span></h4>
+            <ul class="refpoints">
+              <li><span class="rp-label">Prior-year ADR, same dates</span><span class="rp-val">$139<span class="rp-sub">2025 actual</span></span></li>
+              <li><span class="rp-label">Prior-year room nights</span><span class="rp-val">96<span class="rp-sub">of 120 requested this year</span></span></li>
+              <li><span class="rp-label">Current group OTB</span><span class="rp-val">61%<span class="rp-sub">vs. 84% same week LY</span></span></li>
+              <li><span class="rp-label">Transient forecast</span><span class="rp-val">Soft<span class="rp-sub">low demand tier</span></span></li>
+              <li><span class="rp-label">Room vs. F&amp;B/meeting mix</span><span class="rp-val">82 / 18<span class="rp-sub">typical for this segment: 78 / 22</span></span></li>
+              <li><span class="rp-label">Win/loss, comparable deals</span><span class="rp-val">7 of 10 won<span class="rp-sub">assoc., 80–150 rm block, this lead time</span></span></li>
+            </ul>
+          </div>
+          <div class="subcard">
+            <h4>Flags</h4>
+            <ul class="flags">
+              <li class="watch"><span class="fdot">●</span> Peak night (Nov 21) overlaps a tentative hold for another group — confirm before quoting</li>
+              <li class="watch"><span class="fdot">●</span> Response window is 14 hours — shorter than this account's usual lead time</li>
+              <li class="watch"><span class="fdot">●</span> First-time planner contact — no prior history with this account</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="rec-box">
+          <div class="rec-top">
+            <div>
+              <h4>Recommendation</h4>
+              <p class="rec-why" style="margin-top:2px;">Priced to win the room block while protecting the F&amp;B minimum a group this size typically supports — assumes the space conflict clears.</p>
+            </div>
+          </div>
+          <div class="rec-nums">
+            <div class="rec-num"><div class="k">Rate offer</div><div class="v">$147 / rm</div></div>
+            <div class="rec-num"><div class="k">F&amp;B minimum</div><div class="v">$13,000</div></div>
+            <div class="rec-num"><div class="k">Est. total contribution</div><div class="v">$95,000</div></div>
+          </div>
+
+          <div class="flex-row">
+            <div class="flex-field">
+              <label>Rate offer</label>
+              <input type="range" id="rateSlider" min="120" max="180" value="147" oninput="recalc()">
+              <span class="fv" id="rateVal">$147</span>
+            </div>
+            <div class="flex-field">
+              <label>Concession — comp rooms</label>
+              <input type="range" id="compSlider" min="0" max="8" value="1" oninput="recalc()">
+              <span class="fv" id="compVal">1 room</span>
+            </div>
+            <div class="flex-result">
+              <div class="k">Projected contribution</div>
+              <div class="v" id="contribVal">$95,000</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="decision-actions">
+          <button class="btn primary">Send offer</button>
+          <button class="btn">Hold for space check</button>
+          <button class="btn ghost">Decline</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ANALYST VIEW ================= -->
+  <section id="view-analyst" class="view">
+    <div class="page-head">
+      <p class="section-eyebrow">For DOS / RM / corporate</p>
+      <h1>Portfolio &amp; pacing</h1>
+      <p>The depth the queue view deliberately hides — pacing, mix, comparable-deal win rates, and the demand calendar the recommendations are actually built on.</p>
+    </div>
+
+    <div class="analyst-grid">
+      <div class="card card-pad">
+        <h3>Booking pace vs. prior year</h3>
+        <p class="chart-sub">Group room nights on the books, next 16 weeks</p>
+        <svg viewBox="0 0 560 160" width="100%" height="160" role="img" aria-label="Pacing line chart">
+          <line x1="0" y1="130" x2="560" y2="130" stroke="var(--border)" stroke-width="1"/>
+          <line x1="0" y1="80" x2="560" y2="80" stroke="var(--border)" stroke-width="1" stroke-dasharray="3 4"/>
+          <line x1="0" y1="30" x2="560" y2="30" stroke="var(--border)" stroke-width="1" stroke-dasharray="3 4"/>
+          <polyline fill="none" stroke="var(--ink-faint)" stroke-width="2" stroke-dasharray="5 4"
+            points="0,95 40,88 80,70 120,60 160,55 200,50 240,58 280,62 320,45 360,40 400,35 440,32 480,28 520,26 560,24"/>
+          <polyline fill="none" stroke="var(--accent)" stroke-width="2.5"
+            points="0,110 40,105 80,98 120,92 160,100 200,96 240,105 280,98 320,90 360,86 400,82 440,80 480,50 520,55 560,60"/>
+          <circle cx="480" cy="50" r="4" fill="var(--accent)"/>
+        </svg>
+        <div class="pace-legend">
+          <span><i style="background:var(--accent)"></i>This year</span>
+          <span><i style="background:var(--ink-faint);border-top:2px dashed var(--ink-faint)"></i>Last year</span>
+        </div>
+        <p class="heat-note">Running ahead of last year through week 12, then behind — matches the soft window flagged on Biotech Startup Summit's dates.</p>
+      </div>
+
+      <div class="card card-pad">
+        <h3>Revenue by segment</h3>
+        <p class="chart-sub">Trailing 3 years</p>
+        <div class="seg-rows">
+          <div class="seg-row"><span>Healthcare</span><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><span class="val">$4.26M</span></div>
+          <div class="seg-row"><span>Finance</span><div class="bar-track"><div class="bar-fill" style="width:77%"></div></div><span class="val">$3.29M</span></div>
+          <div class="seg-row"><span>Prof. Services</span><div class="bar-track"><div class="bar-fill" style="width:50%"></div></div><span class="val">$2.13M</span></div>
+          <div class="seg-row"><span>Technology</span><div class="bar-track"><div class="bar-fill" style="width:43%"></div></div><span class="val">$1.85M</span></div>
+          <div class="seg-row"><span>Social</span><div class="bar-track"><div class="bar-fill" style="width:35%"></div></div><span class="val">$1.50M</span></div>
+          <div class="seg-row"><span>Education</span><div class="bar-track"><div class="bar-fill" style="width:26%"></div></div><span class="val">$1.13M</span></div>
+        </div>
+      </div>
+
+      <div class="card card-pad">
+        <h3>Win rate — comparable deals</h3>
+        <p class="chart-sub">By segment and response window, trailing 12 months</p>
+        <table class="matrix">
+          <tr><th>Segment</th><th>6–10d</th><th>11–20d</th><th>21d+</th></tr>
+          <tr><td>Association</td><td><span class="cell-rate" style="background:var(--good-bg);color:var(--good)">71%</span></td><td><span class="cell-rate" style="background:var(--good-bg);color:var(--good)">68%</span></td><td><span class="cell-rate" style="background:var(--watch-bg);color:var(--watch)">54%</span></td></tr>
+          <tr><td>Corporate</td><td><span class="cell-rate" style="background:var(--watch-bg);color:var(--watch)">58%</span></td><td><span class="cell-rate" style="background:var(--good-bg);color:var(--good)">63%</span></td><td><span class="cell-rate" style="background:var(--good-bg);color:var(--good)">65%</span></td></tr>
+          <tr><td>SMERF</td><td><span class="cell-rate" style="background:var(--risk-bg);color:var(--risk)">41%</span></td><td><span class="cell-rate" style="background:var(--watch-bg);color:var(--watch)">55%</span></td><td><span class="cell-rate" style="background:var(--watch-bg);color:var(--watch)">52%</span></td></tr>
+          <tr><td>Wedding/Social</td><td><span class="cell-rate" style="background:var(--good-bg);color:var(--good)">74%</span></td><td><span class="cell-rate" style="background:var(--good-bg);color:var(--good)">70%</span></td><td><span class="cell-rate" style="background:var(--watch-bg);color:var(--watch)">57%</span></td></tr>
+        </table>
+        <p class="heat-note">This is the "win/loss history" reference on the decision screen, rolled up — Association at a 14-hour window sits closer to the 11–20d column than the 6–10d one.</p>
+      </div>
+
+      <div class="card card-pad span2">
+        <h3>Demand calendar</h3>
+        <p class="chart-sub">November 2026 — compression tier by date, refreshed from the PMS nightly. This replaces the old booking calendar: nobody browses individual reservations here, but every recommendation on the decision screen is checked against it.</p>
+        <div class="heat-cal">
+          <div class="dow">S</div><div class="dow">M</div><div class="dow">T</div><div class="dow">W</div><div class="dow">T</div><div class="dow">F</div><div class="dow">S</div>
+          <div class="heat-day blank"></div><div class="heat-day blank"></div>
+          <div class="heat-day soft" title="61% OTB">1</div><div class="heat-day soft" title="58% OTB">2</div><div class="heat-day soft" title="60% OTB">3</div><div class="heat-day soft" title="63% OTB">4</div><div class="heat-day shoulder" title="72% OTB">5</div><div class="heat-day shoulder" title="70% OTB">6</div>
+          <div class="heat-day shoulder" title="74% OTB">7</div><div class="heat-day shoulder" title="76% OTB">8</div><div class="heat-day shoulder" title="75% OTB">9</div><div class="heat-day shoulder" title="73% OTB">10</div><div class="heat-day shoulder" title="77% OTB">11</div><div class="heat-day peak" title="91% OTB">12</div><div class="heat-day peak" title="93% OTB">13</div>
+          <div class="heat-day peak" title="90% OTB">14</div><div class="heat-day shoulder" title="79% OTB">15</div><div class="heat-day shoulder" title="78% OTB">16</div><div class="heat-day shoulder" title="80% OTB">17</div><div class="heat-day shoulder" title="81% OTB">18</div><div class="heat-day soft" title="64% OTB">19</div><div class="heat-day soft" title="61% OTB">20</div>
+          <div class="heat-day soft" title="60% OTB">21</div><div class="heat-day soft" title="62% OTB">22</div><div class="heat-day soft" title="63% OTB">23</div><div class="heat-day shoulder" title="70% OTB">24</div><div class="heat-day peak" title="88% OTB">25</div><div class="heat-day peak" title="94% OTB">26</div><div class="heat-day peak" title="95% OTB">27</div>
+          <div class="heat-day shoulder" title="76% OTB">28</div><div class="heat-day shoulder" title="74% OTB">29</div><div class="heat-day soft" title="65% OTB">30</div>
+        </div>
+        <div class="heat-legend">
+          <span><i style="background:var(--good-bg);border:1px solid var(--good-border)"></i>Soft — chase this business</span>
+          <span><i style="background:var(--watch-bg);border:1px solid var(--watch-border)"></i>Shoulder</span>
+          <span><i style="background:var(--risk-bg);border:1px solid var(--risk-border)"></i>Compressed — price up or pass</span>
+        </div>
+      </div>
+
+      <div class="card card-pad span2">
+        <h3>Deals in this window</h3>
+        <p class="chart-sub">Nov 20–26, 2026 · drill-down from the calendar above</p>
+        <table class="drill">
+          <tr><th>Opportunity</th><th>Segment</th><th>Room block</th><th>Rate quoted</th><th>Outcome</th></tr>
+          <tr><td>Biotech Startup Summit</td><td>Association</td><td class="num">120</td><td class="num">$147</td><td><span class="pill pending">Pending</span></td></tr>
+          <tr><td>Ohio Agribusiness Council (2025)</td><td>Association</td><td class="num">96</td><td class="num">$139</td><td><span class="pill won">Won</span></td></tr>
+          <tr><td>Central Ohio Legal Society (2025)</td><td>Corporate</td><td class="num">40</td><td class="num">$151</td><td><span class="pill lost">Lost</span></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <footer class="foot">MERIT — proposed interface split, based on the field-feedback teardown &amp; the "who's the primary user" question it raised</footer>
+  </section>
+
+</div>
+
+<script>
+function showView(v){
+  document.getElementById('view-decision').classList.toggle('active', v==='decision');
+  document.getElementById('view-analyst').classList.toggle('active', v==='analyst');
+  document.getElementById('btn-decision').classList.toggle('active', v==='decision');
+  document.getElementById('btn-analyst').classList.toggle('active', v==='analyst');
+}
+function selectOpp(el){
+  document.querySelectorAll('.queue-item').forEach(function(i){ i.classList.remove('selected'); });
+  el.classList.add('selected');
+}
+function recalc(){
+  var rate = parseInt(document.getElementById('rateSlider').value, 10);
+  var comp = parseInt(document.getElementById('compSlider').value, 10);
+  document.getElementById('rateVal').textContent = '$' + rate;
+  document.getElementById('compVal').textContent = comp + (comp===1 ? ' room' : ' rooms');
+  var roomRev = rate * 120 - (comp * rate);
+  var fb = 13000;
+  var meeting = 4000;
+  var total = roomRev + fb + meeting;
+  var base = 95000;
+  var el = document.getElementById('contribVal');
+  el.textContent = '$' + total.toLocaleString();
+  el.className = 'v ' + (total >= base ? 'up' : 'down');
+}
+</script>
+</body>
+</html>
