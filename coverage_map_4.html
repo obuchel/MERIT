@@ -1,0 +1,796 @@
+<meta charset="utf-8">
+<title>District Coverage Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+:root{
+  --bg:#fbfaf7;
+  --surface:#ffffff;
+  --border:#e4e1d8;
+  --border-strong:#cbc6b6;
+  --ink:#211f1a;
+  --ink-soft:#5c584d;
+  --ink-mute:#8b8676;
+  --accent:#a8542c;
+  --accent-soft:#f1e2d6;
+  --st-full:#2a78d6;
+  --st-partial:#fab219;
+  --st-nodata:#ec835a;
+  --st-unmatched:#d03b3b;
+  --map-bg:#f4f2ec;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#17160f; --surface:#201f18; --border:#3a382d; --border-strong:#4c493b;
+    --ink:#f3f1e9; --ink-soft:#c7c3b4; --ink-mute:#8f8b7a;
+    --accent:#e2a06f; --accent-soft:#3a2c20; --map-bg:#1c1b14;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#17160f; --surface:#201f18; --border:#3a382d; --border-strong:#4c493b;
+  --ink:#f3f1e9; --ink-soft:#c7c3b4; --ink-mute:#8f8b7a;
+  --accent:#e2a06f; --accent-soft:#3a2c20; --map-bg:#1c1b14;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  padding:28px clamp(16px,4vw,48px) 48px;
+}
+.wrap{max-width:1180px; margin:0 auto;}
+header{margin-bottom:22px;}
+h1{
+  font-family:"Fraunces", Georgia, serif; font-weight:600; font-optical-sizing:auto;
+  font-size:clamp(26px,3.2vw,36px); margin:0 0 6px; letter-spacing:-0.01em; text-wrap:balance;
+}
+.sub{color:var(--ink-soft); font-size:14.5px; max-width:68ch; line-height:1.55; margin:0;}
+.sub b{color:var(--ink); font-weight:600;}
+.panel{background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 20px;}
+
+.loader-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin-bottom:4px;}
+.drop{
+  border:1.5px dashed var(--border-strong); border-radius:9px; padding:16px;
+  background:var(--bg); cursor:pointer; transition:border-color .15s ease, background .15s ease;
+  position:relative;
+}
+.drop:hover, .drop.drag{border-color:var(--accent); background:var(--accent-soft);}
+.drop input{position:absolute; inset:0; opacity:0; cursor:pointer;}
+.drop .name{font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-mute); font-weight:600; margin-bottom:5px;}
+.drop .cols{font-family:"IBM Plex Mono", monospace; font-size:11.5px; color:var(--ink-soft); line-height:1.5;}
+.drop .status{margin-top:8px; font-size:12.5px; font-weight:500; color:var(--ink-mute);}
+.drop .status.ok{color:#2a8a4a;}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .drop .status.ok{color:#5fc785;}}
+:root[data-theme="dark"] .drop .status.ok{color:#5fc785;}
+.load-note{font-size:12.5px; color:var(--ink-mute); margin:10px 0 0; line-height:1.5;}
+.load-note code{font-family:"IBM Plex Mono", monospace; background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:1px 5px;}
+
+.controls{display:flex; flex-wrap:wrap; align-items:center; gap:18px 28px; margin:20px 0 16px;}
+.controls[hidden]{display:none;}
+.control-group{display:flex; flex-direction:column; gap:6px; flex:1 1 260px; min-width:220px;}
+.control-label{font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-mute); font-weight:600;}
+.year-row{display:flex; align-items:center; gap:12px;}
+.year-row input[type="range"]{flex:1; accent-color:var(--accent); height:4px; cursor:pointer;}
+.year-badge{font-family:"IBM Plex Mono", monospace; font-weight:500; font-size:20px; min-width:58px; text-align:center; color:var(--accent);}
+.checkbox-row{display:flex; align-items:center; gap:8px; flex:0 0 auto;}
+.checkbox-row input{width:16px; height:16px; accent-color:var(--accent); cursor:pointer;}
+.checkbox-row label{font-size:13.5px; color:var(--ink-soft); cursor:pointer; user-select:none;}
+.stats-row{display:flex; flex-wrap:wrap; gap:10px; flex:1 1 100%; margin-top:2px;}
+.stat-chip{display:flex; align-items:baseline; gap:6px; border:1px solid var(--border); border-radius:7px; padding:6px 11px; font-size:12.5px; color:var(--ink-soft); background:var(--bg);}
+.stat-chip .n{font-family:"IBM Plex Mono", monospace; font-weight:500; color:var(--ink); font-variant-numeric:tabular-nums;}
+.stat-chip .dot{width:8px; height:8px; border-radius:50%; display:inline-block;}
+
+.map-shell{position:relative; background:var(--map-bg); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-top:4px;}
+.map-shell[hidden]{display:none;}
+#mainCanvas{display:block; width:100%; height:auto;}
+.ak-inset{position:absolute; left:14px; bottom:14px; width:17%; min-width:130px; aspect-ratio:1/0.82; background:var(--map-bg); border:1px solid var(--border-strong); border-radius:6px; overflow:hidden;}
+.ak-inset::before{content:"Alaska"; position:absolute; top:5px; left:7px; font-size:9.5px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-mute); font-weight:600; z-index:2;}
+#akCanvas{display:block; width:100%; height:100%;}
+.legend{display:flex; flex-wrap:wrap; gap:16px 26px; margin-top:16px; padding-top:14px; border-top:1px solid var(--border);}
+.legend[hidden]{display:none;}
+.legend-item{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink-soft);}
+.legend-item .sw{width:11px; height:11px; border-radius:50%; flex:0 0 auto;}
+.legend-item b{color:var(--ink); font-weight:600;}
+.tooltip{
+  position:fixed; pointer-events:none; z-index:50; background:var(--ink); color:var(--bg);
+  font-family:"IBM Plex Mono", monospace; font-size:12px; padding:9px 12px; border-radius:7px; line-height:1.5;
+  opacity:0; transform:translateY(4px); transition:opacity .1s ease, transform .1s ease;
+  white-space:nowrap; min-width:200px;
+}
+.tooltip.show{opacity:1; transform:translateY(0);}
+.tooltip .st{font-weight:600;}
+.tooltip .tt-head{display:flex; align-items:baseline; gap:14px; justify-content:space-between; margin-bottom:4px;}
+.tooltip .tt-geoid-main{font-weight:600; font-size:13px;}
+.tooltip .tt-place{opacity:0.6; font-size:11px; font-family:"IBM Plex Sans", sans-serif;}
+.tooltip .tt-row{display:flex; align-items:baseline; gap:16px; justify-content:space-between;}
+.tooltip .tt-k{opacity:0.62; font-size:11px;}
+.tooltip .tt-v{font-weight:500; font-variant-numeric:tabular-nums;}
+.tooltip .tt-v.tt-muted{opacity:0.6; font-weight:400; font-size:11px; white-space:normal; max-width:190px; text-align:right;}
+.tooltip .tt-row.tt-headline .tt-k{opacity:0.85; font-size:11.5px;}
+.tooltip .tt-row.tt-headline .tt-v{font-weight:700; font-size:13.5px;}
+.tooltip .tt-status{margin-top:4px; padding-top:4px; border-top:1px solid color-mix(in srgb, currentColor 22%, transparent); font-size:11px; font-weight:500;}
+.error-box{margin-top:10px; font-size:12.5px; color:var(--st-unmatched); font-weight:500;}
+footer{margin-top:16px; font-size:12px; color:var(--ink-mute); line-height:1.6;}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>District Coverage Atlas</h1>
+    <p class="sub">Load your own GIS-apportioned panel below to see, district by district, how complete its record is for any fiscal year 2009&ndash;2024 &mdash; both public-library circulation and, once SEDA is loaded, grade 3/6 reading achievement. A dot is only full-blue when both are there; missing either one pulls it down a tier. Nothing is uploaded anywhere &mdash; every file is parsed and mapped entirely in this browser tab.</p>
+  </header>
+
+  <div class="panel">
+    <div class="loader-grid" id="loaderGrid">
+      <label class="drop" id="drop-centroids">
+        <input type="file" accept=".csv" data-role="centroids">
+        <div class="name">1 &middot; district centroids</div>
+        <div class="cols">GEOID, lat, lon</div>
+        <div class="status" id="status-centroids">waiting for file&hellip;</div>
+      </label>
+      <label class="drop" id="drop-weights">
+        <input type="file" accept=".csv" data-role="weights">
+        <div class="name">2 &middot; district &harr; library weights</div>
+        <div class="cols">FSCSKEY, district_geoid, weight</div>
+        <div class="status" id="status-weights">waiting for file&hellip;</div>
+      </label>
+      <label class="drop" id="drop-library">
+        <input type="file" accept=".csv" data-role="library">
+        <div class="name">3 &middot; district-year library panel</div>
+        <div class="cols">district_geoid, year, totcir, kidcirc, &hellip;</div>
+        <div class="status" id="status-library">waiting for file&hellip;</div>
+      </label>
+      <label class="drop" id="drop-seda">
+        <input type="file" accept=".csv" data-role="seda">
+        <div class="name">4 &middot; reading achievement (optional)</div>
+        <div class="cols">sedaadmin, sedaadminname, stateabb, grade, year, gcs_mn_all</div>
+        <div class="status" id="status-seda">optional &mdash; adds place names &amp; g3/g6 scores to tooltips</div>
+      </label>
+      <label class="drop" id="drop-states">
+        <input type="file" accept=".json,.geojson" data-role="states">
+        <div class="name">5 &middot; state outlines (optional)</div>
+        <div class="cols">cb_2018_us_state_20m.json (Census GeoJSON)</div>
+        <div class="status" id="status-states">optional &mdash; draws state borders &amp; labels under the dots</div>
+      </label>
+    </div>
+    <p class="load-note">Expected filenames from the build pipeline: <code>district_centroids_full.csv</code>, <code>district_weights_by_system_v2.csv</code>, <code>district_year_library_gis_v6.csv</code>, and optionally <code>seda_filtered_2025.csv</code> and <code>cb_2018_us_state_20m.json</code> &mdash; any files with matching columns/fields work. A district counts <b>unmatched</b> if it never appears in file 2; for a year it has a row for in file 3, it's <b>full</b> when both <code>totcir</code> and a children's-circulation column are present, <b>partial</b> when only <code>totcir</code> is, and <b>matched, no data</b> when neither is (or there's no row that year at all). Files 4 and 5 are never required to build the map &mdash; 4 only enriches the hover tooltip and can fold into the dot colors (Texas/Hawaii/Puerto Rico districts won't have a SEDA match at all, a documented gap in SEDA itself, not a loading error), and 5 only draws reference borders and labels underneath everything else.</p>
+    <p class="load-note" id="autoLoadNote">If this page sits in the <b>same folder</b> as those files, it tries to read them automatically on open &mdash; no picking or dropping needed. Opening the file with a plain double-click blocks that in some browsers (Chrome in particular refuses local-file reads for security reasons); if the boxes above don't fill in on their own, either drag each file onto its box, or run one command from that folder and open the page through it instead: <code>python3 -m http.server 8000</code>, then visit <code>http://localhost:8000/coverage_map.html</code>.</p>
+    <div class="error-box" id="errorBox" hidden></div>
+
+    <div class="controls" id="controls" hidden>
+      <div class="control-group" style="flex:1 1 340px;">
+        <span class="control-label">Fiscal year</span>
+        <div class="year-row">
+          <input type="range" id="yearSlider" min="0" max="0" step="1" value="0">
+          <span class="year-badge" id="yearBadge">&mdash;</span>
+        </div>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="incompleteOnly">
+        <label for="incompleteOnly">incomplete districts only</label>
+      </div>
+      <div class="stats-row" id="statsRow"></div>
+    </div>
+
+    <div class="map-shell" id="mapShell" hidden>
+      <canvas id="mainCanvas" width="1400" height="760"></canvas>
+      <div class="ak-inset"><canvas id="akCanvas" width="240" height="196"></canvas></div>
+    </div>
+
+    <div class="legend" id="legend" hidden>
+      <div class="legend-item"><span class="sw" style="background:var(--st-full)"></span><b>Full data</b>&nbsp;&mdash; children's circulation reported, plus both reading-achievement grades if SEDA is loaded</div>
+      <div class="legend-item"><span class="sw" style="background:var(--st-partial)"></span><b>Partial</b>&nbsp;&mdash; children's circulation missing, or only one of two SEDA grades reported</div>
+      <div class="legend-item"><span class="sw" style="background:var(--st-nodata)"></span><b>Matched, no data</b>&nbsp;&mdash; no usable circulation this year, or (with full circulation) no SEDA score at all</div>
+      <div class="legend-item"><span class="sw" style="background:var(--st-unmatched)"></span><b>Unmatched</b>&nbsp;&mdash; no library service area touches this district</div>
+    </div>
+    <p class="load-note" id="sedaColorNote" hidden>With file 4 loaded, a district that would otherwise be full-blue drops a tier on any year SEDA itself covers if its reading achievement is incomplete &mdash; hover a district for the specific reason. Years SEDA has no data for at all (2020 and 2021, nationwide) never trigger this &mdash; only real gaps do.</p>
+  </div>
+
+  <footer id="footerNote" hidden>
+    Alaska is redrawn at its own scale in the inset (its longitude span would otherwise flatten the mainland). Single-district outliers whose coordinates fall far outside both frames &mdash; Hawaii, Guam, the Northern Mariana Islands, American Samoa &mdash; are counted in the totals above but omitted from the plot itself; Puerto Rico renders at the map's southeast edge.
+  </footer>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+const STATUS_COLOR = {f:'#2a78d6', p:'#fab219', n:'#ec835a', u:'#d03b3b'};
+const STATUS_LABEL = {f:'full data', p:'partial', n:'matched, no data', u:'unmatched'};
+const order = {u:0, n:1, p:2, f:3};
+
+const files = {centroids:null, weights:null, library:null, seda:null, states:null};
+let COVERAGE = null; // built once the 3 required files are parsed: {years:[...], districts:[[geoid,lat,lon,statusstr],...], libValues}
+let SEDA = null; // built independently once the optional 4th file is parsed: {names: Map(geoid->{name,state}), scores: Map("geoid|year|grade"->{score,n,estimated})}
+let STATE_SHAPES = null; // built independently once the optional 5th file is parsed: [{abbr,name,rings:[[[lon,lat],...],...],labelPoint:[lon,lat]}, ...]
+
+function showError(msg){
+  const box = document.getElementById('errorBox');
+  if(!msg){ box.hidden = true; box.textContent=''; return; }
+  box.hidden = false; box.textContent = msg;
+}
+
+function num(v){
+  if(v===null || v===undefined || v==='') return NaN;
+  const n = +v;
+  return Number.isNaN(n) ? NaN : n;
+}
+
+function fmtInt(v){ return (v===null||v===undefined||Number.isNaN(v)) ? null : Math.round(v).toLocaleString(); }
+function fmtDec(v, d){ return (v===null||v===undefined||Number.isNaN(v)) ? null : v.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function fmtPct(v){ return (v===null||v===undefined||Number.isNaN(v)) ? null : (v*100).toLocaleString(undefined,{maximumFractionDigits:1})+'%'; }
+
+// row(label, value) -- skips lines whose value is null (column absent or NaN
+// in the source file) rather than showing a misleading zero or dash
+function ttRow(label, value, cls){ return value===null ? '' : `<div class="tt-row${cls?' '+cls:''}"><span class="tt-k">${label}</span><span class="tt-v">${value}</span></div>`; }
+
+const STATUS_LINE = {
+  f: 'full coverage',
+  p: "partial coverage — children's circulation not reported",
+  n: 'matched, but no circulation figures this year',
+  u: 'unmatched — no library system overlaps this district',
+};
+
+function readingAchievementLine(geoid){
+  if(!SEDA){
+    return `<div class="tt-row"><span class="tt-k">reading achievement (g3/g6)</span><span class="tt-v tt-muted">load SEDA file above</span></div>`;
+  }
+  const name = SEDA.names.get(geoid);
+  if(!SEDA.years.has(String(currentYear))){
+    return `<div class="tt-row"><span class="tt-k">reading achievement (g3/g6)</span><span class="tt-v tt-muted">SEDA has no FY${currentYear} data (any district)</span></div>`;
+  }
+  const g3 = SEDA.scores.get(geoid+'|'+currentYear+'|3');
+  const g6 = SEDA.scores.get(geoid+'|'+currentYear+'|6');
+  if(!g3 && !g6){
+    return `<div class="tt-row"><span class="tt-k">reading achievement (g3/g6)</span><span class="tt-v tt-muted">${name ? 'no score this checkpoint' : 'no SEDA match for this district'}</span></div>`;
+  }
+  const part = (rec, label) => rec ? `${label} ${fmtDec(rec.score,2)}${rec.estimated?' (est.)':''}` : '';
+  const val = [part(g3,'g3'), part(g6,'g6')].filter(Boolean).join('  ·  ');
+  return `<div class="tt-row"><span class="tt-k">reading achievement</span><span class="tt-v">${val}</span></div>`;
+}
+
+function statusLineFor(geoid, status){
+  // The dot's color/status can be pulled down a tier because reading
+  // achievement is missing even though circulation data is complete --
+  // say that plainly rather than reusing the circulation-shortfall wording,
+  // which would misstate why this particular district is amber/orange.
+  const libStatus = COVERAGE.libStatusByGeoid.get(geoid)?.[currentYearIdx];
+  const sedaDowngraded = libStatus === 'f' && status !== 'f';
+  if(sedaDowngraded){
+    return status === 'p'
+      ? "full circulation data — only one of two reading-achievement grades reported"
+      : "full circulation data — no reading achievement reported this checkpoint";
+  }
+  return STATUS_LINE[status];
+}
+
+function buildTooltipHtml(geoid, status){
+  const name = SEDA ? SEDA.names.get(geoid) : null;
+  const head = `<div class="tt-head"><span class="tt-geoid-main">${geoid}</span>${name ? `<span class="tt-place">${name.name}, ${name.state}</span>` : ''}</div>`;
+  if(status === 'u'){
+    return head + `<div class="tt-status" style="color:${STATUS_COLOR.u}">${STATUS_LINE.u}</div>` + readingAchievementLine(geoid);
+  }
+  const v = COVERAGE.libValues.get(geoid+'|'+currentYear);
+  let rows = '';
+  rows += ttRow(`kids' circulation (FY${currentYear}, weighted)`, v ? fmtInt(v.kidcirc) : null, 'tt-headline');
+  rows += ttRow('total circulation', v ? fmtInt(v.totcir) : null);
+  rows += ttRow('circ. per capita', v ? fmtDec(v.circ_pc, 1) : null);
+  rows += `<div class="tt-status" style="color:${STATUS_COLOR[status]}">${statusLineFor(geoid, status)}</div>`;
+  rows += readingAchievementLine(geoid);
+  return head + rows;
+}
+
+function buildSedaIndex(rows){
+  const geoCol = findCol(rows[0], ['sedaadmin','geoid','district_geoid']);
+  const nameCol = findCol(rows[0], ['sedaadminname']);
+  const stateCol = findCol(rows[0], ['stateabb']);
+  const gradeCol = findCol(rows[0], ['grade']);
+  const yearCol = findCol(rows[0], ['year']);
+  const subjectCol = findCol(rows[0], ['subject']);
+  const scoreCol = findCol(rows[0], ['gcs_mn_all']);
+  const nCol = findCol(rows[0], ['tot_asmt_all']);
+  const flagCol = findCol(rows[0], ['flag_estasmt_all']);
+  if(!geoCol || !gradeCol || !yearCol || !scoreCol){
+    throw new Error('SEDA file needs sedaadmin, grade, year, and gcs_mn_all columns');
+  }
+  const names = new Map();
+  const scores = new Map();
+  const years = new Set(); // driven by what's actually in the file, not an assumed checkpoint list
+  for(const r of rows){
+    if(subjectCol && String(r[subjectCol]).trim().toLowerCase() !== 'rla') continue;
+    const geoid = String(r[geoCol]).trim().padStart(7,'0');
+    const grade = String(r[gradeCol]).trim();
+    const year = String(r[yearCol]).trim();
+    if(!geoid || (grade!=='3' && grade!=='6')) continue;
+    if(nameCol && stateCol && !names.has(geoid)){
+      const nm = r[nameCol], st = r[stateCol];
+      if(nm && st) names.set(geoid, {name: String(nm).trim(), state: String(st).trim()});
+    }
+    const score = num(r[scoreCol]);
+    if(Number.isNaN(score)) continue;
+    years.add(year);
+    scores.set(geoid+'|'+year+'|'+grade, {
+      score,
+      n: nCol ? num(r[nCol]) : NaN,
+      estimated: flagCol ? String(r[flagCol]).trim() === '1' : false,
+    });
+  }
+  return {names, scores, years};
+}
+
+// State/territory abbreviations that never get their own dot on this map
+// (each is a single, remote district whose true coordinates would blow out
+// the shared CONUS scale far more than Puerto Rico does) -- their borders
+// are skipped for the same reason those districts are skipped as dots.
+const STATES_SKIPPED_ENTIRELY = new Set(['HI','GU','AS','MP','VI']);
+
+function buildStateShapes(geojson){
+  if(!geojson || !Array.isArray(geojson.features)){
+    throw new Error('expected a GeoJSON FeatureCollection (features array)');
+  }
+  const shapes = [];
+  for(const f of geojson.features){
+    const props = f.properties || {};
+    const abbr = props.STUSPS || props.stusps || props.STATE_ABBR || props.postal;
+    const name = props.NAME || props.name;
+    const geom = f.geometry;
+    if(!abbr || !geom) continue;
+    let polys;
+    if(geom.type === 'Polygon') polys = [geom.coordinates];
+    else if(geom.type === 'MultiPolygon') polys = geom.coordinates;
+    else continue;
+    const rings = polys.flat(1); // every ring (outer + holes) across every polygon piece, flattened -- fine for stroke-only outlines
+    // label point: bounding-box center of the largest ring, as a stand-in
+    // for a true polygon centroid -- good enough to place an abbreviation,
+    // not meant to be geometrically exact for oddly-shaped states
+    let biggest = null, biggestLen = -1;
+    for(const poly of polys){ const outer = poly[0]; if(outer.length > biggestLen){ biggestLen = outer.length; biggest = outer; } }
+    let labelPoint = null;
+    if(biggest){
+      let minLon=Infinity,maxLon=-Infinity,minLat=Infinity,maxLat=-Infinity;
+      for(const [lon,lat] of biggest){ if(lon<minLon)minLon=lon; if(lon>maxLon)maxLon=lon; if(lat<minLat)minLat=lat; if(lat>maxLat)maxLat=lat; }
+      labelPoint = [(minLon+maxLon)/2, (minLat+maxLat)/2];
+    }
+    shapes.push({abbr, name, rings, labelPoint});
+  }
+  if(!shapes.length) throw new Error('no usable state polygons found (need STUSPS + Polygon/MultiPolygon geometry)');
+  return shapes;
+}
+
+function parseCsvSource(source, isUrl){
+  return new Promise((resolve,reject)=>{
+    Papa.parse(source, {
+      header:true, skipEmptyLines:true, dynamicTyping:false, download: !!isUrl,
+      complete: r => resolve(r.data),
+      error: e => reject(e),
+    });
+  });
+}
+
+function parseJsonSource(source, isUrl){
+  if(isUrl){
+    return fetch(source).then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); });
+  }
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = () => { try{ resolve(JSON.parse(reader.result)); }catch(e){ reject(e); } };
+    reader.onerror = () => reject(reader.error || new Error('could not read file'));
+    reader.readAsText(source);
+  });
+}
+
+// Filenames this page looks for automatically, next to itself, before
+// falling back to the manual drop zones -- lets it "just work" when placed
+// in the same folder as the pipeline's output, with no click required.
+const AUTO_FILENAMES = {
+  centroids: 'district_centroids_full.csv',
+  weights: 'district_weights_by_system_v2.csv',
+  library: 'district_year_library_gis_v6.csv',
+  seda: 'seda_filtered_2025.csv',
+  states: 'cb_2018_us_state_20m.json',
+};
+
+function findCol(row, candidates){
+  const keys = Object.keys(row);
+  for(const c of candidates){
+    const hit = keys.find(k => k.trim().toLowerCase() === c.toLowerCase());
+    if(hit) return hit;
+  }
+  return null;
+}
+
+const JSON_ROLES = new Set(['states']); // parsed as JSON/GeoJSON; everything else is CSV
+
+// Shared by both auto-load and manual drop/browse -- once a role's raw
+// parse result is in hand, this does the role-specific follow-up (index
+// SEDA or the state shapes immediately; the three required CSVs just wait
+// for all three before building the map).
+function ingestRole(role, parsed, statusEl){
+  files[role] = parsed;
+  if(role === 'seda'){
+    try{
+      SEDA = buildSedaIndex(parsed);
+      statusEl.textContent = `loaded — ${SEDA.names.size.toLocaleString()} named, ${SEDA.scores.size.toLocaleString()} district-year-grade scores`;
+      statusEl.className = 'status ok';
+    }catch(err){
+      files.seda = null; SEDA = null;
+      statusEl.textContent = 'could not read this as a SEDA file';
+      statusEl.className = 'status';
+      showError(`seda: ${err.message || err}`);
+      return;
+    }
+  } else if(role === 'states'){
+    try{
+      STATE_SHAPES = buildStateShapes(parsed);
+      statusEl.textContent = `loaded — ${STATE_SHAPES.length.toLocaleString()} state/territory outlines`;
+      statusEl.className = 'status ok';
+      draw(); // border layer draws even before the 3 required files finish
+    }catch(err){
+      files.states = null; STATE_SHAPES = null;
+      statusEl.textContent = 'could not read this as a state-boundary file';
+      statusEl.className = 'status';
+      showError(`states: ${err.message || err}`);
+      return;
+    }
+  } else {
+    statusEl.textContent = `loaded — ${parsed.length.toLocaleString()} rows`;
+    statusEl.className = 'status ok';
+  }
+  showError(null);
+  if(files.centroids && files.weights && files.library) buildCoverage();
+}
+
+async function tryAutoLoad(){
+  for(const role of Object.keys(AUTO_FILENAMES)){
+    if(files[role]) continue;
+    const statusEl = document.getElementById('status-'+role);
+    try{
+      const parsed = JSON_ROLES.has(role)
+        ? await parseJsonSource(AUTO_FILENAMES[role], true)
+        : await parseCsvSource(AUTO_FILENAMES[role], true);
+      const empty = JSON_ROLES.has(role) ? !parsed : (!parsed || !parsed.length);
+      if(empty) throw new Error('empty response');
+      ingestRole(role, parsed, statusEl);
+      if(statusEl.className === 'status ok'){
+        statusEl.textContent = statusEl.textContent.replace('loaded —', 'auto-loaded —');
+      }
+    }catch(err){
+      // Not found next to the page, or the browser blocked a local file://
+      // fetch (Chrome does this by default) -- the drop zone stays live as
+      // a fallback, so this failure is silent rather than an error banner.
+    }
+  }
+}
+
+async function handleFile(role, file){
+  const statusEl = document.getElementById('status-'+role);
+  statusEl.textContent = 'parsing…'; statusEl.className = 'status';
+  try{
+    const parsed = JSON_ROLES.has(role)
+      ? await parseJsonSource(file, false)
+      : await parseCsvSource(file, false);
+    const empty = JSON_ROLES.has(role) ? !parsed : (!parsed.length);
+    if(empty) throw new Error('file is empty');
+    ingestRole(role, parsed, statusEl);
+  }catch(err){
+    statusEl.textContent = 'could not parse this file';
+    statusEl.className = 'status';
+    showError(`${role}: ${err.message || err}`);
+  }
+}
+
+function buildCoverage(){
+  try{
+    const cRows = files.centroids;
+    const cGeoCol = findCol(cRows[0], ['GEOID']);
+    const cLatCol = findCol(cRows[0], ['lat','latitude']);
+    const cLonCol = findCol(cRows[0], ['lon','lng','longitude']);
+    if(!cGeoCol || !cLatCol || !cLonCol) throw new Error('centroids file needs GEOID, lat, lon columns');
+
+    const wRows = files.weights;
+    const wGeoCol = findCol(wRows[0], ['district_geoid','geoid']);
+    if(!wGeoCol) throw new Error('weights file needs a district_geoid column');
+    const matched = new Set(wRows.map(r => String(r[wGeoCol]).trim()).filter(Boolean));
+
+    const lRows = files.library;
+    const lGeoCol = findCol(lRows[0], ['district_geoid','geoid']);
+    const lYearCol = findCol(lRows[0], ['year']);
+    const lTotcirCol = findCol(lRows[0], ['totcir']);
+    const lKidcircCol = findCol(lRows[0], ['kidcirc','kidcircl','kidphyscir']);
+    if(!lGeoCol || !lYearCol || !lTotcirCol || !lKidcircCol){
+      throw new Error('library panel needs district_geoid, year, totcir, and a children\'s-circulation column');
+    }
+    // optional extras -- shown in the tooltip when present, silently skipped when not
+    const lPopCol = findCol(lRows[0], ['pop','popu_lsa']);
+    const lKidattenCol = findCol(lRows[0], ['kidatten']);
+    const lCircPcCol = findCol(lRows[0], ['circ_pc']);
+    const lProgPcCol = findCol(lRows[0], ['prog_pc']);
+    const lKidcircPcCol = findCol(lRows[0], ['kidcirc_pc']);
+    const lKidcircShareCol = findCol(lRows[0], ['kidcirc_share']);
+
+    const libIdx = new Map(); // "geoid|year" -> {totcirOk, kidcircOk}
+    const libValues = new Map(); // "geoid|year" -> raw figures for the tooltip
+    const yearSet = new Set();
+    for(const r of lRows){
+      const geoid = String(r[lGeoCol]).trim();
+      const year = String(r[lYearCol]).trim();
+      if(!geoid || !year) continue;
+      yearSet.add(year);
+      const totcir = num(r[lTotcirCol]);
+      const kidcirc = num(r[lKidcircCol]);
+      const totcirOk = !Number.isNaN(totcir);
+      const kidcircOk = !Number.isNaN(kidcirc);
+      libIdx.set(geoid+'|'+year, {totcirOk, kidcircOk});
+      libValues.set(geoid+'|'+year, {
+        totcir: totcirOk ? totcir : null,
+        kidcirc: kidcircOk ? kidcirc : null,
+        pop: lPopCol ? num(r[lPopCol]) : NaN,
+        kidatten: lKidattenCol ? num(r[lKidattenCol]) : NaN,
+        circ_pc: lCircPcCol ? num(r[lCircPcCol]) : NaN,
+        prog_pc: lProgPcCol ? num(r[lProgPcCol]) : NaN,
+        kidcirc_pc: lKidcircPcCol ? num(r[lKidcircPcCol]) : NaN,
+        kidcirc_share: lKidcircShareCol ? num(r[lKidcircShareCol]) : NaN,
+      });
+    }
+    const years = Array.from(yearSet).sort((a,b)=>(+a)-(+b));
+    if(!years.length) throw new Error('no usable year values found in the library panel');
+
+    // When SEDA is loaded, a district that's otherwise "full" gets folded
+    // down a tier if its reading achievement is incomplete that year -- 2
+    // grades present stays full, 1 grade drops to partial, 0 grades drops
+    // to matched-no-data. Gated on whether SEDA's own file actually has
+    // ANY row for that year (so a year SEDA genuinely never covers, like
+    // 2020/2021's nationwide COVID testing gap, isn't misread as a real
+    // shortfall) -- not a hardcoded checkpoint list, since SEDA covers most
+    // years the library panel does, not just the paper's 7 modeling
+    // checkpoints. Left untouched for districts whose library data is
+    // already partial/no-data/unmatched -- those are downgraded already,
+    // for their own, separate reason.
+    function sedaFold(geoid, yr, libStatus){
+      if(!SEDA || libStatus !== 'f' || !SEDA.years.has(String(yr))) return libStatus;
+      const has3 = SEDA.scores.has(geoid+'|'+yr+'|3');
+      const has6 = SEDA.scores.has(geoid+'|'+yr+'|6');
+      const n = (has3?1:0) + (has6?1:0);
+      return n === 2 ? 'f' : n === 1 ? 'p' : 'n';
+    }
+
+    const districts = [];
+    for(const r of cRows){
+      const geoid = String(r[cGeoCol]).trim();
+      const lat = num(r[cLatCol]), lon = num(r[cLonCol]);
+      if(!geoid || Number.isNaN(lat) || Number.isNaN(lon)) continue;
+      let statusStr = '', libStatusStr = '';
+      const isMatched = matched.has(geoid);
+      for(const yr of years){
+        let s;
+        if(!isMatched){ s = 'u'; }
+        else{
+          const rec = libIdx.get(geoid+'|'+yr);
+          s = (!rec || !rec.totcirOk) ? 'n' : (rec.kidcircOk ? 'f' : 'p');
+        }
+        libStatusStr += s;
+        statusStr += sedaFold(geoid, yr, s);
+      }
+      districts.push([geoid, +lat.toFixed(4), +lon.toFixed(4), statusStr, libStatusStr]);
+    }
+    if(!districts.length) throw new Error('no districts survived matching — check the GEOID columns line up');
+
+    const libStatusByGeoid = new Map(districts.map(d => [d[0], d[4]]));
+    COVERAGE = {years, districts, libValues, libStatusByGeoid};
+    showError(null);
+    initControlsAndDraw();
+  }catch(err){
+    showError('could not build the map: ' + (err.message || err));
+  }
+}
+
+function initControlsAndDraw(){
+  document.getElementById('controls').hidden = false;
+  document.getElementById('mapShell').hidden = false;
+  document.getElementById('legend').hidden = false;
+  document.getElementById('footerNote').hidden = false;
+  const slider = document.getElementById('yearSlider');
+  slider.max = COVERAGE.years.length - 1;
+  slider.value = COVERAGE.years.length - 1;
+  draw();
+}
+
+function isExcludedRemote(lat, lon){
+  return (lat > 8 && lat < 21 && lon > 140) ||
+         (lat < -10 && lon < -168) ||
+         (lat > 18 && lat < 23 && lon < -153 && lon > -161);
+}
+function isAlaska(lat, lon){ return lat > 51 || lon > 150; }
+
+function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+// Strokes every ring of every eligible state/territory through the given
+// projection -- shared by the main canvas and the Alaska inset so both
+// borders line up with their own dots. `skip` decides which abbreviations
+// don't belong on this particular canvas (e.g. Alaska is excluded from the
+// main canvas since it has its own inset, and vice versa).
+function drawStateBorders(ctx, proj, unwrap, skip){
+  if(!STATE_SHAPES) return;
+  ctx.save();
+  ctx.lineWidth = 0.75;
+  ctx.strokeStyle = cssVar('--border-strong');
+  for(const s of STATE_SHAPES){
+    if(skip(s.abbr)) continue;
+    for(const ring of s.rings){
+      ctx.beginPath();
+      ring.forEach(([lon,lat], i)=>{
+        const [x,y] = proj(lat, unwrap ? unwrap(lon) : lon);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      });
+      ctx.closePath();
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+// Labels sit on top of the dots (drawn after them) with a halo in the map's
+// own background color so they stay legible over a dense dot cluster
+// without needing a solid backing chip.
+function drawStateLabels(ctx, proj, unwrap, skip, fontPx){
+  if(!STATE_SHAPES) return;
+  ctx.save();
+  ctx.font = `600 ${fontPx}px "IBM Plex Mono", monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = cssVar('--map-bg');
+  ctx.fillStyle = cssVar('--ink-mute');
+  for(const s of STATE_SHAPES){
+    if(skip(s.abbr) || !s.labelPoint) continue;
+    const [lon,lat] = s.labelPoint;
+    const [x,y] = proj(lat, unwrap ? unwrap(lon) : lon);
+    ctx.strokeText(s.abbr, x, y);
+    ctx.fillText(s.abbr, x, y);
+  }
+  ctx.restore();
+}
+
+function fitScale(points, w, h, pad){
+  const lats = points.map(p=>p[0]), lons = points.map(p=>p[1]);
+  const latMin=Math.min(...lats), latMax=Math.max(...lats);
+  const lonMin=Math.min(...lons), lonMax=Math.max(...lons);
+  const spanLat = latMax-latMin || 1, spanLon = lonMax-lonMin || 1;
+  const availW = w-pad*2, availH = h-pad*2;
+  const scale = Math.min(availW/spanLon, availH/spanLat);
+  const offX = pad + (availW - spanLon*scale)/2;
+  const offY = pad + (availH - spanLat*scale)/2;
+  return (lat, lon) => [offX + (lon-lonMin)*scale, offY + (latMax-lat)*scale];
+}
+
+let currentYear = null;
+let currentYearIdx = 0;
+
+function draw(){
+  if(!COVERAGE) return;
+  const yearIdx = +document.getElementById('yearSlider').value;
+  const year = COVERAGE.years[yearIdx];
+  currentYear = year;
+  currentYearIdx = yearIdx;
+  document.getElementById('yearBadge').textContent = year;
+  document.getElementById('sedaColorNote').hidden = !SEDA;
+  const incompleteOnly = document.getElementById('incompleteOnly').checked;
+
+  const main = [], ak = [];
+  const counts = {f:0,p:0,n:0,u:0}; let total = 0;
+  for(const [geoid, lat, lon, statusStr] of COVERAGE.districts){
+    const status = statusStr[yearIdx];
+    counts[status]++; total++;
+    if(isExcludedRemote(lat, lon)) continue;
+    if(incompleteOnly && status === 'f') continue;
+    (isAlaska(lat,lon) ? ak : main).push([lat, lon, status, geoid]);
+  }
+
+  const mainCanvas = document.getElementById('mainCanvas');
+  const ctx = mainCanvas.getContext('2d');
+  ctx.clearRect(0,0,mainCanvas.width, mainCanvas.height);
+  const proj = fitScale(main.map(d=>[d[0],d[1]]), mainCanvas.width, mainCanvas.height, 26);
+  const skipOnMain = abbr => abbr === 'AK' || STATES_SKIPPED_ENTIRELY.has(abbr);
+  drawStateBorders(ctx, proj, null, skipOnMain);
+  main.sort((a,b)=> order[a[2]]-order[b[2]]);
+  for(const [lat,lon,status] of main){
+    const [x,y] = proj(lat,lon);
+    ctx.beginPath();
+    ctx.fillStyle = STATUS_COLOR[status];
+    ctx.globalAlpha = status==='f' ? 0.55 : 0.9;
+    ctx.arc(x,y, status==='f'?1.6:2.3, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  drawStateLabels(ctx, proj, null, skipOnMain, 10);
+  mainCanvas._pts = main; mainCanvas._proj = proj;
+
+  const akCanvas = document.getElementById('akCanvas');
+  const actx = akCanvas.getContext('2d');
+  actx.clearRect(0,0,akCanvas.width, akCanvas.height);
+  const unwrap = lon => lon > 0 ? lon-360 : lon;
+  const skipOnAk = abbr => abbr !== 'AK';
+  if(ak.length){
+    const akProj = fitScale(ak.map(d=>[d[0], unwrap(d[1])]), akCanvas.width, akCanvas.height, 12);
+    drawStateBorders(actx, akProj, unwrap, skipOnAk);
+    ak.sort((a,b)=> order[a[2]]-order[b[2]]);
+    for(const d of ak){
+      const [x,y] = akProj(d[0], unwrap(d[1]));
+      actx.beginPath();
+      actx.fillStyle = STATUS_COLOR[d[2]];
+      actx.globalAlpha = d[2]==='f' ? 0.55 : 0.9;
+      actx.arc(x,y, d[2]==='f'?1.4:2, 0, Math.PI*2);
+      actx.fill();
+    }
+    actx.globalAlpha = 1;
+  }
+  akCanvas._pts = ak;
+
+  const statsRow = document.getElementById('statsRow');
+  statsRow.innerHTML = ['f','p','n','u'].map(k=>{
+    const pct = ((counts[k]/total)*100).toFixed(1);
+    return `<div class="stat-chip"><span class="dot" style="background:${STATUS_COLOR[k]}"></span>${STATUS_LABEL[k]} <span class="n">${counts[k].toLocaleString()}</span> <span style="color:var(--ink-mute)">(${pct}%)</span></div>`;
+  }).join('');
+}
+
+function attachHover(canvas, isAk){
+  const tooltip = document.getElementById('tooltip');
+  canvas.addEventListener('mousemove', (e)=>{
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width/rect.width, scaleY = canvas.height/rect.height;
+    const mx = (e.clientX-rect.left)*scaleX, my = (e.clientY-rect.top)*scaleY;
+    const pts = canvas._pts;
+    if(!pts || !pts.length){ tooltip.classList.remove('show'); return; }
+    const unwrap = lon => (isAk && lon>0) ? lon-360 : lon;
+    const proj = isAk ? fitScale(pts.map(d=>[d[0], unwrap(d[1])]), canvas.width, canvas.height, 12) : canvas._proj;
+    let best=null, bestD=64;
+    for(const p of pts){
+      const [x,y] = proj(p[0], unwrap(p[1]));
+      const d = (x-mx)**2 + (y-my)**2;
+      if(d<bestD){bestD=d; best=[p,x,y];}
+    }
+    if(best){
+      const [p] = best;
+      tooltip.innerHTML = buildTooltipHtml(p[3], p[2]);
+      tooltip.classList.add('show');
+      const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+      let left = e.clientX + 14, top = e.clientY + 14;
+      if(left + tw > window.innerWidth - 8) left = e.clientX - tw - 14;
+      if(top + th > window.innerHeight - 8) top = e.clientY - th - 14;
+      tooltip.style.left = Math.max(8,left) + 'px';
+      tooltip.style.top = Math.max(8,top) + 'px';
+    } else {
+      tooltip.classList.remove('show');
+    }
+  });
+  canvas.addEventListener('mouseleave', ()=> tooltip.classList.remove('show'));
+}
+
+document.getElementById('yearSlider').addEventListener('input', draw);
+document.getElementById('incompleteOnly').addEventListener('change', draw);
+attachHover(document.getElementById('mainCanvas'), false);
+attachHover(document.getElementById('akCanvas'), true);
+
+document.querySelectorAll('.drop input[type=file]').forEach(inp=>{
+  inp.addEventListener('change', e=>{
+    const role = inp.dataset.role;
+    const file = e.target.files[0];
+    if(file) handleFile(role, file);
+  });
+});
+['dragover','dragleave','drop'].forEach(evt=>{
+  document.querySelectorAll('.drop').forEach(drop=>{
+    drop.addEventListener(evt, e=>{
+      if(evt==='dragover'){ e.preventDefault(); drop.classList.add('drag'); }
+      if(evt==='dragleave'){ drop.classList.remove('drag'); }
+      if(evt==='drop'){
+        e.preventDefault(); drop.classList.remove('drag');
+        const file = e.dataTransfer.files[0];
+        const role = drop.querySelector('input').dataset.role;
+        if(file) handleFile(role, file);
+      }
+    });
+  });
+});
+
+tryAutoLoad();
+</script>
