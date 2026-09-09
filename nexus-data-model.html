@@ -1,0 +1,273 @@
+<title>Nexus Data Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;650;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --surface-0:      #f4f6f9;
+    --surface-1:      #ffffff;
+    --surface-2:      #eef1f5;
+    --border:         #dde1e8;
+    --text-primary:   #14181f;
+    --text-secondary: #4d5568;
+    --text-muted:     #838ca0;
+    --code-surface:   #eef1f5;
+    --z-a: #2a78d6;
+    --z-b: #1baf7a;
+    --z-c: #7c8395;
+    --wire: #4d5568;
+    --wire-soft: #9aa2b1;
+    --card-fill: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface-0:      #101319;
+      --surface-1:      #171b23;
+      --surface-2:      #1e232c;
+      --border:         #2a303c;
+      --text-primary:   #f1f3f7;
+      --text-secondary: #b3bac9;
+      --text-muted:     #7c8395;
+      --code-surface:   #1e232c;
+      --z-a: #3987e5;
+      --z-b: #2bd696;
+      --z-c: #9aa2b1;
+      --wire: #b3bac9;
+      --wire-soft: #5b6272;
+      --card-fill: #171b23;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-0:      #101319;
+    --surface-1:      #171b23;
+    --surface-2:      #1e232c;
+    --border:         #2a303c;
+    --text-primary:   #f1f3f7;
+    --text-secondary: #b3bac9;
+    --text-muted:     #7c8395;
+    --code-surface:   #1e232c;
+    --z-a: #3987e5;
+    --z-b: #2bd696;
+    --z-c: #9aa2b1;
+    --wire: #b3bac9;
+    --wire-soft: #5b6272;
+    --card-fill: #171b23;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--surface-0);
+    color: var(--text-primary);
+    font-family: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1500px; margin: 0 auto; padding: 30px 28px 50px; }
+  .kicker { font-size: 11px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--z-a); }
+  h1 { font-size: 23px; font-weight: 650; letter-spacing: -0.01em; margin: 4px 0 6px; text-wrap: balance; }
+  .sub { font-size: 13.5px; color: var(--text-secondary); max-width: 76ch; line-height: 1.6; margin-bottom: 22px; }
+  .sub code { font-family: "IBM Plex Mono", monospace; font-size: 12px; background: var(--code-surface); padding: 1px 5px; border-radius: 4px; }
+
+  figure { margin: 0; background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px 14px; }
+  figure svg { display: block; width: 100%; height: auto; overflow: visible; }
+  figcaption { font-size: 11.8px; color: var(--text-muted); margin-top: 12px; line-height: 1.55; max-width: 100ch; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin-top: 16px; font-size: 12px; color: var(--text-secondary); }
+  .legend-item { display: flex; align-items: center; gap: 7px; }
+  .legend-line { width: 22px; height: 0; border-top: 1.6px solid var(--text-secondary); }
+  .legend-line.soft { border-top-style: dashed; border-top-color: var(--wire-soft); }
+  .legend-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+
+  .box-title  { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; font-weight: 600; fill: var(--text-primary); }
+  .box-sub    { font-family: "IBM Plex Sans", sans-serif; font-size: 10px; fill: var(--text-muted); }
+  .box-field  { font-family: "IBM Plex Mono", monospace; font-size: 10px; fill: var(--text-secondary); }
+  .box-div    { stroke: var(--border); stroke-width: 1; }
+  .zone-title { font-family: "IBM Plex Sans", sans-serif; font-size: 13px; font-weight: 650; }
+  .zone-sub   { font-family: "IBM Plex Sans", sans-serif; font-size: 10.5px; fill: var(--text-muted); }
+  .wire-label { font-family: "IBM Plex Sans", sans-serif; font-size: 9.5px; fill: var(--text-secondary); font-weight: 550; }
+
+  footer.page-foot { max-width: 1500px; margin: 20px auto 0; padding: 0 28px; font-size: 11.5px; color: var(--text-muted); line-height: 1.6; }
+</style>
+
+<div class="wrap">
+  <div class="kicker">Nexus &middot; data architecture</div>
+  <h1>Proposed data model</h1>
+  <div class="sub">
+    How to split <code>Enhanced_All_Events_v8_final.csv</code> — one wide, denormalized RFP export — into the tables a real property-management / sales-and-catering system would keep separately. Solid arrows are stored foreign keys; dashed arrows are values that should be looked up or computed rather than duplicated onto every row.
+  </div>
+
+  <figure id="fig">
+    <svg viewBox="0 0 1450 849" role="img" aria-label="Entity-relationship diagram proposing a normalized schema for the Nexus hotel RFP data: master reference tables (Accounts, Room Types, Meeting Spaces, Meeting Space Occupancy calendar, Daily Hotel Demand) feed a central RFPs table and its child tables (room nights by room type, scheduled sessions with start/end times, quote, actuals). RFP_Sessions has its own child table, RFP_FnB_Lines — one row per food and beverage service within a session, with meal period, service style, start/end time, covers, guarantee, and price per person. All of this feeds a reporting layer of computed views rather than stored tables.">
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--wire)"/>
+  </marker>
+  <marker id="arrow-soft" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--wire-soft)"/>
+  </marker>
+</defs>
+<rect x="10" y="64" width="264" height="755" rx="14" fill="var(--z-a)" fill-opacity="0.055" stroke="var(--z-a)" stroke-opacity="0.35" stroke-width="1"/>
+<text x="26" y="90" class="zone-title" fill="var(--z-a)">Master / reference data</text>
+<text x="26" y="106" class="zone-sub">exists independently of any RFP</text>
+<rect x="290" y="64" width="880" height="755" rx="14" fill="var(--z-b)" fill-opacity="0.055" stroke="var(--z-b)" stroke-opacity="0.35" stroke-width="1"/>
+<text x="306" y="90" class="zone-title" fill="var(--z-b)">Transactional core</text>
+<text x="306" y="106" class="zone-sub">one row per RFP, plus its child tables</text>
+<rect x="1190" y="64" width="260" height="755" rx="14" fill="var(--z-c)" fill-opacity="0.055" stroke="var(--z-c)" stroke-opacity="0.35" stroke-width="1"/>
+<text x="1206" y="90" class="zone-title" fill="var(--z-c)">Reporting layer</text>
+<text x="1206" y="106" class="zone-sub">computed views — not stored tables</text>
+<path d="M 250.0 141.9 C 390.0 141.9, 390.0 136.2, 530.0 136.2" fill="none" stroke="var(--wire)" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="356.0" y="122.0" width="68" height="15" rx="4" fill="var(--surface-1)"/>
+<text x="390.0" y="133.0" class="wire-label" text-anchor="middle">1 : N</text>
+<path d="M 250.0 725.5 C 390.0 725.5, 390.0 216.8, 530.0 216.8" fill="none" stroke="var(--wire-soft)" stroke-width="1.6" marker-end="url(#arrow-soft)" stroke-dasharray="6 5"/>
+<rect x="356.0" y="454.1" width="68" height="15" rx="4" fill="var(--surface-1)"/>
+<text x="390.0" y="465.1" class="wire-label" text-anchor="middle">date lookup</text>
+<path d="M 250.0 299.5 C 323.8 299.5, 323.8 326.0, 397.5 326.0" fill="none" stroke="var(--wire)" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M 250.0 434.5 C 420.0 434.5, 420.0 326.0, 589.9 326.0" fill="none" stroke="var(--wire)" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M 250.0 576.5 C 454.1 576.5, 454.1 326.0, 658.2 326.0" fill="none" stroke="var(--wire-soft)" stroke-width="1.6" marker-end="url(#arrow-soft)" stroke-dasharray="6 5"/>
+<rect x="420.1" y="434.2" width="68" height="15" rx="4" fill="var(--surface-1)"/>
+<text x="454.1" y="445.2" class="wire-label" text-anchor="middle">time lookup</text>
+<path d="M 610.0 236.0 C 610.0 290.0, 397.5 272.0, 397.5 326.0" fill="none" stroke="var(--wire)" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M 690.0 236.0 C 690.0 290.0, 619.2 272.0, 619.2 326.0" fill="none" stroke="var(--wire)" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M 770.0 236.0 C 770.0 290.0, 840.8 272.0, 840.8 326.0" fill="none" stroke="var(--wire)" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M 850.0 236.0 C 850.0 290.0, 1062.5 272.0, 1062.5 326.0" fill="none" stroke="var(--wire)" stroke-width="1.6" marker-end="url(#arrow)"/>
+<path d="M 619.2 469.0 C 619.2 507.4, 619.2 494.6, 619.2 533.0" fill="none" stroke="var(--wire)" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="585.2" y="484.0" width="68" height="15" rx="4" fill="var(--surface-1)"/>
+<text x="619.2" y="495.0" class="wire-label" text-anchor="middle">1 : N</text>
+<path d="M 930.0 131.0 C 1065.0 131.0, 1065.0 186.5, 1200.0 186.5" fill="none" stroke="var(--wire-soft)" stroke-width="1.6" marker-end="url(#arrow-soft)" stroke-dasharray="6 5"/>
+<path d="M 930.0 172.0 C 1065.0 172.0, 1065.0 333.5, 1200.0 333.5" fill="none" stroke="var(--wire-soft)" stroke-width="1.6" marker-end="url(#arrow-soft)" stroke-dasharray="6 5"/>
+<path d="M 930.0 213.0 C 1065.0 213.0, 1065.0 480.5, 1200.0 480.5" fill="none" stroke="var(--wire-soft)" stroke-width="1.6" marker-end="url(#arrow-soft)" stroke-dasharray="6 5"/>
+<rect x="34.0" y="108.0" width="216.0" height="113.0" rx="10" ry="10" fill="var(--card-fill)" stroke="var(--z-a)" stroke-width="1.4"/>
+<rect x="34.0" y="108.0" width="216.0" height="4" rx="2" ry="2" fill="var(--z-a)"/>
+<text x="46.0" y="130.0" class="box-title">Accounts</text>
+<text x="46.0" y="145.0" class="box-sub">1 row per client account</text>
+<line x1="46.0" x2="238.0" y1="162.0" y2="162.0" class="box-div"/>
+<text x="46.0" y="178.0" class="box-field">account_name  (PK)</text>
+<text x="46.0" y="193.0" class="box-field">organization_industry</text>
+<text x="46.0" y="208.0" class="box-field">market_segment</text>
+<rect x="34.0" y="243.0" width="216.0" height="113.0" rx="10" ry="10" fill="var(--card-fill)" stroke="var(--z-a)" stroke-width="1.4"/>
+<rect x="34.0" y="243.0" width="216.0" height="4" rx="2" ry="2" fill="var(--z-a)"/>
+<text x="46.0" y="265.0" class="box-title">Room_Types</text>
+<text x="46.0" y="280.0" class="box-sub">1 row per room category</text>
+<line x1="46.0" x2="238.0" y1="297.0" y2="297.0" class="box-div"/>
+<text x="46.0" y="313.0" class="box-field">room_type  (PK)</text>
+<text x="46.0" y="328.0" class="box-field">count_of_rooms</text>
+<text x="46.0" y="343.0" class="box-field">base_rate</text>
+<rect x="34.0" y="378.0" width="216.0" height="113.0" rx="10" ry="10" fill="var(--card-fill)" stroke="var(--z-a)" stroke-width="1.4"/>
+<rect x="34.0" y="378.0" width="216.0" height="4" rx="2" ry="2" fill="var(--z-a)"/>
+<text x="46.0" y="400.0" class="box-title">Meeting_Spaces</text>
+<text x="46.0" y="415.0" class="box-sub">1 row per function space</text>
+<line x1="46.0" x2="238.0" y1="432.0" y2="432.0" class="box-div"/>
+<text x="46.0" y="448.0" class="box-field">space_name  (PK)</text>
+<text x="46.0" y="463.0" class="box-field">capacity, sqft</text>
+<text x="46.0" y="478.0" class="box-field">setup_styles_supported</text>
+<rect x="34.0" y="513.0" width="216.0" height="127.0" rx="10" ry="10" fill="var(--card-fill)" stroke="var(--z-a)" stroke-width="1.4"/>
+<rect x="34.0" y="513.0" width="216.0" height="4" rx="2" ry="2" fill="var(--z-a)"/>
+<text x="46.0" y="535.0" class="box-title">Meeting_Space_Occupancy</text>
+<text x="46.0" y="550.0" class="box-sub">space x time-block occupancy — mirrors</text>
+<text x="46.0" y="563.0" class="box-sub">Daily_Hotel_Demand for rooms</text>
+<line x1="46.0" x2="238.0" y1="580.0" y2="580.0" class="box-div"/>
+<text x="46.0" y="596.0" class="box-field">space_name  (FK)</text>
+<text x="46.0" y="611.0" class="box-field">start_datetime, end_datetime</text>
+<text x="46.0" y="626.0" class="box-field">booked_by  (rfp_id, house use)</text>
+<rect x="34.0" y="662.0" width="216.0" height="127.0" rx="10" ry="10" fill="var(--card-fill)" stroke="var(--z-a)" stroke-width="1.4"/>
+<rect x="34.0" y="662.0" width="216.0" height="4" rx="2" ry="2" fill="var(--z-a)"/>
+<text x="46.0" y="684.0" class="box-title">Daily_Hotel_Demand</text>
+<text x="46.0" y="699.0" class="box-sub">1 row per calendar date — already exists as</text>
+<text x="46.0" y="712.0" class="box-sub">Nexus_Daily_Room_Sales / Transient_Demand</text>
+<line x1="46.0" x2="238.0" y1="729.0" y2="729.0" class="box-div"/>
+<text x="46.0" y="745.0" class="box-field">date  (PK)</text>
+<text x="46.0" y="760.0" class="box-field">occupancy_pct, weighted_adr</text>
+<text x="46.0" y="775.0" class="box-field">group_rooms_on_books</text>
+<rect x="530.0" y="108.0" width="400.0" height="128.0" rx="10" ry="10" fill="var(--card-fill)" stroke="var(--z-b)" stroke-width="1.4"/>
+<rect x="530.0" y="108.0" width="400.0" height="4" rx="2" ry="2" fill="var(--z-b)"/>
+<text x="542.0" y="130.0" class="box-title">RFPs</text>
+<text x="542.0" y="145.0" class="box-sub">1 row per RFP — the central fact table</text>
+<line x1="542.0" x2="918.0" y1="162.0" y2="162.0" class="box-div"/>
+<text x="542.0" y="178.0" class="box-field">rfp_id  (PK)</text>
+<text x="542.0" y="193.0" class="box-field">account_name  (FK → Accounts)</text>
+<text x="542.0" y="208.0" class="box-field">event_type, status, dates</text>
+<text x="542.0" y="223.0" class="box-field">lost_reason, client_priority</text>
+<rect x="300.0" y="326.0" width="195.0" height="113.0" rx="10" ry="10" fill="var(--card-fill)" stroke="var(--z-b)" stroke-width="1.4"/>
+<rect x="300.0" y="326.0" width="195.0" height="4" rx="2" ry="2" fill="var(--z-b)"/>
+<text x="312.0" y="348.0" class="box-title">RFP_Room_Nights</text>
+<text x="312.0" y="363.0" class="box-sub">1 row per night x room type</text>
+<line x1="312.0" x2="483.0" y1="380.0" y2="380.0" class="box-div"/>
+<text x="312.0" y="396.0" class="box-field">rfp_id  (FK)</text>
+<text x="312.0" y="411.0" class="box-field">stay_date, room_type  (FK)</text>
+<text x="312.0" y="426.0" class="box-field">rooms_held, rate</text>
+<rect x="521.7" y="326.0" width="195.0" height="143.0" rx="10" ry="10" fill="var(--card-fill)" stroke="var(--z-b)" stroke-width="1.4"/>
+<rect x="521.7" y="326.0" width="195.0" height="4" rx="2" ry="2" fill="var(--z-b)"/>
+<text x="533.7" y="348.0" class="box-title">RFP_Sessions</text>
+<text x="533.7" y="363.0" class="box-sub">1 row per scheduled function</text>
+<line x1="533.7" x2="704.7" y1="380.0" y2="380.0" class="box-div"/>
+<text x="533.7" y="396.0" class="box-field">rfp_id  (FK)</text>
+<text x="533.7" y="411.0" class="box-field">space_name  (FK)</text>
+<text x="533.7" y="426.0" class="box-field">start_datetime, end_datetime</text>
+<text x="533.7" y="441.0" class="box-field">session_name, attendees</text>
+<text x="533.7" y="456.0" class="box-field">av_level</text>
+<rect x="743.3" y="326.0" width="195.0" height="113.0" rx="10" ry="10" fill="var(--card-fill)" stroke="var(--z-b)" stroke-width="1.4"/>
+<rect x="743.3" y="326.0" width="195.0" height="4" rx="2" ry="2" fill="var(--z-b)"/>
+<text x="755.3" y="348.0" class="box-title">RFP_Quote</text>
+<text x="755.3" y="363.0" class="box-sub">1 row per RFP</text>
+<line x1="755.3" x2="926.3" y1="380.0" y2="380.0" class="box-div"/>
+<text x="755.3" y="396.0" class="box-field">rfp_id  (FK)</text>
+<text x="755.3" y="411.0" class="box-field">quoted_adr</text>
+<text x="755.3" y="426.0" class="box-field">room / meeting / f&amp;b $</text>
+<rect x="965.0" y="326.0" width="195.0" height="113.0" rx="10" ry="10" fill="var(--card-fill)" stroke="var(--z-b)" stroke-width="1.4"/>
+<rect x="965.0" y="326.0" width="195.0" height="4" rx="2" ry="2" fill="var(--z-b)"/>
+<text x="977.0" y="348.0" class="box-title">RFP_Actuals</text>
+<text x="977.0" y="363.0" class="box-sub">booked RFPs only</text>
+<line x1="977.0" x2="1148.0" y1="380.0" y2="380.0" class="box-div"/>
+<text x="977.0" y="396.0" class="box-field">rfp_id  (FK)</text>
+<text x="977.0" y="411.0" class="box-field">actual_room_nights</text>
+<text x="977.0" y="426.0" class="box-field">actual rev. by type</text>
+<rect x="503.7" y="533.0" width="231.0" height="143.0" rx="10" ry="10" fill="var(--card-fill)" stroke="var(--z-b)" stroke-width="1.4"/>
+<rect x="503.7" y="533.0" width="231.0" height="4" rx="2" ry="2" fill="var(--z-b)"/>
+<text x="515.7" y="555.0" class="box-title">RFP_FnB_Lines</text>
+<text x="515.7" y="570.0" class="box-sub">1 row per F&amp;B service within a session</text>
+<line x1="515.7" x2="722.7" y1="587.0" y2="587.0" class="box-div"/>
+<text x="515.7" y="603.0" class="box-field">session_id  (FK)</text>
+<text x="515.7" y="618.0" class="box-field">meal_period, service_style</text>
+<text x="515.7" y="633.0" class="box-field">start_time, end_time</text>
+<text x="515.7" y="648.0" class="box-field">covers, guarantee</text>
+<text x="515.7" y="663.0" class="box-field">price_per_person, menu_item</text>
+<rect x="1200.0" y="130.0" width="216.0" height="113.0" rx="10" ry="10" fill="var(--card-fill)" stroke="var(--z-c)" stroke-width="1.4" stroke-dasharray="5 4"/>
+<text x="1212.0" y="152.0" class="box-title">Account_Rollups</text>
+<text x="1212.0" y="167.0" class="box-sub">view — computed as-of inquiry date</text>
+<line x1="1212.0" x2="1404.0" y1="184.0" y2="184.0" class="box-div"/>
+<text x="1212.0" y="200.0" class="box-field">prior_events, prior_booked</text>
+<text x="1212.0" y="215.0" class="box-field">prior_revenue, win_rate</text>
+<text x="1212.0" y="230.0" class="box-field">is_first_time, has_decline</text>
+<rect x="1200.0" y="277.0" width="216.0" height="113.0" rx="10" ry="10" fill="var(--card-fill)" stroke="var(--z-c)" stroke-width="1.4" stroke-dasharray="5 4"/>
+<text x="1212.0" y="299.0" class="box-title">Risk_Scores_&amp;_Flags</text>
+<text x="1212.0" y="314.0" class="box-sub">view — computed per RFP</text>
+<line x1="1212.0" x2="1404.0" y1="331.0" y2="331.0" class="box-div"/>
+<text x="1212.0" y="347.0" class="box-field">displacement_risk_score</text>
+<text x="1212.0" y="362.0" class="box-field">flag_high_displacement</text>
+<text x="1212.0" y="377.0" class="box-field">flag_rate_below_baseline</text>
+<rect x="1200.0" y="424.0" width="216.0" height="113.0" rx="10" ry="10" fill="var(--card-fill)" stroke="var(--z-c)" stroke-width="1.4" stroke-dasharray="5 4"/>
+<text x="1212.0" y="446.0" class="box-title">Reports</text>
+<text x="1212.0" y="461.0" class="box-sub">view — computed on demand</text>
+<line x1="1212.0" x2="1404.0" y1="478.0" y2="478.0" class="box-div"/>
+<text x="1212.0" y="494.0" class="box-field">pace report</text>
+<text x="1212.0" y="509.0" class="box-field">conversion by segment</text>
+<text x="1212.0" y="524.0" class="box-field">ADR / pickup trend</text>
+</svg>
+    <figcaption>Master/reference data (left) exists independently of any RFP. The transactional core (center) is the RFP itself plus its natural child tables — one row per stay-night x room type, meeting session, and so on — instead of the wide repeating-group columns (<code>Rooms_Night_1</code>&ndash;<code>4</code>) in the current export. <code>RFP_FnB_Lines</code> hangs off <code>RFP_Sessions</code> rather than off the RFP directly, because catering is scheduled within a specific function, not the RFP as a whole. The reporting layer (right) is computed on demand from the tables to its left, never stored as if it were raw data.</figcaption>
+  </figure>
+
+  <div class="legend">
+    <div class="legend-item"><span class="legend-line"></span> stored foreign key</div>
+    <div class="legend-item"><span class="legend-line soft"></span> computed / looked up — not a stored column</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--z-a)"></span> reference data</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--z-b)"></span> transactional (per-RFP)</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--z-c);opacity:0.6"></span> derived view</div>
+  </div>
+</div>
+
+<footer class="page-foot">
+  Field lists on each table are illustrative, not exhaustive — see the full column-by-column mapping in chat. <code>Daily_Hotel_Demand</code> is the one table that already exists in your pipeline (<code>Nexus_Daily_Room_Sales_v2.csv</code>, <code>Nexus_Transient_Demand_v2.csv</code>); everything else would be new.
+</footer>
