@@ -1,0 +1,36 @@
+{
+  "grade": 6,
+  "k_neighbors": 8,
+  "n_perm": 9999,
+  "n_districts_post_complete": 6445,
+  "results": {
+    "kidcirc_per_child": {
+      "label": "Circulation",
+      "pct_consistently_negative": 20.449961210240495,
+      "moran_I_consistently_negative": 0.9691353098668625,
+      "p_consistently_negative": 0.0001,
+      "pct_consistently_positive": 56.260667183863454,
+      "moran_I_consistently_positive": 0.9837786672150428,
+      "p_consistently_positive": 0.0001,
+      "moran_I_continuous": 0.9902104473502032,
+      "p_continuous": 0.0001,
+      "pct_sig_year_negative": 14.721451978825309,
+      "moran_I_sig_year_negative": 0.9888748613130114,
+      "p_sig_year_negative": 0.0001
+    },
+    "prog_per_child": {
+      "label": "Programs",
+      "pct_consistently_negative": 0.0,
+      "moran_I_consistently_negative": NaN,
+      "p_consistently_negative": 0.0001,
+      "pct_consistently_positive": 49.976726144297906,
+      "moran_I_consistently_positive": 0.9462368400069952,
+      "p_consistently_positive": 0.0001,
+      "moran_I_continuous": 0.9687764891276228,
+      "p_continuous": 0.0001,
+      "pct_sig_year_negative": 0.0,
+      "moran_I_sig_year_negative": NaN,
+      "p_sig_year_negative": 0.0001
+    }
+  }
+}

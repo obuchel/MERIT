@@ -1,0 +1,204 @@
+<title>Daily Hotel Demand Feature Lineage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;650;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --surface-0: #f4f6f9; --surface-1: #ffffff; --surface-2: #eef1f5;
+    --border: #dde1e8; --text-primary: #14181f; --text-secondary: #4d5568; --text-muted: #838ca0;
+    --z-a: #2a78d6; --wire-soft: #9aa2b1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface-0: #101319; --surface-1: #171b23; --surface-2: #1e232c;
+      --border: #2a303c; --text-primary: #f1f3f7; --text-secondary: #b3bac9; --text-muted: #7c8395;
+      --z-a: #3987e5; --wire-soft: #5b6272;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-0: #101319; --surface-1: #171b23; --surface-2: #1e232c;
+    --border: #2a303c; --text-primary: #f1f3f7; --text-secondary: #b3bac9; --text-muted: #7c8395;
+    --z-a: #3987e5; --wire-soft: #5b6272;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--surface-0); color: var(--text-primary); font-family: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1900px; margin: 0 auto; padding: 30px 28px 50px; }
+  .kicker { font-size: 11px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--z-a); }
+  h1 { font-size: 23px; font-weight: 650; letter-spacing: -0.01em; margin: 4px 0 6px; text-wrap: balance; }
+  .sub { font-size: 13.5px; color: var(--text-secondary); max-width: 120ch; line-height: 1.6; margin-bottom: 22px; }
+  .sub code { font-family: "IBM Plex Mono", monospace; font-size: 12px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+  figure { margin: 0; background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px 14px; overflow-x: auto; }
+  figure svg { display: block; width: 100%; height: auto; min-width: 1400px; }
+  figcaption { font-size: 12px; color: var(--text-muted); margin-top: 14px; line-height: 1.6; max-width: 150ch; }
+  figcaption code { font-family: "IBM Plex Mono", monospace; font-size: 11px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; margin-top: 16px; font-size: 12px; color: var(--text-secondary); }
+  .legend-item { display: flex; align-items: center; gap: 7px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .col-header { font-family: "IBM Plex Sans", sans-serif; font-size: 12.5px; font-weight: 650; fill: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .node-label { font-family: "IBM Plex Mono", monospace; font-size: 10.6px; font-weight: 600; }
+  .node-note { font-family: "IBM Plex Sans", sans-serif; font-size: 9.5px; }
+  footer.page-foot { max-width: 1900px; margin: 20px auto 0; padding: 0 28px; font-size: 11.5px; color: var(--text-muted); line-height: 1.6; }
+</style>
+
+<div class="wrap">
+  
+<div class="kicker">Nexus &middot; RFP pricing engine</div>
+<h1>Daily_Hotel_Demand feature lineage</h1>
+<div class="sub">Every engineered feature this session traced back to <code>Nexus_Daily_Room_Sales_v2.csv</code>, drawn as its own labeled node and followed edge-by-edge through <code>complete_rfp_features_v2.py</code> to its real, verified fate in the four live models (<code>quoted_adr</code>, <code>pickup_ipw</code>, <code>fnb</code>, <code>conversion</code>). Green = present in the final feature list of every live model it was checked against. Red = confirmed absent from all four. Blue = a raw input, not itself screened.</div>
+
+  <figure>
+    <svg viewBox="0 0 1762 990" role="img" aria-label="Directed graph tracing raw hotel daily-demand fields through complete_rfp_features_v2.py's feature engineering to their final fate in four live pricing models. Raw fields Weighted_ADR and Occupancy_Pct feed baseline_adr and forecasted_occupancy, which are dropped from every model. Downstream derived features such as transient_displacement_cost, tactical_compression_opportunity, displacement_ema_7d, occupancy_velocity_7_30d and occupancy_acceleration survive in all four models even though their raw parent features do not.">
+      <path d="M 362.0 77.0 C 416.0 77.0, 416.0 182.0, 470.0 182.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 362.0 147.0 C 416.0 147.0, 416.0 182.0, 470.0 182.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 362.0 217.0 C 416.0 217.0, 416.0 182.0, 470.0 182.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 362.0 147.0 C 416.0 147.0, 416.0 482.0, 470.0 482.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 362.0 217.0 C 416.0 217.0, 416.0 482.0, 470.0 482.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 362.0 572.0 C 416.0 572.0, 416.0 482.0, 470.0 482.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 362.0 287.0 C 586.0 287.0, 586.0 97.0, 810.0 97.0" fill="none" stroke="#1f9e6e" stroke-width="2.0" stroke-opacity="0.85"/>
+<path d="M 362.0 357.0 C 586.0 357.0, 586.0 97.0, 810.0 97.0" fill="none" stroke="#1f9e6e" stroke-width="2.0" stroke-opacity="0.85"/>
+<path d="M 702.0 182.0 C 756.0 182.0, 756.0 97.0, 810.0 97.0" fill="none" stroke="#1f9e6e" stroke-width="2.0" stroke-opacity="0.85"/>
+<path d="M 362.0 287.0 C 586.0 287.0, 586.0 237.0, 810.0 237.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 702.0 182.0 C 756.0 182.0, 756.0 237.0, 810.0 237.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 702.0 482.0 C 756.0 482.0, 756.0 362.0, 810.0 362.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 702.0 482.0 C 756.0 482.0, 756.0 442.0, 810.0 442.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 702.0 482.0 C 756.0 482.0, 756.0 502.0, 810.0 502.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 702.0 482.0 C 756.0 482.0, 756.0 562.0, 810.0 562.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 702.0 482.0 C 1096.0 482.0, 1096.0 262.0, 1490.0 262.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 1042.0 97.0 C 1096.0 97.0, 1096.0 147.0, 1150.0 147.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 362.0 427.0 C 756.0 427.0, 756.0 147.0, 1150.0 147.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 1042.0 362.0 C 1096.0 362.0, 1096.0 332.0, 1150.0 332.0" fill="none" stroke="#1f9e6e" stroke-width="2.0" stroke-opacity="0.85"/>
+<path d="M 362.0 642.0 C 756.0 642.0, 756.0 332.0, 1150.0 332.0" fill="none" stroke="#1f9e6e" stroke-width="2.0" stroke-opacity="0.85"/>
+<path d="M 1042.0 442.0 C 1096.0 442.0, 1096.0 452.0, 1150.0 452.0" fill="none" stroke="#1f9e6e" stroke-width="2.0" stroke-opacity="0.85"/>
+<path d="M 1042.0 502.0 C 1096.0 502.0, 1096.0 452.0, 1150.0 452.0" fill="none" stroke="#1f9e6e" stroke-width="2.0" stroke-opacity="0.85"/>
+<path d="M 1042.0 502.0 C 1096.0 502.0, 1096.0 552.0, 1150.0 552.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 1042.0 562.0 C 1096.0 562.0, 1096.0 552.0, 1150.0 552.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 1382.0 147.0 C 1436.0 147.0, 1436.0 67.0, 1490.0 67.0" fill="none" stroke="#1f9e6e" stroke-width="2.0" stroke-opacity="0.85"/>
+<path d="M 1382.0 147.0 C 1436.0 147.0, 1436.0 117.0, 1490.0 117.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 1382.0 147.0 C 1436.0 147.0, 1436.0 167.0, 1490.0 167.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 1382.0 147.0 C 1436.0 147.0, 1436.0 262.0, 1490.0 262.0" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 1382.0 452.0 C 1436.0 452.0, 1436.0 497.0, 1490.0 497.0" fill="none" stroke="#1f9e6e" stroke-width="2.0" stroke-opacity="0.85"/>
+<path d="M 1382.0 552.0 C 1436.0 552.0, 1436.0 497.0, 1490.0 497.0" fill="none" stroke="#1f9e6e" stroke-width="2.0" stroke-opacity="0.85"/>
+<path d="M 362.0 917.0 C 416.0 917.0, 416.0 917.0, 470.0 917.0" fill="none" stroke="#3f9e7f" stroke-width="2.0" stroke-opacity="0.85"/>
+<rect x="130.0" y="60.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#5b7fb5" stroke-width="1.8"/>
+<rect x="130.0" y="60.0" width="4" height="34" rx="2" fill="#5b7fb5"/>
+<text x="146.0" y="81.0" class="node-label" fill="#5b7fb5">Weighted_ADR</text>
+<text x="130.0" y="107.0" class="node-note" fill="#5b7fb5">Nexus_Daily_Room_Sales_v2.csv</text>
+<rect x="130.0" y="130.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#5b7fb5" stroke-width="1.8"/>
+<rect x="130.0" y="130.0" width="4" height="34" rx="2" fill="#5b7fb5"/>
+<text x="146.0" y="151.0" class="node-label" fill="#5b7fb5">Arrival_Date</text>
+<text x="130.0" y="177.0" class="node-note" fill="#5b7fb5">RFP record</text>
+<rect x="130.0" y="200.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#5b7fb5" stroke-width="1.8"/>
+<rect x="130.0" y="200.0" width="4" height="34" rx="2" fill="#5b7fb5"/>
+<text x="146.0" y="221.0" class="node-label" fill="#5b7fb5">Departure_Date</text>
+<text x="130.0" y="247.0" class="node-note" fill="#5b7fb5">RFP record</text>
+<rect x="130.0" y="270.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#5b7fb5" stroke-width="1.8"/>
+<rect x="130.0" y="270.0" width="4" height="34" rx="2" fill="#5b7fb5"/>
+<text x="146.0" y="291.0" class="node-label" fill="#5b7fb5">Quoted_ADR</text>
+<text x="130.0" y="317.0" class="node-note" fill="#5b7fb5">RFP record</text>
+<rect x="130.0" y="340.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#5b7fb5" stroke-width="1.8"/>
+<rect x="130.0" y="340.0" width="4" height="34" rx="2" fill="#5b7fb5"/>
+<text x="146.0" y="361.0" class="node-label" fill="#5b7fb5">Total_Room_Nights_Requested</text>
+<text x="130.0" y="387.0" class="node-note" fill="#5b7fb5">RFP record</text>
+<rect x="130.0" y="410.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#5b7fb5" stroke-width="1.8"/>
+<rect x="130.0" y="410.0" width="4" height="34" rx="2" fill="#5b7fb5"/>
+<text x="146.0" y="431.0" class="node-label" fill="#5b7fb5">Proposed_Total_Revenue</text>
+<text x="130.0" y="457.0" class="node-note" fill="#5b7fb5">RFP record</text>
+<rect x="130.0" y="555.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#5b7fb5" stroke-width="1.8"/>
+<rect x="130.0" y="555.0" width="4" height="34" rx="2" fill="#5b7fb5"/>
+<text x="146.0" y="576.0" class="node-label" fill="#5b7fb5">Occupancy_Pct</text>
+<text x="130.0" y="602.0" class="node-note" fill="#5b7fb5">Nexus_Daily_Room_Sales_v2.csv</text>
+<rect x="130.0" y="625.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#5b7fb5" stroke-width="1.8"/>
+<rect x="130.0" y="625.0" width="4" height="34" rx="2" fill="#5b7fb5"/>
+<text x="146.0" y="646.0" class="node-label" fill="#5b7fb5">lead_time_days</text>
+<text x="130.0" y="672.0" class="node-note" fill="#5b7fb5">Part 2 output, reused as input</text>
+<rect x="130.0" y="900.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#5b7fb5" stroke-width="1.8"/>
+<rect x="130.0" y="900.0" width="4" height="34" rx="2" fill="#5b7fb5"/>
+<text x="146.0" y="921.0" class="node-label" fill="#5b7fb5">Forecasted_Occupancy (v8)</text>
+<text x="130.0" y="947.0" class="node-note" fill="#5b7fb5">Enhanced_All_Events_v8 — corrected source</text>
+<rect x="470.0" y="165.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8"/>
+<rect x="470.0" y="165.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="486.0" y="186.0" class="node-label" fill="#d6544a">✕ baseline_adr</text>
+<rect x="470.0" y="465.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8"/>
+<rect x="470.0" y="465.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="486.0" y="486.0" class="node-label" fill="#d6544a">✕ forecasted_occupancy</text>
+<rect x="810.0" y="80.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#1f9e6e" stroke-width="1.8"/>
+<rect x="810.0" y="80.0" width="4" height="34" rx="2" fill="#1f9e6e"/>
+<text x="826.0" y="101.0" class="node-label" fill="#1f9e6e">✓ transient_displacement_cost</text>
+<text x="810.0" y="127.0" class="node-note" fill="#1f9e6e">all 4 models</text>
+<rect x="810.0" y="220.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8"/>
+<rect x="810.0" y="220.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="826.0" y="241.0" class="node-label" fill="#d6544a">✕ rate_discount_pct</text>
+<rect x="810.0" y="345.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8"/>
+<rect x="810.0" y="345.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="826.0" y="366.0" class="node-label" fill="#d6544a">✕ compression_indicator</text>
+<rect x="810.0" y="425.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8"/>
+<rect x="810.0" y="425.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="826.0" y="446.0" class="node-label" fill="#d6544a">✕ avg_occupancy_7d</text>
+<rect x="810.0" y="485.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8"/>
+<rect x="810.0" y="485.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="826.0" y="506.0" class="node-label" fill="#d6544a">✕ avg_occupancy_30d</text>
+<rect x="810.0" y="545.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8"/>
+<rect x="810.0" y="545.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="826.0" y="566.0" class="node-label" fill="#d6544a">✕ avg_occupancy_90d</text>
+<rect x="1150.0" y="130.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8"/>
+<rect x="1150.0" y="130.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="1166.0" y="151.0" class="node-label" fill="#d6544a">✕ displacement_ratio</text>
+<rect x="1150.0" y="315.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#1f9e6e" stroke-width="1.8"/>
+<rect x="1150.0" y="315.0" width="4" height="34" rx="2" fill="#1f9e6e"/>
+<text x="1166.0" y="336.0" class="node-label" fill="#1f9e6e">✓ tactical_compression_opportunity</text>
+<text x="1150.0" y="362.0" class="node-note" fill="#1f9e6e">all 4 — #2 in pickup_ipw</text>
+<rect x="1150.0" y="435.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#1f9e6e" stroke-width="1.8"/>
+<rect x="1150.0" y="435.0" width="4" height="34" rx="2" fill="#1f9e6e"/>
+<text x="1166.0" y="456.0" class="node-label" fill="#1f9e6e">✓ occupancy_velocity_7_30d</text>
+<text x="1150.0" y="482.0" class="node-note" fill="#1f9e6e">all 4 models</text>
+<rect x="1150.0" y="535.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8"/>
+<rect x="1150.0" y="535.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="1166.0" y="556.0" class="node-label" fill="#d6544a">✕ occupancy_velocity_30_90d</text>
+<rect x="1490.0" y="50.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#1f9e6e" stroke-width="1.8"/>
+<rect x="1490.0" y="50.0" width="4" height="34" rx="2" fill="#1f9e6e"/>
+<text x="1506.0" y="71.0" class="node-label" fill="#1f9e6e">✓ displacement_ema_7d</text>
+<text x="1490.0" y="97.0" class="node-note" fill="#1f9e6e">all 4 models</text>
+<rect x="1490.0" y="100.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8"/>
+<rect x="1490.0" y="100.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="1506.0" y="121.0" class="node-label" fill="#d6544a">✕ displacement_ema_30d</text>
+<rect x="1490.0" y="150.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8"/>
+<rect x="1490.0" y="150.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="1506.0" y="171.0" class="node-label" fill="#d6544a">✕ displacement_ema_90d</text>
+<rect x="1490.0" y="245.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8"/>
+<rect x="1490.0" y="245.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="1506.0" y="266.0" class="node-label" fill="#d6544a">✕ displacement_occupancy_risk</text>
+<rect x="1490.0" y="480.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#1f9e6e" stroke-width="1.8"/>
+<rect x="1490.0" y="480.0" width="4" height="34" rx="2" fill="#1f9e6e"/>
+<text x="1506.0" y="501.0" class="node-label" fill="#1f9e6e">✓ occupancy_acceleration</text>
+<text x="1490.0" y="527.0" class="node-note" fill="#1f9e6e">all 4 models</text>
+<rect x="470.0" y="900.0" width="232" height="34" rx="7" fill="var(--surface-1)" stroke="#3f9e7f" stroke-width="1.8"/>
+<rect x="470.0" y="900.0" width="4" height="34" rx="2" fill="#3f9e7f"/>
+<text x="486.0" y="921.0" class="node-label" fill="#3f9e7f">✓ Is_Compression_Date</text>
+<text x="470.0" y="947.0" class="node-note" fill="#3f9e7f">all 4, but ≤0.8% importance</text>
+<text x="130.0" y="30" class="col-header">Raw source fields</text>
+<text x="470.0" y="30" class="col-header">Level 1</text>
+<text x="810.0" y="30" class="col-header">Level 2</text>
+<text x="1150.0" y="30" class="col-header">Level 3</text>
+<text x="1490.0" y="30" class="col-header">Level 4</text>
+    </svg>
+    <figcaption>
+The pattern that falls out of this graph: raw <em>levels</em> and short rolling aggregates (<code>baseline_adr</code>, <code>forecasted_occupancy</code>, <code>avg_occupancy_7d/30d/90d</code>, <code>compression_indicator</code>, <code>rate_discount_pct</code>, <code>displacement_ratio</code>) are consistently pruned, almost certainly because they correlate too closely with each other and with <code>quoted_adr</code> itself (report §5.1's correlation stage, |r| ≥ 0.85). What survives is almost always a <em>transformation</em> of one of them &mdash; a difference (<code>occupancy_velocity_7_30d</code>, <code>occupancy_acceleration</code>), a short-span EMA (<code>displacement_ema_7d</code> survives; its 30d/90d siblings don't), or a rate/threshold (<code>tactical_compression_opportunity</code>, <code>Is_Compression_Date</code>) &mdash; even when the raw feature one step upstream was dropped. <code>Is_Compression_Date</code> is drawn from a separately-sourced, bug-corrected <code>Forecasted_Occupancy</code> column pulled from <code>Enhanced_All_Events_v8_final.csv</code> in <code>enrich_apit_v2_final.py</code>, not from this script's own (documented-buggy) <code>forecasted_occupancy</code> &mdash; see report §11.5. Presence/absence verified against the live/matching feature-importance CSVs for all four models this session; edges show real documented dependencies from <code>complete_rfp_features_v2.py</code> source.
+</figcaption>
+  </figure>
+  
+<div class="legend">
+  <div class="legend-item"><span class="legend-dot" style="background:#5b7fb5"></span> raw source field</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#d6544a"></span> engineered — dropped from all 4 models</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#1f9e6e"></span> engineered — survives in all 4 models</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#3f9e7f"></span> survives, but near-zero importance</div>
+</div>
+
+</div>
+
+<footer class="page-foot">
+  Source: <code>complete_rfp_features_v2.py</code> (Parts 3, 8, 13), <code>enrich_apit_v2_final.py</code>, <code>rfp_model_report_v7_1.docx</code> §5.1/§11.5, and the live feature-importance CSVs for quoted_adr, pickup_ipw, fnb, and conversion.
+</footer>

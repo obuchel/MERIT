@@ -1,0 +1,40 @@
+"""
+Shared helper: draw US state boundary contours as a background layer on the
+district scatter maps. Reuses the exact same pre-computed border polylines
+and lon/lat projection as the interactive district_library_effects_map_4.html
+dashboard (STATE_BORDERS, extracted verbatim into state_borders.json), so
+every map in this project lines up on the same geography. That JS array is
+in "screen space" (y flipped so north is up on a downward-y canvas); these
+plots use plain y-up cartesian, so y is negated back on load.
+"""
+import json
+
+import matplotlib.patheffects as pe
+
+with open('state_borders.json') as f:
+    _RAW_BORDERS = json.load(f)
+with open('state_labels.json') as f:
+    _RAW_LABELS = json.load(f)
+
+def _to_xy(flat):
+    xs = flat[0::2]
+    ys = [-y for y in flat[1::2]]  # undo the HTML's screen-space y-flip
+    return xs, ys
+
+STATE_BORDER_LINES = [_to_xy(flat) for flat in _RAW_BORDERS]
+
+def draw_state_borders(ax, color='#c2c6c0', linewidth=0.6, zorder=1):
+    for xs, ys in STATE_BORDER_LINES:
+        ax.plot(xs, ys, color=color, linewidth=linewidth, zorder=zorder, solid_capstyle='round')
+
+def draw_state_labels(ax, min_size=300, color='#6d716d', fontsize=7.2, zorder=5):
+    """Small state-abbreviation labels, same policy as the interactive tool:
+    skip states too small to read cleanly at national extent (min_size is
+    that tool's per-state 'size' field, thresholded rather than
+    zoom-computed since this is a single static extent)."""
+    for s in _RAW_LABELS:
+        if s['size'] < min_size:
+            continue
+        ax.text(s['x'], -s['y'], s['abbr'], color=color, fontsize=fontsize,
+                fontweight='bold', ha='center', va='center', zorder=zorder,
+                path_effects=[pe.withStroke(linewidth=2.2, foreground='white')])

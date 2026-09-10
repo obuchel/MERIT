@@ -1,0 +1,24 @@
+{
+  "grade": 6,
+  "k_neighbors": 8,
+  "n_perm": 9999,
+  "post_years": [
+    "2022",
+    "2023",
+    "2024"
+  ],
+  "sig_year": "2022",
+  "n_districts_post_complete": 6445,
+  "pct_consistently_negative_post": 20.449961210240495,
+  "pct_consistently_positive_post": 56.260667183863454,
+  "moran_I_consistently_negative": 0.9691353098668625,
+  "p_consistently_negative": 0.0001,
+  "moran_I_consistently_positive": 0.9837786672150428,
+  "p_consistently_positive": 0.0001,
+  "moran_I_continuous_post_score": 0.9902104473502032,
+  "p_continuous_post_score": 0.0001,
+  "n_districts_sig_year": 7934,
+  "pct_significantly_negative_sig_year": 14.721451978825309,
+  "moran_I_sig_year_negative": 0.9888748613130114,
+  "p_sig_year_negative": 0.0001
+}
