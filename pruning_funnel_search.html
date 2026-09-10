@@ -1,0 +1,467 @@
+<title>Feature Pruning Funnel — Searchable</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;650;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --surface-0: #f4f6f9; --surface-1: #ffffff; --surface-2: #eef1f5;
+    --border: #dde1e8; --text-primary: #14181f; --text-secondary: #4d5568; --text-muted: #838ca0;
+    --z-a: #2a78d6; --wire-soft: #9aa2b1; --accent: #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface-0: #101319; --surface-1: #171b23; --surface-2: #1e232c;
+      --border: #2a303c; --text-primary: #f1f3f7; --text-secondary: #b3bac9; --text-muted: #7c8395;
+      --z-a: #3987e5; --wire-soft: #5b6272; --accent: #3987e5;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-0: #101319; --surface-1: #171b23; --surface-2: #1e232c;
+    --border: #2a303c; --text-primary: #f1f3f7; --text-secondary: #b3bac9; --text-muted: #7c8395;
+    --z-a: #3987e5; --wire-soft: #5b6272; --accent: #3987e5;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--surface-0); color: var(--text-primary); font-family: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 2000px; margin: 0 auto; padding: 30px 28px 50px; }
+  .kicker { font-size: 11px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--z-a); }
+  h1 { font-size: 23px; font-weight: 650; letter-spacing: -0.01em; margin: 4px 0 6px; text-wrap: balance; }
+  .sub { font-size: 13.5px; color: var(--text-secondary); max-width: 130ch; line-height: 1.6; margin-bottom: 18px; }
+  .sub code { font-family: "IBM Plex Mono", monospace; font-size: 12px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+
+  .searchbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .searchbar input { font-family: "IBM Plex Mono", monospace; font-size: 13px; padding: 9px 12px; border-radius: 8px; border: 1.4px solid var(--border); background: var(--surface-1); color: var(--text-primary); min-width: 300px; }
+  .searchbar input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .searchbar button { font-family: "IBM Plex Sans", sans-serif; font-size: 12.5px; font-weight: 600; padding: 9px 14px; border-radius: 8px; border: 1.4px solid var(--border); background: var(--surface-1); color: var(--text-secondary); cursor: pointer; }
+  .searchbar button:hover { border-color: var(--accent); color: var(--accent); }
+  .searchbar .hint { font-size: 11.5px; color: var(--text-muted); }
+
+  #status-panel { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; display: none; }
+  #status-panel.show { display: block; }
+  #status-panel .st-title { font-family: "IBM Plex Mono", monospace; font-weight: 650; font-size: 13px; margin-bottom: 4px; }
+  #status-panel table { border-collapse: collapse; margin-top: 6px; font-family: "IBM Plex Mono", monospace; font-size: 11.5px; }
+  #status-panel td { padding: 2px 10px 2px 0; color: var(--text-secondary); }
+
+  figure { margin: 0; background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px 14px; overflow-x: auto; }
+  figure svg { display: block; width: 100%; height: auto; min-width: 1500px; }
+  figcaption { font-size: 12px; color: var(--text-muted); margin-top: 14px; line-height: 1.6; max-width: 150ch; }
+  figcaption code { font-family: "IBM Plex Mono", monospace; font-size: 11px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; margin-top: 16px; font-size: 12px; color: var(--text-secondary); }
+  .legend-item { display: flex; align-items: center; gap: 7px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .col-header { font-family: "IBM Plex Sans", sans-serif; font-size: 12px; font-weight: 650; fill: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mini-label { font-family: "IBM Plex Sans", sans-serif; font-size: 11px; font-weight: 650; fill: var(--text-primary); }
+  .mini-count { font-family: "IBM Plex Mono", monospace; font-size: 11px; fill: var(--text-secondary); }
+  .node-label { font-family: "IBM Plex Mono", monospace; font-size: 10.4px; font-weight: 600; }
+  .node-note { font-family: "IBM Plex Sans", sans-serif; font-size: 9.3px; }
+  .node { cursor: pointer; }
+  .node.dim .node-rect { opacity: 0.28; }
+  .node.dim .node-label { opacity: 0.32; }
+  .node.dim .node-note { opacity: 0.32; }
+  .node.active .node-rect { stroke-width: 3; }
+  .node.active .node-label { font-weight: 700; }
+  .edge.dim { stroke-opacity: 0.08 !important; }
+  .edge.active { stroke-width: 3.2; }
+  footer.page-foot { max-width: 2000px; margin: 20px auto 0; padding: 0 28px; font-size: 11.5px; color: var(--text-muted); line-height: 1.6; }
+</style>
+
+<div class="wrap">
+  
+<div class="kicker">Nexus &middot; RFP pricing engine</div>
+<h1>Feature-pruning funnel — searchable</h1>
+<div class="sub">The same ~300&rarr;36-feature pruning funnel as before, now with an explicit raw-values level and a search box: pick any raw field or engineered feature and see its real, traced path light up — green into a surviving feature and on into every live model that keeps it, red-dashed into a dead end, with any surviving descendant it is partly reflected through called out below the search box. Coverage is scoped to the Daily_Hotel_Demand feature family (raw Nexus_Daily_Room_Sales fields through to the four live models) — the only part of the ~300-feature pool traced at this level of individual detail this session.</div>
+
+  <div class="searchbar">
+    <input id="searchbox" list="feature-list" placeholder="Search a feature — e.g. baseline_adr, occupancy_acceleration, pickup_ipw…" autocomplete="off"/>
+    <datalist id="feature-list"></datalist>
+    <button id="clearbtn" type="button">Clear</button>
+    <span class="hint">or click any box in the diagram</span>
+  </div>
+  <div id="status-panel"></div>
+  <figure>
+    <svg id="graph-svg" viewBox="0 0 2046 78" role="img" aria-hidden="true" style="margin-bottom:4px;">
+      <defs>
+        <marker id="arrow-soft" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--wire-soft)"/>
+        </marker>
+      </defs>
+      <rect x="40.0" y="8" width="467.5" height="46" rx="8" fill="var(--z-a)" fill-opacity="0.14" stroke="var(--z-a)" stroke-opacity="0.4"/>
+<text x="54.0" y="28" class="mini-label">① Engineered candidate pool</text>
+<text x="54.0" y="46" class="mini-count">~300 features</text>
+<path d="M 511.5 31 L 527.5 31" stroke="var(--wire-soft)" stroke-width="1.6" marker-end="url(#arrow-soft)"/>
+<rect x="531.5" y="8" width="467.5" height="46" rx="8" fill="var(--z-a)" fill-opacity="0.14" stroke="var(--z-a)" stroke-opacity="0.4"/>
+<text x="545.5" y="28" class="mini-label">② Correlation pruning (|r|≥0.85)</text>
+<text x="545.5" y="46" class="mini-count">192 features</text>
+<path d="M 1003.0 31 L 1019.0 31" stroke="var(--wire-soft)" stroke-width="1.6" marker-end="url(#arrow-soft)"/>
+<rect x="1023.0" y="8" width="467.5" height="46" rx="8" fill="var(--z-a)" fill-opacity="0.14" stroke="var(--z-a)" stroke-opacity="0.4"/>
+<text x="1037.0" y="28" class="mini-label">③ Importance screening (top-60 vs quoted_adr proxy)</text>
+<text x="1037.0" y="46" class="mini-count">60 features</text>
+<path d="M 1494.5 31 L 1510.5 31" stroke="var(--wire-soft)" stroke-width="1.6" marker-end="url(#arrow-soft)"/>
+<rect x="1514.5" y="8" width="467.5" height="46" rx="8" fill="var(--z-a)" fill-opacity="0.14" stroke="var(--z-a)" stroke-opacity="0.4"/>
+<text x="1528.5" y="28" class="mini-label">④ VIF pruning — shared base pool, reused by all 4 models</text>
+<text x="1528.5" y="46" class="mini-count">36 features</text>
+    </svg>
+    <svg viewBox="0 0 2046 960" role="img" aria-label="Interactive directed graph tracing raw hotel daily-demand fields through feature engineering to their fate in four live pricing models, with a search box to highlight any single feature's path from its raw origin to where it ends up.">
+      <path d="M 346.0 57.0 C 398.0 57.0, 398.0 162.0, 450.0 162.0" class="edge" data-src="weighted_adr" data-dst="baseline_adr" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 346.0 127.0 C 398.0 127.0, 398.0 162.0, 450.0 162.0" class="edge" data-src="arrival_date" data-dst="baseline_adr" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 346.0 197.0 C 398.0 197.0, 398.0 162.0, 450.0 162.0" class="edge" data-src="departure_date" data-dst="baseline_adr" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 346.0 127.0 C 398.0 127.0, 398.0 462.0, 450.0 462.0" class="edge" data-src="arrival_date" data-dst="forecasted_occupancy" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 346.0 197.0 C 398.0 197.0, 398.0 462.0, 450.0 462.0" class="edge" data-src="departure_date" data-dst="forecasted_occupancy" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 346.0 562.0 C 398.0 562.0, 398.0 462.0, 450.0 462.0" class="edge" data-src="occupancy_pct" data-dst="forecasted_occupancy" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 346.0 267.0 C 563.0 267.0, 563.0 77.0, 780.0 77.0" class="edge" data-src="quoted_adr_raw" data-dst="transient_displacement_cost" fill="none" stroke="#1f9e6e" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 346.0 337.0 C 563.0 337.0, 563.0 77.0, 780.0 77.0" class="edge" data-src="room_nights_raw" data-dst="transient_displacement_cost" fill="none" stroke="#1f9e6e" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 676.0 162.0 C 728.0 162.0, 728.0 77.0, 780.0 77.0" class="edge" data-src="baseline_adr" data-dst="transient_displacement_cost" fill="none" stroke="#1f9e6e" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 346.0 267.0 C 563.0 267.0, 563.0 217.0, 780.0 217.0" class="edge" data-src="quoted_adr_raw" data-dst="rate_discount_pct" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 676.0 162.0 C 728.0 162.0, 728.0 217.0, 780.0 217.0" class="edge" data-src="baseline_adr" data-dst="rate_discount_pct" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 676.0 462.0 C 728.0 462.0, 728.0 342.0, 780.0 342.0" class="edge" data-src="forecasted_occupancy" data-dst="compression_indicator" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 676.0 462.0 C 728.0 462.0, 728.0 422.0, 780.0 422.0" class="edge" data-src="forecasted_occupancy" data-dst="avg_occupancy_7d" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 676.0 462.0 C 728.0 462.0, 728.0 482.0, 780.0 482.0" class="edge" data-src="forecasted_occupancy" data-dst="avg_occupancy_30d" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 676.0 462.0 C 728.0 462.0, 728.0 542.0, 780.0 542.0" class="edge" data-src="forecasted_occupancy" data-dst="avg_occupancy_90d" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 676.0 462.0 C 1058.0 462.0, 1058.0 242.0, 1440.0 242.0" class="edge" data-src="forecasted_occupancy" data-dst="displacement_occupancy_risk" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 1006.0 77.0 C 1058.0 77.0, 1058.0 127.0, 1110.0 127.0" class="edge" data-src="transient_displacement_cost" data-dst="displacement_ratio" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 346.0 407.0 C 728.0 407.0, 728.0 127.0, 1110.0 127.0" class="edge" data-src="proposed_rev_raw" data-dst="displacement_ratio" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 1006.0 342.0 C 1058.0 342.0, 1058.0 312.0, 1110.0 312.0" class="edge" data-src="compression_indicator" data-dst="tactical_compression_opportunity" fill="none" stroke="#1f9e6e" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 346.0 632.0 C 728.0 632.0, 728.0 312.0, 1110.0 312.0" class="edge" data-src="lead_time_raw" data-dst="tactical_compression_opportunity" fill="none" stroke="#1f9e6e" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1006.0 422.0 C 1058.0 422.0, 1058.0 432.0, 1110.0 432.0" class="edge" data-src="avg_occupancy_7d" data-dst="occupancy_velocity_7_30d" fill="none" stroke="#1f9e6e" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1006.0 482.0 C 1058.0 482.0, 1058.0 432.0, 1110.0 432.0" class="edge" data-src="avg_occupancy_30d" data-dst="occupancy_velocity_7_30d" fill="none" stroke="#1f9e6e" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1006.0 482.0 C 1058.0 482.0, 1058.0 532.0, 1110.0 532.0" class="edge" data-src="avg_occupancy_30d" data-dst="occupancy_velocity_30_90d" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 1006.0 542.0 C 1058.0 542.0, 1058.0 532.0, 1110.0 532.0" class="edge" data-src="avg_occupancy_90d" data-dst="occupancy_velocity_30_90d" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 1336.0 127.0 C 1388.0 127.0, 1388.0 47.0, 1440.0 47.0" class="edge" data-src="displacement_ratio" data-dst="displacement_ema_7d" fill="none" stroke="#1f9e6e" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1336.0 127.0 C 1388.0 127.0, 1388.0 97.0, 1440.0 97.0" class="edge" data-src="displacement_ratio" data-dst="displacement_ema_30d" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 1336.0 127.0 C 1388.0 127.0, 1388.0 147.0, 1440.0 147.0" class="edge" data-src="displacement_ratio" data-dst="displacement_ema_90d" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 1336.0 127.0 C 1388.0 127.0, 1388.0 242.0, 1440.0 242.0" class="edge" data-src="displacement_ratio" data-dst="displacement_occupancy_risk" fill="none" stroke="#d6544a" stroke-width="1.4" stroke-opacity="0.55"/>
+<path d="M 1336.0 432.0 C 1388.0 432.0, 1388.0 482.0, 1440.0 482.0" class="edge" data-src="occupancy_velocity_7_30d" data-dst="occupancy_acceleration" fill="none" stroke="#1f9e6e" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1336.0 532.0 C 1388.0 532.0, 1388.0 482.0, 1440.0 482.0" class="edge" data-src="occupancy_velocity_30_90d" data-dst="occupancy_acceleration" fill="none" stroke="#1f9e6e" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 346.0 912.0 C 398.0 912.0, 398.0 912.0, 450.0 912.0" class="edge" data-src="v8_focc" data-dst="is_compression_date" fill="none" stroke="#3f9e7f" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1006.0 77.0 C 1393.0 77.0, 1393.0 77.0, 1780.0 77.0" class="edge" data-src="transient_displacement_cost" data-dst="quoted_adr" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1006.0 77.0 C 1393.0 77.0, 1393.0 317.0, 1780.0 317.0" class="edge" data-src="transient_displacement_cost" data-dst="conversion" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1006.0 77.0 C 1393.0 77.0, 1393.0 517.0, 1780.0 517.0" class="edge" data-src="transient_displacement_cost" data-dst="fnb" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1006.0 77.0 C 1393.0 77.0, 1393.0 717.0, 1780.0 717.0" class="edge" data-src="transient_displacement_cost" data-dst="pickup_ipw" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1336.0 312.0 C 1558.0 312.0, 1558.0 77.0, 1780.0 77.0" class="edge" data-src="tactical_compression_opportunity" data-dst="quoted_adr" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1336.0 312.0 C 1558.0 312.0, 1558.0 317.0, 1780.0 317.0" class="edge" data-src="tactical_compression_opportunity" data-dst="conversion" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1336.0 312.0 C 1558.0 312.0, 1558.0 517.0, 1780.0 517.0" class="edge" data-src="tactical_compression_opportunity" data-dst="fnb" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1336.0 312.0 C 1558.0 312.0, 1558.0 717.0, 1780.0 717.0" class="edge" data-src="tactical_compression_opportunity" data-dst="pickup_ipw" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1666.0 47.0 C 1723.0 47.0, 1723.0 77.0, 1780.0 77.0" class="edge" data-src="displacement_ema_7d" data-dst="quoted_adr" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1666.0 47.0 C 1723.0 47.0, 1723.0 317.0, 1780.0 317.0" class="edge" data-src="displacement_ema_7d" data-dst="conversion" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1666.0 47.0 C 1723.0 47.0, 1723.0 517.0, 1780.0 517.0" class="edge" data-src="displacement_ema_7d" data-dst="fnb" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1666.0 47.0 C 1723.0 47.0, 1723.0 717.0, 1780.0 717.0" class="edge" data-src="displacement_ema_7d" data-dst="pickup_ipw" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1336.0 432.0 C 1558.0 432.0, 1558.0 77.0, 1780.0 77.0" class="edge" data-src="occupancy_velocity_7_30d" data-dst="quoted_adr" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1336.0 432.0 C 1558.0 432.0, 1558.0 317.0, 1780.0 317.0" class="edge" data-src="occupancy_velocity_7_30d" data-dst="conversion" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1336.0 432.0 C 1558.0 432.0, 1558.0 517.0, 1780.0 517.0" class="edge" data-src="occupancy_velocity_7_30d" data-dst="fnb" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1336.0 432.0 C 1558.0 432.0, 1558.0 717.0, 1780.0 717.0" class="edge" data-src="occupancy_velocity_7_30d" data-dst="pickup_ipw" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1666.0 482.0 C 1723.0 482.0, 1723.0 77.0, 1780.0 77.0" class="edge" data-src="occupancy_acceleration" data-dst="quoted_adr" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1666.0 482.0 C 1723.0 482.0, 1723.0 317.0, 1780.0 317.0" class="edge" data-src="occupancy_acceleration" data-dst="conversion" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1666.0 482.0 C 1723.0 482.0, 1723.0 517.0, 1780.0 517.0" class="edge" data-src="occupancy_acceleration" data-dst="fnb" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 1666.0 482.0 C 1723.0 482.0, 1723.0 717.0, 1780.0 717.0" class="edge" data-src="occupancy_acceleration" data-dst="pickup_ipw" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 676.0 912.0 C 1228.0 912.0, 1228.0 77.0, 1780.0 77.0" class="edge" data-src="is_compression_date" data-dst="quoted_adr" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 676.0 912.0 C 1228.0 912.0, 1228.0 317.0, 1780.0 317.0" class="edge" data-src="is_compression_date" data-dst="conversion" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 676.0 912.0 C 1228.0 912.0, 1228.0 517.0, 1780.0 517.0" class="edge" data-src="is_compression_date" data-dst="fnb" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<path d="M 676.0 912.0 C 1228.0 912.0, 1228.0 717.0, 1780.0 717.0" class="edge" data-src="is_compression_date" data-dst="pickup_ipw" fill="none" stroke="#8a5cc7" stroke-width="1.8" stroke-opacity="0.6"/>
+<g class="node" id="node-weighted_adr" data-id="weighted_adr" tabindex="0">
+<rect x="120.0" y="40.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#5b7fb5" stroke-width="1.8" class="node-rect"/>
+<rect x="120.0" y="40.0" width="4" height="34" rx="2" fill="#5b7fb5"/>
+<text x="136.0" y="61.0" class="node-label" fill="#5b7fb5">Weighted_ADR</text>
+</g>
+<g class="node" id="node-arrival_date" data-id="arrival_date" tabindex="0">
+<rect x="120.0" y="110.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#5b7fb5" stroke-width="1.8" class="node-rect"/>
+<rect x="120.0" y="110.0" width="4" height="34" rx="2" fill="#5b7fb5"/>
+<text x="136.0" y="131.0" class="node-label" fill="#5b7fb5">Arrival_Date</text>
+</g>
+<g class="node" id="node-departure_date" data-id="departure_date" tabindex="0">
+<rect x="120.0" y="180.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#5b7fb5" stroke-width="1.8" class="node-rect"/>
+<rect x="120.0" y="180.0" width="4" height="34" rx="2" fill="#5b7fb5"/>
+<text x="136.0" y="201.0" class="node-label" fill="#5b7fb5">Departure_Date</text>
+</g>
+<g class="node" id="node-quoted_adr_raw" data-id="quoted_adr_raw" tabindex="0">
+<rect x="120.0" y="250.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#5b7fb5" stroke-width="1.8" class="node-rect"/>
+<rect x="120.0" y="250.0" width="4" height="34" rx="2" fill="#5b7fb5"/>
+<text x="136.0" y="271.0" class="node-label" fill="#5b7fb5">Quoted_ADR</text>
+</g>
+<g class="node" id="node-room_nights_raw" data-id="room_nights_raw" tabindex="0">
+<rect x="120.0" y="320.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#5b7fb5" stroke-width="1.8" class="node-rect"/>
+<rect x="120.0" y="320.0" width="4" height="34" rx="2" fill="#5b7fb5"/>
+<text x="136.0" y="341.0" class="node-label" fill="#5b7fb5">Total_Room_Nights_Requested</text>
+</g>
+<g class="node" id="node-proposed_rev_raw" data-id="proposed_rev_raw" tabindex="0">
+<rect x="120.0" y="390.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#5b7fb5" stroke-width="1.8" class="node-rect"/>
+<rect x="120.0" y="390.0" width="4" height="34" rx="2" fill="#5b7fb5"/>
+<text x="136.0" y="411.0" class="node-label" fill="#5b7fb5">Proposed_Total_Revenue</text>
+</g>
+<g class="node" id="node-occupancy_pct" data-id="occupancy_pct" tabindex="0">
+<rect x="120.0" y="545.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#5b7fb5" stroke-width="1.8" class="node-rect"/>
+<rect x="120.0" y="545.0" width="4" height="34" rx="2" fill="#5b7fb5"/>
+<text x="136.0" y="566.0" class="node-label" fill="#5b7fb5">Occupancy_Pct</text>
+</g>
+<g class="node" id="node-lead_time_raw" data-id="lead_time_raw" tabindex="0">
+<rect x="120.0" y="615.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#5b7fb5" stroke-width="1.8" class="node-rect"/>
+<rect x="120.0" y="615.0" width="4" height="34" rx="2" fill="#5b7fb5"/>
+<text x="136.0" y="636.0" class="node-label" fill="#5b7fb5">lead_time_days</text>
+</g>
+<g class="node" id="node-v8_focc" data-id="v8_focc" tabindex="0">
+<rect x="120.0" y="895.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#5b7fb5" stroke-width="1.8" class="node-rect"/>
+<rect x="120.0" y="895.0" width="4" height="34" rx="2" fill="#5b7fb5"/>
+<text x="136.0" y="916.0" class="node-label" fill="#5b7fb5">Forecasted_Occupancy (v8)</text>
+</g>
+<g class="node" id="node-baseline_adr" data-id="baseline_adr" tabindex="0">
+<rect x="450.0" y="145.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8" class="node-rect"/>
+<rect x="450.0" y="145.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="466.0" y="166.0" class="node-label" fill="#d6544a">✕ baseline_adr</text>
+</g>
+<g class="node" id="node-forecasted_occupancy" data-id="forecasted_occupancy" tabindex="0">
+<rect x="450.0" y="445.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8" class="node-rect"/>
+<rect x="450.0" y="445.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="466.0" y="466.0" class="node-label" fill="#d6544a">✕ forecasted_occupancy</text>
+</g>
+<g class="node" id="node-transient_displacement_cost" data-id="transient_displacement_cost" tabindex="0">
+<rect x="780.0" y="60.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#1f9e6e" stroke-width="1.8" class="node-rect"/>
+<rect x="780.0" y="60.0" width="4" height="34" rx="2" fill="#1f9e6e"/>
+<text x="796.0" y="81.0" class="node-label" fill="#1f9e6e">✓ transient_displacement_cost</text>
+</g>
+<g class="node" id="node-rate_discount_pct" data-id="rate_discount_pct" tabindex="0">
+<rect x="780.0" y="200.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8" class="node-rect"/>
+<rect x="780.0" y="200.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="796.0" y="221.0" class="node-label" fill="#d6544a">✕ rate_discount_pct</text>
+</g>
+<g class="node" id="node-compression_indicator" data-id="compression_indicator" tabindex="0">
+<rect x="780.0" y="325.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8" class="node-rect"/>
+<rect x="780.0" y="325.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="796.0" y="346.0" class="node-label" fill="#d6544a">✕ compression_indicator</text>
+</g>
+<g class="node" id="node-avg_occupancy_7d" data-id="avg_occupancy_7d" tabindex="0">
+<rect x="780.0" y="405.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8" class="node-rect"/>
+<rect x="780.0" y="405.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="796.0" y="426.0" class="node-label" fill="#d6544a">✕ avg_occupancy_7d</text>
+</g>
+<g class="node" id="node-avg_occupancy_30d" data-id="avg_occupancy_30d" tabindex="0">
+<rect x="780.0" y="465.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8" class="node-rect"/>
+<rect x="780.0" y="465.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="796.0" y="486.0" class="node-label" fill="#d6544a">✕ avg_occupancy_30d</text>
+</g>
+<g class="node" id="node-avg_occupancy_90d" data-id="avg_occupancy_90d" tabindex="0">
+<rect x="780.0" y="525.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8" class="node-rect"/>
+<rect x="780.0" y="525.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="796.0" y="546.0" class="node-label" fill="#d6544a">✕ avg_occupancy_90d</text>
+</g>
+<g class="node" id="node-displacement_ratio" data-id="displacement_ratio" tabindex="0">
+<rect x="1110.0" y="110.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8" class="node-rect"/>
+<rect x="1110.0" y="110.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="1126.0" y="131.0" class="node-label" fill="#d6544a">✕ displacement_ratio</text>
+</g>
+<g class="node" id="node-tactical_compression_opportunity" data-id="tactical_compression_opportunity" tabindex="0">
+<rect x="1110.0" y="295.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#1f9e6e" stroke-width="1.8" class="node-rect"/>
+<rect x="1110.0" y="295.0" width="4" height="34" rx="2" fill="#1f9e6e"/>
+<text x="1126.0" y="316.0" class="node-label" fill="#1f9e6e">✓ tactical_compression_opportunity</text>
+</g>
+<g class="node" id="node-occupancy_velocity_7_30d" data-id="occupancy_velocity_7_30d" tabindex="0">
+<rect x="1110.0" y="415.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#1f9e6e" stroke-width="1.8" class="node-rect"/>
+<rect x="1110.0" y="415.0" width="4" height="34" rx="2" fill="#1f9e6e"/>
+<text x="1126.0" y="436.0" class="node-label" fill="#1f9e6e">✓ occupancy_velocity_7_30d</text>
+</g>
+<g class="node" id="node-occupancy_velocity_30_90d" data-id="occupancy_velocity_30_90d" tabindex="0">
+<rect x="1110.0" y="515.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8" class="node-rect"/>
+<rect x="1110.0" y="515.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="1126.0" y="536.0" class="node-label" fill="#d6544a">✕ occupancy_velocity_30_90d</text>
+</g>
+<g class="node" id="node-displacement_ema_7d" data-id="displacement_ema_7d" tabindex="0">
+<rect x="1440.0" y="30.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#1f9e6e" stroke-width="1.8" class="node-rect"/>
+<rect x="1440.0" y="30.0" width="4" height="34" rx="2" fill="#1f9e6e"/>
+<text x="1456.0" y="51.0" class="node-label" fill="#1f9e6e">✓ displacement_ema_7d</text>
+</g>
+<g class="node" id="node-displacement_ema_30d" data-id="displacement_ema_30d" tabindex="0">
+<rect x="1440.0" y="80.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8" class="node-rect"/>
+<rect x="1440.0" y="80.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="1456.0" y="101.0" class="node-label" fill="#d6544a">✕ displacement_ema_30d</text>
+</g>
+<g class="node" id="node-displacement_ema_90d" data-id="displacement_ema_90d" tabindex="0">
+<rect x="1440.0" y="130.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8" class="node-rect"/>
+<rect x="1440.0" y="130.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="1456.0" y="151.0" class="node-label" fill="#d6544a">✕ displacement_ema_90d</text>
+</g>
+<g class="node" id="node-displacement_occupancy_risk" data-id="displacement_occupancy_risk" tabindex="0">
+<rect x="1440.0" y="225.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#d6544a" stroke-width="1.8" class="node-rect"/>
+<rect x="1440.0" y="225.0" width="4" height="34" rx="2" fill="#d6544a"/>
+<text x="1456.0" y="246.0" class="node-label" fill="#d6544a">✕ displacement_occupancy_risk</text>
+</g>
+<g class="node" id="node-occupancy_acceleration" data-id="occupancy_acceleration" tabindex="0">
+<rect x="1440.0" y="465.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#1f9e6e" stroke-width="1.8" class="node-rect"/>
+<rect x="1440.0" y="465.0" width="4" height="34" rx="2" fill="#1f9e6e"/>
+<text x="1456.0" y="486.0" class="node-label" fill="#1f9e6e">✓ occupancy_acceleration</text>
+</g>
+<g class="node" id="node-is_compression_date" data-id="is_compression_date" tabindex="0">
+<rect x="450.0" y="895.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#3f9e7f" stroke-width="1.8" class="node-rect"/>
+<rect x="450.0" y="895.0" width="4" height="34" rx="2" fill="#3f9e7f"/>
+<text x="466.0" y="916.0" class="node-label" fill="#3f9e7f">✓ Is_Compression_Date</text>
+</g>
+<g class="node" id="node-quoted_adr" data-id="quoted_adr" tabindex="0">
+<rect x="1780.0" y="60.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#8a5cc7" stroke-width="1.8" class="node-rect"/>
+<rect x="1780.0" y="60.0" width="4" height="34" rx="2" fill="#8a5cc7"/>
+<text x="1796.0" y="81.0" class="node-label" fill="#8a5cc7">▸ quoted_adr</text>
+<text x="1780.0" y="107.0" class="node-note" fill="#8a5cc7">36 features</text>
+</g>
+<g class="node" id="node-conversion" data-id="conversion" tabindex="0">
+<rect x="1780.0" y="300.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#8a5cc7" stroke-width="1.8" class="node-rect"/>
+<rect x="1780.0" y="300.0" width="4" height="34" rx="2" fill="#8a5cc7"/>
+<text x="1796.0" y="321.0" class="node-label" fill="#8a5cc7">▸ conversion</text>
+<text x="1780.0" y="347.0" class="node-note" fill="#8a5cc7">36 features</text>
+</g>
+<g class="node" id="node-fnb" data-id="fnb" tabindex="0">
+<rect x="1780.0" y="500.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#8a5cc7" stroke-width="1.8" class="node-rect"/>
+<rect x="1780.0" y="500.0" width="4" height="34" rx="2" fill="#8a5cc7"/>
+<text x="1796.0" y="521.0" class="node-label" fill="#8a5cc7">▸ fnb</text>
+<text x="1780.0" y="547.0" class="node-note" fill="#8a5cc7">47 features (+11 F&amp;B force-adds)</text>
+</g>
+<g class="node" id="node-pickup_ipw" data-id="pickup_ipw" tabindex="0">
+<rect x="1780.0" y="700.0" width="226" height="34" rx="7" fill="var(--surface-1)" stroke="#8a5cc7" stroke-width="1.8" class="node-rect"/>
+<rect x="1780.0" y="700.0" width="4" height="34" rx="2" fill="#8a5cc7"/>
+<text x="1796.0" y="721.0" class="node-label" fill="#8a5cc7">▸ pickup_ipw</text>
+<text x="1780.0" y="747.0" class="node-note" fill="#8a5cc7">64 features (+28 force-adds &amp; one-hot dummies)</text>
+</g>
+<text x="120.0" y="14" class="col-header">Raw source fields</text>
+<text x="450.0" y="14" class="col-header">Level 1</text>
+<text x="780.0" y="14" class="col-header">Level 2</text>
+<text x="1110.0" y="14" class="col-header">Level 3</text>
+<text x="1440.0" y="14" class="col-header">Level 4</text>
+<text x="1780.0" y="14" class="col-header">Final model lists</text>
+    </svg>
+    <figcaption>
+Edges are real documented dependencies from <code>complete_rfp_features_v2.py</code> (Parts 3, 8, 13) and <code>enrich_apit_v2_final.py</code>; survive/drop status and per-model rank &amp; importance are read directly from the live/matching feature-importance CSVs for <code>quoted_adr</code>, <code>pickup_ipw</code>, <code>fnb</code>, and <code>conversion</code>. Feature columns are positioned by verified dependency depth (how many engineering steps from the raw field), not by the exact pruning stage that removed them — no intermediate correlation-pairs or VIF-removal log survived to check that against, which is why <code>baseline_adr</code> and <code>forecasted_occupancy</code> are only ever described as "dropped somewhere in the funnel."
+</figcaption>
+  </figure>
+  
+<div class="legend">
+  <div class="legend-item"><span class="legend-dot" style="background:#5b7fb5"></span> raw source field</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#d6544a"></span> dropped from all 4 models</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#1f9e6e"></span> survives in all 4 models</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#3f9e7f"></span> survives, near-zero importance</div>
+  <div class="legend-item"><span class="legend-dot" style="background:#8a5cc7"></span> final per-model feature list</div>
+</div>
+
+</div>
+
+<footer class="page-foot">
+  Source: <code>complete_rfp_features_v2.py</code> (Parts 3, 8, 13), <code>enrich_apit_v2_final.py</code>, <code>rfp_xgboost_pipeline_v7_1.py</code> (pruning constants), <code>rfp_model_report_v7_1.docx</code> §5.1/§11.4/§11.5, and the live feature-importance CSVs for quoted_adr, pickup_ipw, fnb, and conversion.
+</footer>
+
+<script>
+(function() {
+  var NODES = {"weighted_adr": {"label": "Weighted_ADR", "kind": "raw", "desc": "Daily rate, from Nexus_Daily_Room_Sales_v2.csv.", "models": []}, "arrival_date": {"label": "Arrival_Date", "kind": "raw", "desc": "RFP record \u2014 defines the stay window.", "models": []}, "departure_date": {"label": "Departure_Date", "kind": "raw", "desc": "RFP record \u2014 defines the stay window.", "models": []}, "quoted_adr_raw": {"label": "Quoted_ADR", "kind": "raw", "desc": "RFP record \u2014 the rate actually quoted to the client.", "models": []}, "room_nights_raw": {"label": "Total_Room_Nights_Requested", "kind": "raw", "desc": "RFP record.", "models": []}, "proposed_rev_raw": {"label": "Proposed_Total_Revenue", "kind": "raw", "desc": "RFP record.", "models": []}, "occupancy_pct": {"label": "Occupancy_Pct", "kind": "raw", "desc": "Daily occupancy, from Nexus_Daily_Room_Sales_v2.csv.", "models": []}, "lead_time_raw": {"label": "lead_time_days", "kind": "raw", "desc": "Engineered in Part 2, then reused as an input here.", "models": []}, "v8_focc": {"label": "Forecasted_Occupancy (v8)", "kind": "raw", "desc": "A separately-sourced, bug-corrected column from Enhanced_All_Events_v8_final.csv, pulled in by enrich_apit_v2_final.py \u2014 not the same column as this pipeline's own forecasted_occupancy.", "models": []}, "baseline_adr": {"label": "baseline_adr", "kind": "red", "desc": "Mean Weighted_ADR over the stay window. Present in the ~300-feature candidate pool, absent from all four live models' final lists.", "models": []}, "forecasted_occupancy": {"label": "forecasted_occupancy", "kind": "red", "desc": "Mean Occupancy_Pct over the stay window. Documented (report \u00a711.5) as carrying a data-quality bug \u2014 post-group projected values rather than a clean pre-quote forecast. Absent from all four live models' final lists.", "models": []}, "transient_displacement_cost": {"label": "transient_displacement_cost", "kind": "green", "desc": "max(0, baseline_adr \u2212 Quoted_ADR) \u00d7 room nights.", "models": [["quoted_adr", 3, 5.11], ["pickup_ipw", 10, 3.3], ["fnb", 10, 3.44], ["conversion", 10, 3.22]]}, "rate_discount_pct": {"label": "rate_discount_pct", "kind": "red", "desc": "(baseline_adr \u2212 Quoted_ADR) / baseline_adr \u00d7 100. Dead end \u2014 no surviving descendant.", "models": []}, "compression_indicator": {"label": "compression_indicator", "kind": "red", "desc": "Bucketed from forecasted_occupancy (\u226585/75/65% tiers).", "models": []}, "avg_occupancy_7d": {"label": "avg_occupancy_7d", "kind": "red", "desc": "7-day rolling mean of forecasted_occupancy over earlier-inquiry RFPs.", "models": []}, "avg_occupancy_30d": {"label": "avg_occupancy_30d", "kind": "red", "desc": "30-day rolling mean of forecasted_occupancy.", "models": []}, "avg_occupancy_90d": {"label": "avg_occupancy_90d", "kind": "red", "desc": "90-day rolling mean of forecasted_occupancy.", "models": []}, "displacement_ratio": {"label": "displacement_ratio", "kind": "red", "desc": "transient_displacement_cost / Proposed_Total_Revenue.", "models": []}, "tactical_compression_opportunity": {"label": "tactical_compression_opportunity", "kind": "green", "desc": "compression_indicator \u00d7 1/(lead_time_days+1).", "models": [["quoted_adr", 17, 2.9], ["pickup_ipw", 2, 5.16], ["fnb", 28, 1.68], ["conversion", 13, 2.74]]}, "occupancy_velocity_7_30d": {"label": "occupancy_velocity_7_30d", "kind": "green", "desc": "avg_occupancy_7d \u2212 avg_occupancy_30d.", "models": [["quoted_adr", 15, 3.5], ["pickup_ipw", 11, 3.24], ["fnb", 6, 3.97], ["conversion", 17, 2.18]]}, "occupancy_velocity_30_90d": {"label": "occupancy_velocity_30_90d", "kind": "red", "desc": "avg_occupancy_30d \u2212 avg_occupancy_90d.", "models": []}, "displacement_ema_7d": {"label": "displacement_ema_7d", "kind": "green", "desc": "7-span exponential moving average of displacement_ratio, in chronological (inquiry) order.", "models": [["quoted_adr", 5, 4.72], ["pickup_ipw", 13, 3.17], ["fnb", 12, 3.12], ["conversion", 6, 4.12]]}, "displacement_ema_30d": {"label": "displacement_ema_30d", "kind": "red", "desc": "30-span EMA of displacement_ratio. Dead end.", "models": []}, "displacement_ema_90d": {"label": "displacement_ema_90d", "kind": "red", "desc": "90-span EMA of displacement_ratio. Dead end.", "models": []}, "displacement_occupancy_risk": {"label": "displacement_occupancy_risk", "kind": "red", "desc": "displacement_ratio \u00d7 forecasted_occupancy / 100. Dead end.", "models": []}, "occupancy_acceleration": {"label": "occupancy_acceleration", "kind": "green", "desc": "occupancy_velocity_7_30d \u2212 occupancy_velocity_30_90d.", "models": [["quoted_adr", 16, 3.17], ["pickup_ipw", 6, 3.83], ["fnb", 25, 1.98], ["conversion", 20, 1.28]]}, "is_compression_date": {"label": "Is_Compression_Date", "kind": "green-dim", "desc": "(v8 Forecasted_Occupancy \u2265 85). Computed in enrich_apit_v2_final.py from the corrected v8 column, not this pipeline's own forecasted_occupancy.", "models": [["quoted_adr", 31, 0.84], ["pickup_ipw", 56, 0.0], ["fnb", 45, 0.03], ["conversion", 35, 0.0]]}, "quoted_adr": {"label": "quoted_adr", "kind": "final", "desc": "Final live feature list for quoted_adr.", "models": []}, "conversion": {"label": "conversion", "kind": "final", "desc": "Final live feature list for conversion.", "models": []}, "fnb": {"label": "fnb", "kind": "final", "desc": "Final live feature list for fnb.", "models": []}, "pickup_ipw": {"label": "pickup_ipw", "kind": "final", "desc": "Final live feature list for pickup_ipw.", "models": []}};
+  var EDGES = [["weighted_adr", "baseline_adr"], ["arrival_date", "baseline_adr"], ["departure_date", "baseline_adr"], ["arrival_date", "forecasted_occupancy"], ["departure_date", "forecasted_occupancy"], ["occupancy_pct", "forecasted_occupancy"], ["quoted_adr_raw", "transient_displacement_cost"], ["room_nights_raw", "transient_displacement_cost"], ["baseline_adr", "transient_displacement_cost"], ["quoted_adr_raw", "rate_discount_pct"], ["baseline_adr", "rate_discount_pct"], ["forecasted_occupancy", "compression_indicator"], ["forecasted_occupancy", "avg_occupancy_7d"], ["forecasted_occupancy", "avg_occupancy_30d"], ["forecasted_occupancy", "avg_occupancy_90d"], ["forecasted_occupancy", "displacement_occupancy_risk"], ["transient_displacement_cost", "displacement_ratio"], ["proposed_rev_raw", "displacement_ratio"], ["compression_indicator", "tactical_compression_opportunity"], ["lead_time_raw", "tactical_compression_opportunity"], ["avg_occupancy_7d", "occupancy_velocity_7_30d"], ["avg_occupancy_30d", "occupancy_velocity_7_30d"], ["avg_occupancy_30d", "occupancy_velocity_30_90d"], ["avg_occupancy_90d", "occupancy_velocity_30_90d"], ["displacement_ratio", "displacement_ema_7d"], ["displacement_ratio", "displacement_ema_30d"], ["displacement_ratio", "displacement_ema_90d"], ["displacement_ratio", "displacement_occupancy_risk"], ["occupancy_velocity_7_30d", "occupancy_acceleration"], ["occupancy_velocity_30_90d", "occupancy_acceleration"], ["v8_focc", "is_compression_date"], ["transient_displacement_cost", "quoted_adr"], ["transient_displacement_cost", "conversion"], ["transient_displacement_cost", "fnb"], ["transient_displacement_cost", "pickup_ipw"], ["tactical_compression_opportunity", "quoted_adr"], ["tactical_compression_opportunity", "conversion"], ["tactical_compression_opportunity", "fnb"], ["tactical_compression_opportunity", "pickup_ipw"], ["displacement_ema_7d", "quoted_adr"], ["displacement_ema_7d", "conversion"], ["displacement_ema_7d", "fnb"], ["displacement_ema_7d", "pickup_ipw"], ["occupancy_velocity_7_30d", "quoted_adr"], ["occupancy_velocity_7_30d", "conversion"], ["occupancy_velocity_7_30d", "fnb"], ["occupancy_velocity_7_30d", "pickup_ipw"], ["occupancy_acceleration", "quoted_adr"], ["occupancy_acceleration", "conversion"], ["occupancy_acceleration", "fnb"], ["occupancy_acceleration", "pickup_ipw"], ["is_compression_date", "quoted_adr"], ["is_compression_date", "conversion"], ["is_compression_date", "fnb"], ["is_compression_date", "pickup_ipw"]];
+  var NAMES = ["arrival_date", "avg_occupancy_30d", "avg_occupancy_7d", "avg_occupancy_90d", "baseline_adr", "compression_indicator", "conversion", "departure_date", "displacement_ema_30d", "displacement_ema_7d", "displacement_ema_90d", "displacement_occupancy_risk", "displacement_ratio", "fnb", "forecasted_occupancy", "is_compression_date", "lead_time_raw", "occupancy_acceleration", "occupancy_pct", "occupancy_velocity_30_90d", "occupancy_velocity_7_30d", "pickup_ipw", "proposed_rev_raw", "quoted_adr", "quoted_adr_raw", "rate_discount_pct", "room_nights_raw", "tactical_compression_opportunity", "transient_displacement_cost", "v8_focc", "weighted_adr"];
+
+  var datalist = document.getElementById('feature-list');
+  NAMES.forEach(function(id) {
+    var opt = document.createElement('option');
+    opt.value = NODES[id].label;
+    datalist.appendChild(opt);
+  });
+
+  var forward = {}, backward = {};
+  NAMES.forEach(function(id) { forward[id] = []; backward[id] = []; });
+  EDGES.forEach(function(e) { forward[e[0]].push(e[1]); backward[e[1]].push(e[0]); });
+
+  function closure(id, map) {
+    var seen = {}, stack = [id];
+    while (stack.length) {
+      var cur = stack.pop();
+      (map[cur] || []).forEach(function(n) {
+        if (!seen[n]) { seen[n] = true; stack.push(n); }
+      });
+    }
+    return seen;
+  }
+
+  function findNode(query) {
+    query = (query || '').trim().toLowerCase();
+    if (!query) return null;
+    var exact = NAMES.find(function(id) { return NODES[id].label.toLowerCase() === query; });
+    if (exact) return exact;
+    var partial = NAMES.find(function(id) { return NODES[id].label.toLowerCase().indexOf(query) !== -1; });
+    return partial || null;
+  }
+
+  function clearHighlight() {
+    document.querySelectorAll('.node').forEach(function(n) { n.classList.remove('dim', 'active'); });
+    document.querySelectorAll('.edge').forEach(function(e) { e.classList.remove('dim', 'active'); });
+    document.getElementById('status-panel').classList.remove('show');
+  }
+
+  function describe(id) {
+    var n = NODES[id];
+    var html = '<div class="st-title">' + n.label + '</div>';
+    html += '<div>' + (n.desc || '') + '</div>';
+    if (n.kind === 'green' || n.kind === 'green-dim') {
+      html += '<div style="margin-top:6px;color:#1f9e6e;font-weight:600;">Survives in all 4 live models.</div>';
+      html += '<table>';
+      n.models.forEach(function(m) {
+        html += '<tr><td>' + m[0] + '</td><td>#' + m[1] + '</td><td>' + m[2].toFixed(2) + '%</td></tr>';
+      });
+      html += '</table>';
+    } else if (n.kind === 'red') {
+      var desc = closure(id, forward);
+      var survivorDesc = Object.keys(desc).filter(function(d) { return NODES[d].kind === 'green' || NODES[d].kind === 'green-dim'; });
+      if (survivorDesc.length) {
+        html += '<div style="margin-top:6px;color:#d6544a;font-weight:600;">Dropped from all 4 live models — signal partly reflected in the model via:</div>';
+        html += '<div style="margin-top:2px;">' + survivorDesc.map(function(d) { return NODES[d].label; }).join(' · ') + '</div>';
+      } else {
+        html += '<div style="margin-top:6px;color:#d6544a;font-weight:600;">Dropped from all 4 live models — dead end, no surviving descendant carries this signal forward.</div>';
+      }
+    } else if (n.kind === 'raw') {
+      var anc_desc = closure(id, forward);
+      var survivors = Object.keys(anc_desc).filter(function(d) { return NODES[d].kind === 'green' || NODES[d].kind === 'green-dim'; });
+      html += '<div style="margin-top:6px;">Feeds ' + Object.keys(anc_desc).length + ' downstream engineered feature(s)' + (survivors.length ? (', of which ' + survivors.length + ' survive: ' + survivors.map(function(d){return NODES[d].label;}).join(' · ')) : ', none of which survive pruning') + '.</div>';
+    } else if (n.kind === 'final') {
+      var anc = closure(id, backward);
+      var demandFeatures = Object.keys(anc).filter(function(a) { return NODES[a].kind === 'green' || NODES[a].kind === 'green-dim'; });
+      html += '<div style="margin-top:6px;">' + (n.note || '') + '. Daily_Hotel_Demand-derived features present: ' + demandFeatures.map(function(d){return NODES[d].label;}).join(' · ') + '.</div>';
+    }
+    return html;
+  }
+
+  function highlight(id) {
+    if (!id || !NODES[id]) { clearHighlight(); return; }
+    var anc = closure(id, backward);
+    var desc = closure(id, forward);
+    var keep = {};
+    keep[id] = true;
+    Object.keys(anc).forEach(function(k) { keep[k] = true; });
+    Object.keys(desc).forEach(function(k) { keep[k] = true; });
+
+    document.querySelectorAll('.node').forEach(function(el) {
+      var nid = el.getAttribute('data-id');
+      if (keep[nid]) { el.classList.remove('dim'); } else { el.classList.add('dim'); }
+      if (nid === id) { el.classList.add('active'); } else { el.classList.remove('active'); }
+    });
+    document.querySelectorAll('.edge').forEach(function(el) {
+      var s = el.getAttribute('data-src'), d = el.getAttribute('data-dst');
+      if (keep[s] && keep[d]) { el.classList.remove('dim'); el.classList.add('active'); }
+      else { el.classList.add('dim'); el.classList.remove('active'); }
+    });
+
+    var panel = document.getElementById('status-panel');
+    panel.innerHTML = describe(id);
+    panel.classList.add('show');
+  }
+
+  document.getElementById('searchbox').addEventListener('input', function(e) {
+    var id = findNode(e.target.value);
+    if (id) highlight(id); else clearHighlight();
+  });
+  document.getElementById('clearbtn').addEventListener('click', function() {
+    document.getElementById('searchbox').value = '';
+    clearHighlight();
+  });
+  document.querySelectorAll('.node').forEach(function(el) {
+    el.addEventListener('click', function() {
+      var id = el.getAttribute('data-id');
+      document.getElementById('searchbox').value = NODES[id].label;
+      highlight(id);
+    });
+    el.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') el.dispatchEvent(new Event('click'));
+    });
+  });
+})();
+</script>
