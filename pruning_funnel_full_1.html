@@ -54,6 +54,8 @@
   .node-count { font-family: "IBM Plex Mono", monospace; font-size: 12px; font-weight: 600; fill: var(--text-secondary); }
   .ctx-title { font-family: "IBM Plex Sans", sans-serif; font-size: 12px; font-weight: 650; fill: var(--text-primary); }
   .ctx-line { font-family: "IBM Plex Mono", monospace; font-size: 10px; fill: var(--text-secondary); }
+  .raw-dot { cursor: pointer; transition: r 0.12s ease, fill 0.12s ease; }
+  .raw-dot:hover { r: 5.5; fill: var(--accent); }
   .infopanel { margin-top: 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; font-size: 12.5px; line-height: 1.55; }
   .ip-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
   .ip-title { font-family: "IBM Plex Mono", monospace; font-weight: 650; font-size: 14px; }
@@ -100,15 +102,15 @@
 <text x="44" y="243.3" class="ctx-line">monthly hotel performance</text>
 <text x="44" y="258.8" class="ctx-line">9 fields individually traced —</text>
 <text x="44" y="274.3" class="ctx-line">see search</text>
-<circle id="raw-weighted_adr" cx="228.0" cy="160.7" r="3" fill="var(--wire-soft)"/>
-<circle id="raw-arrival_date" cx="228.0" cy="200.5" r="3" fill="var(--wire-soft)"/>
-<circle id="raw-departure_date" cx="228.0" cy="240.4" r="3" fill="var(--wire-soft)"/>
-<circle id="raw-quoted_adr_raw" cx="228.0" cy="280.2" r="3" fill="var(--wire-soft)"/>
-<circle id="raw-room_nights_raw" cx="228.0" cy="320.0" r="3" fill="var(--wire-soft)"/>
-<circle id="raw-proposed_rev_raw" cx="228.0" cy="359.8" r="3" fill="var(--wire-soft)"/>
-<circle id="raw-occupancy_pct" cx="228.0" cy="399.6" r="3" fill="var(--wire-soft)"/>
-<circle id="raw-lead_time_raw" cx="228.0" cy="439.5" r="3" fill="var(--wire-soft)"/>
-<circle id="raw-v8_focc" cx="228.0" cy="479.3" r="3" fill="var(--wire-soft)"/>
+<circle id="raw-weighted_adr" class="raw-dot" data-raw-label="Weighted_ADR (raw source)" cx="228.0" cy="160.7" r="3" fill="var(--wire-soft)"><title>Weighted_ADR — raw source field. Click to trace it through the funnel.</title></circle>
+<circle id="raw-arrival_date" class="raw-dot" data-raw-label="Arrival_Date (raw source)" cx="228.0" cy="200.5" r="3" fill="var(--wire-soft)"><title>Arrival_Date — raw source field. Click to trace it through the funnel.</title></circle>
+<circle id="raw-departure_date" class="raw-dot" data-raw-label="Departure_Date (raw source)" cx="228.0" cy="240.4" r="3" fill="var(--wire-soft)"><title>Departure_Date — raw source field. Click to trace it through the funnel.</title></circle>
+<circle id="raw-quoted_adr_raw" class="raw-dot" data-raw-label="Quoted_ADR (raw source)" cx="228.0" cy="280.2" r="3" fill="var(--wire-soft)"><title>Quoted_ADR — raw source field. Click to trace it through the funnel.</title></circle>
+<circle id="raw-room_nights_raw" class="raw-dot" data-raw-label="Total_Room_Nights_Requested (raw source)" cx="228.0" cy="320.0" r="3" fill="var(--wire-soft)"><title>Total_Room_Nights_Requested — raw source field. Click to trace it through the funnel.</title></circle>
+<circle id="raw-proposed_rev_raw" class="raw-dot" data-raw-label="Proposed_Total_Revenue (raw source)" cx="228.0" cy="359.8" r="3" fill="var(--wire-soft)"><title>Proposed_Total_Revenue — raw source field. Click to trace it through the funnel.</title></circle>
+<circle id="raw-occupancy_pct" class="raw-dot" data-raw-label="Occupancy_Pct (raw source)" cx="228.0" cy="399.6" r="3" fill="var(--wire-soft)"><title>Occupancy_Pct — raw source field. Click to trace it through the funnel.</title></circle>
+<circle id="raw-lead_time_raw" class="raw-dot" data-raw-label="lead_time_days (raw source)" cx="228.0" cy="439.5" r="3" fill="var(--wire-soft)"><title>lead_time_days — raw source field. Click to trace it through the funnel.</title></circle>
+<circle id="raw-v8_focc" class="raw-dot" data-raw-label="Forecasted_Occupancy (v8) (raw source)" cx="228.0" cy="479.3" r="3" fill="var(--wire-soft)"><title>Forecasted_Occupancy (v8) — raw source field. Click to trace it through the funnel.</title></circle>
 <path d="M 230 320 L 296 320" stroke="var(--wire-soft)" stroke-width="1.6" marker-end="url(#arrow-soft)" stroke-dasharray="5 4"/>
 <path d="M 316.0 140.8 C 488.0 140.8, 488.0 185.6, 660.0 185.6 L 660.0 454.4 C 488.0 454.4, 488.0 499.2, 316.0 499.2 Z" fill="var(--z-a)" fill-opacity="0.28" stroke="none"/>
 <path d="M 676.0 185.6 C 848.0 185.6, 848.0 278.0, 1020.0 278.0 L 1020.0 362.0 C 848.0 362.0, 848.0 454.4, 676.0 454.4 Z" fill="var(--z-a)" fill-opacity="0.28" stroke="none"/>
@@ -467,6 +469,14 @@
     if (rawPartial) { highlightRaw(DATA.rawLabelToId[rawPartial]); return; }
     document.getElementById('infopanel').hidden = true;
   }
+
+  document.querySelectorAll('.raw-dot').forEach(function(el) {
+    el.addEventListener('click', function() {
+      var label = el.getAttribute('data-raw-label');
+      document.getElementById('searchbox').value = label;
+      runSearch(label);
+    });
+  });
 
   document.getElementById('searchbox').addEventListener('input', function(e) { runSearch(e.target.value); });
   document.getElementById('clearbtn').addEventListener('click', function() {
