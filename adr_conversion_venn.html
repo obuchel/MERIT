@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR vs conversion feature overlap</title>
+<style>
+:root{
+  --bg:#faf9f7; --panel:#ffffff; --ink:#1c1a17; --ink2:#5b564e; --ink3:#8a8478;
+  --line:#e6e1d8; --adr:#2f5d8a; --conv:#a04f6b; --both:#6a4f8a;
+  --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#17140f; --panel:#221e18; --ink:#f1ede4; --ink2:#c9c2b4; --ink3:#8f887a;
+    --line:#3a352c; --adr:#7fb2e0; --conv:#e08ab0; --both:#b79fe0;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#17140f; --panel:#221e18; --ink:#f1ede4; --ink2:#c9c2b4; --ink3:#8f887a;
+  --line:#3a352c; --adr:#7fb2e0; --conv:#e08ab0; --both:#b79fe0;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;padding-block:28px;}
+.wrap{max-width:900px;margin:0 auto;padding-inline:20px;}
+h1{font-size:1.35rem;margin:0 0 4px;letter-spacing:-.01em;}
+.sub{color:var(--ink2);font-size:.88rem;margin:0 0 22px;max-width:680px;line-height:1.5;}
+.tag{font-family:var(--mono);font-size:.85em;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:1px 5px;}
+.diagram-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;justify-content:center;}
+svg{max-width:100%;height:auto;}
+.count-label{font-family:var(--mono);font-weight:700;fill:#fff;text-anchor:middle;}
+.set-label{font-weight:600;fill:var(--ink);text-anchor:middle;font-size:15px;}
+.lists{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:20px;}
+@media (max-width:640px){ .lists{grid-template-columns:1fr;} }
+.list-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;}
+.list-card h3{margin:0 0 8px;font-size:.82rem;text-transform:uppercase;letter-spacing:.02em;color:var(--ink2);display:flex;align-items:center;gap:6px;}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+.list-card ul{margin:0;padding-left:0;list-style:none;font-family:var(--mono);font-size:.76rem;line-height:1.65;color:var(--ink2);max-height:340px;overflow:auto;}
+footer{color:var(--ink3);font-size:.76rem;margin-top:24px;line-height:1.6;border-top:1px solid var(--line);padding-top:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Where the ADR model and the conversion model draw on the same signal</h1>
+  <p class="sub">
+    Final trained feature sets, both from real pipeline runs: <span class="tag">rfp_adr_pipeline_filtered_first.py</span>
+    (51 features, quoted_adr target) and <span class="tag">rfp_conversion_pipeline.py</span> (56 features, did_convert
+    target, post leakage-fix). Circle sizes are drawn proportional to each model's feature count; overlap area is
+    illustrative, not to scale (17-feature intersections don't tile geometrically against 51/56-item sets).
+  </p>
+
+  <div class="diagram-card">
+    <svg viewBox="0 0 640 400" width="640" height="400">
+      <circle cx="270" cy="200" r="150" fill="var(--adr)" fill-opacity="0.55"></circle>
+      <circle cx="390" cy="200" r="160" fill="var(--conv)" fill-opacity="0.55"></circle>
+      <text x="180" y="200" class="count-label" font-size="30">34</text>
+      <text x="330" y="200" class="count-label" font-size="26">17</text>
+      <text x="470" y="200" class="count-label" font-size="30">39</text>
+      <text x="160" y="60" class="set-label" fill="var(--adr)">ADR model — 51 features</text>
+      <text x="480" y="60" class="set-label" fill="var(--conv)">Conversion model — 56 features</text>
+    </svg>
+  </div>
+
+  <div class="lists">
+    <div class="list-card">
+      <h3><span class="dot" style="background:var(--adr)"></span>ADR only (34)</h3>
+      <ul id="list-adr"></ul>
+    </div>
+    <div class="list-card">
+      <h3><span class="dot" style="background:var(--both)"></span>Shared (17)</h3>
+      <ul id="list-both"></ul>
+    </div>
+    <div class="list-card">
+      <h3><span class="dot" style="background:var(--conv)"></span>Conversion only (39)</h3>
+      <ul id="list-conv"></ul>
+    </div>
+  </div>
+
+  <footer>
+    Shared features are ones that survived independent correlation/VIF/leakage pruning against <em>two different
+    targets</em> from the same underlying 296&ndash;298-column candidate pools — evidence they carry real signal
+    about the deal generally, not an artifact of one target's pruning path. The 34/39 "only" columns are not
+    necessarily irrelevant to the other target; they may simply have been dropped earlier at correlation or VIF
+    pruning stage against that target's specific survivor set, which differs because the two candidate pools exclude
+    different leaky columns (LEAKY_CONVERSION vs the ADR script's LEAKY dict).
+  </footer>
+</div>
+<script id="venn-data" type="application/json">{"only_adr":["Is_Compression_Date","account_win_rate","arrival_day_of_year","arrival_dow_cos","arrival_dow_sin","arrival_month_sin","avg_competing_group_size_60d","avg_occupancy_30d","booking_confidence_90d","days_since_last_win","days_to_next_quarter","displacement_ema_7d","event_format_enc","inquiry_month_sin","is_peak_arrival","is_shoulder_season","length_of_stay_category_enc","market_seg_Professional Services","market_seg_Technology","occupancy_velocity_7_30d","priority_score_v2","rate_discount_pct","revenue_competition_30d","revenue_competition_7d","revenue_intensity_deviation","revenue_volatility_30d","rfp_volume_acceleration","rfp_volume_velocity_7_30d","tr_demand_tier","tr_pace_vs_prior_year","tr_rooms_to_capacity","tr_transient_adr","tr_transient_occ_of_available","tr_transient_pace_30d"],"both":["arrival_day_of_week","avg_discount_nearby_30d","avg_discount_nearby_60d","avg_occupancy_14d","booking_pace_7_30d","demand_ema_30d","displacement_velocity_30_90d","historical_demand_this_month","historical_demand_this_quarter","meeting_ratio","night_variance_pct","num_fnb_types","occupancy_velocity_30_90d","projected_occupancy_with_group","proposed_total_revenue","tr_transient_revpar","transient_displacement_cost"],"only_conv":["Account_Prior_Events","Account_Prior_Revenue","Flag_Missing_Rate_Target","Meeting_Space_Ratio","Revenue_Per_Room_Night","Rooms_Available_Peak_Date","Urgency_Index","account_avg_revenue","attendees","avg_competing_group_size_14d","avg_competing_group_size_90d","avg_displacement_60d","avg_revenue_intensity_14d","avg_room_utilization","booking_pace_rooms_per_day","budget_amount","budget_ratio","capacity_risk_score","days_since_last_account_rfp","days_since_last_segment_rfp","decision_days_cvent","demand_ema_7d","lead_time_deviation","market_seg_Travel","max_av_level","occupancy_acceleration","operational_complexity_score","pct_standard_rooms","priority_displacement_component","priority_win_prob_component","revenue_momentum","rfp_count_90d","room_night_demand_90d","suite_rate","tactical_compression_opportunity","total_meeting_hours","tr_pace_index","tr_transient_rooms_turned_away","win_rate_60d"]}</script>
+<script>
+const D = JSON.parse(document.getElementById('venn-data').textContent);
+function renderList(id, arr){
+  document.getElementById(id).innerHTML = arr.map(f=>`<li>${f}</li>`).join('');
+}
+renderList('list-adr', D.only_adr);
+renderList('list-both', D.both);
+renderList('list-conv', D.only_conv);
+</script>
+</body>
+</html>
