@@ -96,7 +96,8 @@ footer code{font-family:var(--mono);}
       <div class="controls-row">
         <div id="colorToggle" role="group" aria-label="Color points by">
           <button type="button" data-mode="won" class="active">Won / Lost</button>
-          <button type="button" data-mode="prob">Predicted p(win) median</button>
+          <button type="button" data-mode="prob">Win probability</button>
+          <button type="button" data-mode="cluster">Win-rate clusters</button>
         </div>
         <p class="hint" id="pcHint"></p>
       </div>
@@ -111,9 +112,11 @@ footer code{font-family:var(--mono);}
         <span><span class="sw" style="background:var(--high)"></span>Booked / Won</span>
       </div>
       <div class="legend" id="legendProb" style="display:none;"></div>
+      <div class="legend" id="legendCluster" style="display:none;flex-direction:column;gap:4px;"></div>
 
       <div class="callout" id="calloutWon"></div>
       <div class="callout" id="calloutProb" style="display:none;"></div>
+      <div class="callout" id="calloutCluster" style="display:none;"></div>
 
       <div class="metrics" id="metricsGrid"></div>
 
@@ -156,6 +159,60 @@ const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark
 const PAL = dark
   ? { bg:0x17140f, low:0x7fb2e0, high:0xe0a06a, hl:0xb79fe0, ink:0xf1ede4, ink3:0x8f887a, line:0x3a352c, pos:0x7fd0a0, neg:0xe58b83 }
   : { bg:0xfaf9f7, low:0x3d6fb5, high:0xd97a3d, hl:0x7c4fd9, ink:0x1c1a17, ink3:0x8a8478, line:0xe6e1d8, pos:0x2f8a5c, neg:0xb5473f };
+
+// ---------- win-rate clusters (real k-means on this page's own x/y/z, computed in-browser) ----------
+const CLUSTER_K = 4;
+function kmeans3D(points, k, iters){
+  const pts = points.map(p=>[p.x,p.y,p.z]);
+  let centroids = [];
+  const usedIdx = new Set();
+  while (centroids.length < k){
+    const idx = Math.floor((centroids.length / k) * pts.length);
+    if (!usedIdx.has(idx)){ usedIdx.add(idx); centroids.push(pts[idx].slice()); }
+    else centroids.push(pts[Math.floor(Math.random()*pts.length)].slice());
+  }
+  let assign = new Array(pts.length).fill(0);
+  for (let it=0; it<iters; it++){
+    for (let i=0;i<pts.length;i++){
+      let best=0, bestD=Infinity;
+      for (let c=0;c<k;c++){
+        const dx=pts[i][0]-centroids[c][0], dy=pts[i][1]-centroids[c][1], dz=pts[i][2]-centroids[c][2];
+        const d=dx*dx+dy*dy+dz*dz;
+        if (d<bestD){ bestD=d; best=c; }
+      }
+      assign[i]=best;
+    }
+    const sums = Array.from({length:k},()=>[0,0,0,0]);
+    for (let i=0;i<pts.length;i++){
+      const c=assign[i];
+      sums[c][0]+=pts[i][0]; sums[c][1]+=pts[i][1]; sums[c][2]+=pts[i][2]; sums[c][3]+=1;
+    }
+    for (let c=0;c<k;c++){
+      if (sums[c][3]>0) centroids[c]=[sums[c][0]/sums[c][3], sums[c][1]/sums[c][3], sums[c][2]/sums[c][3]];
+    }
+  }
+  return { assign, centroids };
+}
+const { assign: clusterAssign, centroids: clusterCentroids } = kmeans3D(DATA.points, CLUSTER_K, 12);
+const clusterStats = Array.from({length:CLUSTER_K}, (_,c)=>{
+  const idxs = clusterAssign.map((a,i)=>a===c?i:-1).filter(i=>i>=0);
+  const n = idxs.length;
+  const nWon = idxs.reduce((s,i)=>s+DATA.points[i].won,0);
+  const meanP = idxs.reduce((s,i)=>s+DATA.points[i].p,0) / Math.max(n,1);
+  let maxR = 0;
+  idxs.forEach(i=>{
+    const p = DATA.points[i];
+    const dx=p.x-clusterCentroids[c][0], dy=p.y-clusterCentroids[c][1], dz=p.z-clusterCentroids[c][2];
+    maxR = Math.max(maxR, Math.sqrt(dx*dx+dy*dy+dz*dz));
+  });
+  return { origId:c, n, winRate: n? nWon/n : 0, meanP, centroid:clusterCentroids[c], radius:maxR };
+});
+const clusterOrder = clusterStats.slice().sort((a,b)=>a.winRate-b.winRate);
+const origToRank = new Array(CLUSTER_K);
+clusterOrder.forEach((s,rank)=>{ origToRank[s.origId]=rank; });
+const clusterHexStrings = dark
+  ? ['#7fb2e0','#7fd0a0','#b79fe0','#e0a06a','#e58b83','#9fd0e0']
+  : ['#3d6fb5','#2f8a5c','#7c4fd9','#d97a3d','#b5473f','#2f8aa8'];
 
 // ---------- text panels ----------
 document.getElementById('warnBox').innerHTML = `
