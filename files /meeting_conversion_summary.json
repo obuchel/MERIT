@@ -1,0 +1,77 @@
+{
+  "target": "did_convert",
+  "population": "room_block == 0 (meeting-only, n=194)",
+  "n_rows": 194,
+  "top_k_used": 20,
+  "candidate_pool_size": 242,
+  "base_pool_size": 20,
+  "conversion_feats_size": 20,
+  "conversion_feats": [
+    "meeting_ratio",
+    "budget_ratio",
+    "priority_revenue_component",
+    "arrival_day_of_week",
+    "attendees",
+    "rfp_count_90d",
+    "rfp_count_7d",
+    "displacement_acceleration",
+    "win_rate_14d",
+    "Completeness_Score",
+    "displacement_velocity_30_90d",
+    "confidence_ema_7d",
+    "avg_occupancy_7d",
+    "avg_competing_group_size_60d",
+    "confident_expected_pickup",
+    "decision_days_cvent",
+    "days_to_peak_season",
+    "avg_displacement_30d",
+    "revenue_velocity_30_90d",
+    "association_demand_30d"
+  ],
+  "metrics": {
+    "train_accuracy": 0.9419354838709677,
+    "test_accuracy": 0.8717948717948718,
+    "train_precision": 0.9833333333333333,
+    "test_precision": 0.90625,
+    "train_recall": 0.944,
+    "test_recall": 0.9354838709677419,
+    "train_f1": 0.963265306122449,
+    "test_f1": 0.9206349206349206,
+    "train_roc_auc": 0.992,
+    "test_roc_auc": 0.9032258064516129,
+    "train_log_loss": 0.37819471468766286,
+    "test_log_loss": 0.4394897291832036,
+    "cv_roc_auc_mean": 0.9787730414746543,
+    "cv_roc_auc_std": 0.02405110856106202,
+    "n_train": 155,
+    "n_test": 39,
+    "scale_pos_weight": 0.24358974358974358
+  },
+  "best_params": {
+    "n_estimators": 111,
+    "max_depth": 4,
+    "learning_rate": 0.02196419012113007,
+    "subsample": 0.5651896493931985,
+    "colsample_bytree": 0.6088974138521948,
+    "min_child_weight": 1,
+    "reg_alpha": 0.8003122136190833,
+    "reg_lambda": 1.9464970468612868,
+    "gamma": 0.4615966285942521,
+    "scale_pos_weight": 0.24358974358974358,
+    "objective": "binary:logistic",
+    "eval_metric": "logloss",
+    "random_state": 42,
+    "verbosity": 0,
+    "n_jobs": 1
+  },
+  "confusion_matrix_test": [
+    [
+      5,
+      3
+    ],
+    [
+      2,
+      29
+    ]
+  ]
+}

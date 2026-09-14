@@ -1,0 +1,53 @@
+{
+  "target": "proposed_total_revenue",
+  "population": "room_block == 0 (meeting-only, n=194)",
+  "n_rows": 194,
+  "top_k_used": 20,
+  "candidate_pool_size": 238,
+  "final_feats_size": 20,
+  "final_feats": [
+    "revenue_ema_7d",
+    "revenue_competition_30d",
+    "avg_revenue_intensity_14d",
+    "revenue_volatility_60d",
+    "avg_revenue_intensity_7d",
+    "wedding_social_demand_30d",
+    "win_rate_acceleration",
+    "arrival_dow_sin",
+    "competing_rfps_same_week_segment",
+    "association_demand_30d",
+    "lead_source_encoded",
+    "arrival_clustering_score",
+    "avg_occupancy_7d",
+    "account_avg_revenue",
+    "demand_ema_30d",
+    "days_to_peak_season",
+    "nights",
+    "arrival_month_cos",
+    "days_since_last_segment_rfp",
+    "booking_pace_rooms_per_day"
+  ],
+  "metrics": {
+    "train_mae": 1063.9576433026712,
+    "test_mae": 1596.7303037359775,
+    "train_r2": 0.9275707193412328,
+    "test_r2": 0.8093699591386908,
+    "cv_mae_mean": 1961.7475045750834,
+    "cv_mae_std": 344.3968170137196,
+    "n_train": 155,
+    "n_test": 39
+  },
+  "best_params": {
+    "n_estimators": 196,
+    "max_depth": 2,
+    "learning_rate": 0.06325721683649038,
+    "subsample": 0.8678890457519866,
+    "colsample_bytree": 0.9360993123056908,
+    "min_child_weight": 15,
+    "reg_alpha": 1.8663269010858834,
+    "reg_lambda": 4.814817604345735,
+    "random_state": 42,
+    "verbosity": 0,
+    "n_jobs": 1
+  }
+}
