@@ -183,7 +183,7 @@ const PAL = dark
 
 // ---------- text panels ----------
 document.getElementById('pcHint').textContent =
-  `UMAP embedding of all 51 SHAP dims (unsupervised) · colored by DBSCAN price cluster`;
+  `UMAP embedding of all ${N_FEAT} SHAP dims (unsupervised) · colored by DBSCAN price cluster`;
 
 document.getElementById('metricsGrid').innerHTML = `
   <div class="metric"><div class="k">Real test R²</div><div class="v">${DATA.r2.real_test_r2.toFixed(3)}</div><div class="v2">pickle's own metric</div></div>
@@ -196,7 +196,7 @@ function calloutHTML(kind){
   const g = DATA.groups[kind];
   if (kind === 'won'){
     return `<b>Real separation, still not circular.</b> Lost (n=${g.n_a}) and Won (n=${g.n_b}) cluster apart even
-    though UMAP never saw these labels — it only saw each row's 51 real (mostly real, see warning above) SHAP
+    though UMAP never saw these labels — it only saw each row's ${N_FEAT} real (mostly real, see warning above) SHAP
     values. Each color group is now drawn as up to 3 separate sub-cluster ellipsoids (k-means on this embedding)
     rather than one blob, since the last version showed UMAP output is often multi-modal, not one ellipse.`;
   }
@@ -241,7 +241,7 @@ document.getElementById('footerText').innerHTML = `
   Method: <code>shap.TreeExplainer</code> on the model's real ${N_FEAT}-feature matrix, standardized only for the
   PCA/raw-UMAP comparison rows, UMAP (<code>n_neighbors=15, min_dist=0.1</code>, unsupervised) on the raw
   ${N_FEAT}-dim SHAP output for the 3D view. Base value (model's ADR with no feature info): $${DATA.base_value}.
-  SHAP decomposition check: base value + sum of all 51 SHAP values reconstructs each row's predicted ADR to
+  SHAP decomposition check: base value + sum of all ${N_FEAT} SHAP values reconstructs each row's predicted ADR to
   within $0.0004, confirming the decomposition math itself is exact. Ellipsoids: each color group is split
   into up to 3 k-means sub-clusters in this UMAP space, with a separate ~55%-density Gaussian-covariance
   ellipsoid per sub-cluster, since a single ellipsoid mis-represents UMAP's typically multi-modal output.
