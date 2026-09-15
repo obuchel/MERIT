@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ADR model — SHAP-space compass (UMAP, all 51 dims)</title>
+<title>ADR model — SHAP-space compass (UMAP)</title>
 <link rel="icon" href="data:,">
 <style>
 :root{
@@ -97,9 +97,9 @@ footer code{font-family:var(--mono);}
 </head>
 <body>
 <div class="wrap">
-  <h1>ADR model — SHAP-space compass (UMAP, all 51 dims)</h1>
-  <p class="sub">
-    UMAP (unsupervised — never told the outcome) reduces all 51 real per-row SHAP values from
+  <h1 id="mainTitle">ADR model — SHAP-space compass (UMAP)</h1>
+  <p class="sub" id="mainSub">
+    UMAP (unsupervised — never told the outcome) reduces every real per-row SHAP value from
     <span class="tag">shap.TreeExplainer</span> on your uploaded <span class="tag">adr_model_rebuilt.pkl</span>
     into 3D, colored by the DBSCAN price cluster each point falls into.
   </p>
@@ -133,7 +133,7 @@ footer code{font-family:var(--mono);}
   <h2>Does this actually separate ADR levels better?</h2>
   <table class="compare" id="compareTable"></table>
 
-  <h2>Global feature impact (SHAP summary, all 1705 room_block&gt;0 RFPs)</h2>
+  <h2 id="beeswarmH2">Global feature impact (SHAP summary)</h2>
   <div class="beeswarm-card" id="beeswarmCard">
     <div class="bw-toolbar" id="bwToolbar" hidden>
       <p class="hint">Hover a dot for that exact RFP's value · click to pin it in the 3D view above</p>
@@ -163,6 +163,18 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 const DATA = window.ADR_VIZ_DATA;
+// Feature/row counts read from the data file itself, not hardcoded — this page is meant
+// to work unchanged whether the model behind it has 51, 48, or any other feature count.
+const N_FEAT = DATA.ranking.length;
+const N_ROWS = DATA.n_total;
+document.title = `ADR model — SHAP-space compass (UMAP, all ${N_FEAT} dims)`;
+document.getElementById('mainTitle').textContent = `ADR model — SHAP-space compass (UMAP, all ${N_FEAT} dims)`;
+document.getElementById('mainSub').innerHTML = `
+    UMAP (unsupervised — never told the outcome) reduces all ${N_FEAT} real per-row SHAP values from
+    <span class="tag">shap.TreeExplainer</span> on your uploaded <span class="tag">adr_model_rebuilt.pkl</span>
+    into 3D, colored by the DBSCAN price cluster each point falls into.
+  `;
+document.getElementById('beeswarmH2').textContent = `Global feature impact (SHAP summary, all ${N_ROWS} room_block>0 RFPs)`;
 const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
              && document.documentElement.getAttribute('data-theme') !== 'light';
 const PAL = dark
@@ -176,7 +188,7 @@ document.getElementById('pcHint').textContent =
 document.getElementById('metricsGrid').innerHTML = `
   <div class="metric"><div class="k">Real test R²</div><div class="v">${DATA.r2.real_test_r2.toFixed(3)}</div><div class="v2">pickle's own metric</div></div>
   <div class="metric"><div class="k">Real test MAE</div><div class="v">$${DATA.r2.real_test_mae.toFixed(2)}</div><div class="v2">pickle's own metric</div></div>
-  <div class="metric"><div class="k">Full-population fit</div><div class="v">R² ${DATA.r2.recon_r2.toFixed(3)}</div><div class="v2">MAE $${DATA.r2.recon_mae.toFixed(2)}, all 1705 rows</div></div>
+  <div class="metric"><div class="k">Full-population fit</div><div class="v">R² ${DATA.r2.recon_r2.toFixed(3)}</div><div class="v2">MAE $${DATA.r2.recon_mae.toFixed(2)}, all ${N_ROWS} rows</div></div>
   <div class="metric"><div class="k">Median actual ADR</div><div class="v">$${DATA.median_adr.toFixed(2)}</div><div class="v2">split point below</div></div>
 `;
 
@@ -212,19 +224,23 @@ function calloutClusterHTML(){
 }
 
 const r2 = DATA.r2;
+// The build script names this key shap_full<N> (N = the model's actual feature count),
+// so it changes with the model — look it up instead of assuming a fixed number.
+const shapFullKey = Object.keys(r2).find(k => k.startsWith('shap_full'));
+const shapFullVal = shapFullKey ? r2[shapFullKey] : null;
 document.getElementById('compareTable').innerHTML = `
   <tr><th>Projection</th><th>Dims folded in</th><th>Render dims</th><th>5-fold k-NN R²</th></tr>
-  <tr><td>PCA of raw features</td><td class="num">51</td><td class="num">3</td><td class="num">${r2.pca3.toFixed(3)}</td></tr>
-  <tr><td>UMAP of raw features (unsupervised)</td><td class="num">51</td><td class="num">3</td><td class="num">${r2.umap_raw3.toFixed(3)}</td></tr>
+  <tr><td>PCA of raw features</td><td class="num">${N_FEAT}</td><td class="num">3</td><td class="num">${r2.pca3.toFixed(3)}</td></tr>
+  <tr><td>UMAP of raw features (unsupervised)</td><td class="num">${N_FEAT}</td><td class="num">3</td><td class="num">${r2.umap_raw3.toFixed(3)}</td></tr>
   <tr><td>Named top-3 SHAP axes</td><td class="num">3</td><td class="num">3</td><td class="num">${r2.shap_top3.toFixed(3)}</td></tr>
-  <tr><td><b>UMAP of all 51 SHAP values (this page)</b></td><td class="num">51</td><td class="num">3</td><td class="num"><b>${r2.umap_shap3.toFixed(3)}</b></td></tr>
-  <tr><td>All 51 SHAP values, no reduction</td><td class="num">51</td><td class="num">51</td><td class="num">${r2.shap_full51.toFixed(3)}</td></tr>
+  <tr><td><b>UMAP of all ${N_FEAT} SHAP values (this page)</b></td><td class="num">${N_FEAT}</td><td class="num">3</td><td class="num"><b>${r2.umap_shap3.toFixed(3)}</b></td></tr>
+  <tr><td>All ${N_FEAT} SHAP values, no reduction</td><td class="num">${N_FEAT}</td><td class="num">${N_FEAT}</td><td class="num">${shapFullVal!=null ? shapFullVal.toFixed(3) : '—'}</td></tr>
 `;
 
 document.getElementById('footerText').innerHTML = `
-  Method: <code>shap.TreeExplainer</code> on the model's real 51-feature matrix, standardized only for the
+  Method: <code>shap.TreeExplainer</code> on the model's real ${N_FEAT}-feature matrix, standardized only for the
   PCA/raw-UMAP comparison rows, UMAP (<code>n_neighbors=15, min_dist=0.1</code>, unsupervised) on the raw
-  51-dim SHAP output for the 3D view. Base value (model's ADR with no feature info): $${DATA.base_value}.
+  ${N_FEAT}-dim SHAP output for the 3D view. Base value (model's ADR with no feature info): $${DATA.base_value}.
   SHAP decomposition check: base value + sum of all 51 SHAP values reconstructs each row's predicted ADR to
   within $0.0004, confirming the decomposition math itself is exact. Ellipsoids: each color group is split
   into up to 3 k-means sub-clusters in this UMAP space, with a separate ~55%-density Gaussian-covariance
