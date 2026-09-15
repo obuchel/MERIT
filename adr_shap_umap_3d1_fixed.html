@@ -77,8 +77,20 @@ table.compare th, table.compare td{border-bottom:1px solid var(--line);padding:6
 table.compare th{color:var(--ink3);font-weight:600;font-size:.74rem;text-transform:uppercase;letter-spacing:.02em;}
 table.compare td.num{font-family:var(--mono);text-align:right;}
 .rankbadge{display:inline-block;background:var(--line);color:var(--ink2);border-radius:4px;padding:0 5px;font-size:.7rem;margin-right:4px;}
-.beeswarm-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:8px;}
+.beeswarm-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:8px;position:relative;}
 .beeswarm-card img{max-width:100%;height:auto;display:block;margin:0 auto;}
+.bw-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap;}
+.bw-legend{display:flex;align-items:center;gap:6px;}
+.bw-legend .hint{white-space:nowrap;}
+.bw-static-link{font-size:.74rem;color:var(--ink3);text-decoration:none;border-bottom:1px dotted var(--ink3);white-space:nowrap;}
+.bw-static-link:hover{color:var(--hl);border-color:var(--hl);}
+.bw-row-label{fill:var(--ink2);font-size:10px;font-family:var(--mono);}
+.bw-axis-text{fill:var(--ink3);font-size:10px;}
+.bw-zeroline{stroke:var(--ink3);stroke-dasharray:2,2;}
+.bw-axisline{stroke:var(--line);}
+.bw-dot{cursor:pointer;}
+.bw-dot:hover{stroke:var(--ink);stroke-width:1.3px;}
+.bw-tooltip{position:absolute;pointer-events:none;max-width:230px;z-index:6;}
 footer{color:var(--ink3);font-size:.76rem;margin-top:22px;line-height:1.65;border-top:1px solid var(--line);padding-top:14px;}
 footer code{font-family:var(--mono);}
 </style>
@@ -122,8 +134,15 @@ footer code{font-family:var(--mono);}
   <table class="compare" id="compareTable"></table>
 
   <h2>Global feature impact (SHAP summary, all 1705 room_block&gt;0 RFPs)</h2>
-  <div class="beeswarm-card">
-    <img src="shap_beeswarm.png" alt="SHAP beeswarm summary plot">
+  <div class="beeswarm-card" id="beeswarmCard">
+    <div class="bw-toolbar" id="bwToolbar" hidden>
+      <p class="hint">Hover a dot for that exact RFP's value · click to pin it in the 3D view above</p>
+      <div class="bw-legend" id="bwLegend"></div>
+      <a class="bw-static-link" href="shap_beeswarm.png" target="_blank" rel="noopener">static image ↗</a>
+    </div>
+    <div id="beeswarmChart"></div>
+    <img id="beeswarmImg" src="shap_beeswarm.png" alt="SHAP beeswarm summary plot">
+    <div class="bw-tooltip" id="bwTooltip" style="display:none;"><div class="pt-tooltip-card" id="bwTooltipCard"></div></div>
   </div>
 
   <footer id="footerText"></footer>
@@ -514,6 +533,7 @@ const BASE_PICK_THRESHOLD = 0.035;
 const REF_CAM_DIST = camera.position.length(); // threshold above was tuned for the initial view distance
 const mouse = new THREE.Vector2();
 let pinned = null;
+let bwSyncPinnedDots = () => {}; // reassigned once the interactive beeswarm below finishes rendering
 
 // raycaster.params.Points.threshold is a *world-space* radius around the ray. Left fixed,
 // it stays calibrated only for the starting zoom level: zoomed in close, that same
@@ -545,7 +565,7 @@ function onMove(e){
 }
 function onClick(e){
   const idx = pickPointIndex(e.clientX, e.clientY);
-  if (idx !== null){ pinned = idx; placeHighlight(pinned); }
+  if (idx !== null){ pinned = idx; placeHighlight(pinned); bwSyncPinnedDots(); }
 }
 stage.addEventListener('pointermove', onMove);
 stage.addEventListener('click', onClick);
@@ -580,6 +600,175 @@ function animate(){
   labelRenderer.render(scene, camera);
 }
 animate();
+
+// ---------- interactive SHAP beeswarm ----------
+// Draws every point of the top-18 features for real, from DATA.beeswarm.shap/val
+// (same row order as DATA.points), instead of just showing shap_beeswarm.png as a
+// flat picture. If this page's data.js predates that export, DATA.beeswarm is
+// undefined and the static <img> above is left exactly as it was, untouched.
+function renderBeeswarm(){
+  const BW = DATA.beeswarm;
+  const chartEl = document.getElementById('beeswarmChart');
+  const imgEl = document.getElementById('beeswarmImg');
+  const toolbarEl = document.getElementById('bwToolbar');
+  if (!BW || !BW.features || !BW.features.length || !chartEl) return; // no interactive data - keep the static image
+
+  const feats = BW.features; // already sorted high -> low mean|SHAP| by the build script
+  const canLinkPoints = feats[0].shap.length === DATA.points.length;
+  imgEl.style.display = 'none';
+  toolbarEl.hidden = false;
+
+  const nRows = feats.length;
+  const rowH = 30, topPad = 24, botPad = 40, leftW = 190, rightPad = 20;
+  const width = 900;
+  const height = topPad + botPad + nRows * rowH;
+
+  // one shared x-scale across every row, symmetric around 0, so rows are comparable
+  let maxAbs = 0;
+  for (const f of feats) for (const v of f.shap) if (Math.abs(v) > maxAbs) maxAbs = Math.abs(v);
+  maxAbs *= 1.08;
+  const x0 = leftW, x1 = width - rightPad;
+  const xScale = v => x0 + ((v + maxAbs) / (2 * maxAbs)) * (x1 - x0);
+  const xZero = xScale(0);
+
+  const lowColor = new THREE.Color(PAL.low), highColor = new THREE.Color(PAL.high);
+  const _mix = new THREE.Color();
+  function colorFor(t){
+    _mix.lerpColors(lowColor, highColor, THREE.MathUtils.clamp(t, 0, 1));
+    return '#' + _mix.getHexString();
+  }
+  function truncateName(s, max){ return s.length > max ? s.slice(0, max - 1) + '…' : s; }
+  function formatFeatureVal(v){ return Number.isInteger(v) ? String(v) : v.toFixed(2); }
+
+  const dotRBase = 2.1;
+  let svg = `<svg viewBox="0 0 ${width} ${height}" style="width:100%;height:auto;display:block;" xmlns="http://www.w3.org/2000/svg">`;
+  svg += `<line class="bw-zeroline" x1="${xZero}" y1="${topPad - 6}" x2="${xZero}" y2="${height - botPad + 6}"></line>`;
+
+  feats.forEach((f, fi) => {
+    const yc = topPad + fi * rowH + rowH / 2;
+
+    // color domain for this feature: 2nd/98th percentile, so a few outliers
+    // don't wash the whole row's color scale out to one end
+    const sortedVal = f.val.slice().sort((a, b) => a - b);
+    const n = sortedVal.length;
+    let lo = sortedVal[Math.floor(n * 0.02)];
+    let hi = sortedVal[Math.min(n - 1, Math.ceil(n * 0.98))];
+    if (hi === lo) hi = lo + 1;
+
+    // bin by pixel x to find how crowded this row's busiest spot is (common for
+    // near-binary flags like Is_Compression_Date), then size dots/spacing to fit
+    // the full stack inside rowH instead of a fixed radius blowing the row out
+    const xs = f.shap.map(xScale);
+    const binW = 3;
+    const counts = new Map();
+    let maxStack = 1;
+    for (const x of xs){
+      const b = Math.round(x / binW);
+      const c = (counts.get(b) || 0) + 1;
+      counts.set(b, c);
+      if (c > maxStack) maxStack = c;
+    }
+    const avail = rowH - 4;
+    const dy = Math.max(1.1, Math.min(dotRBase * 2, avail / Math.max(1, maxStack)));
+    const r = Math.max(0.9, Math.min(dotRBase, dy / 2));
+
+    const order = xs.map((_, i) => i).sort((a, b) => xs[a] - xs[b]);
+    const placed = new Map();
+    let rowSvg = '';
+    for (const pi of order){
+      const x = xs[pi];
+      const b = Math.round(x / binW);
+      const k = placed.get(b) || 0;
+      placed.set(b, k + 1);
+      const dir = k % 2 === 0 ? -1 : 1;
+      const step = Math.ceil(k / 2);
+      const y = yc + dir * step * dy;
+      const t = (f.val[pi] - lo) / (hi - lo);
+      rowSvg += `<circle class="bw-dot" data-fi="${fi}" data-pi="${pi}" data-r="${r}" ` +
+        `cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(2)}" fill="${colorFor(t)}" fill-opacity="0.82"></circle>`;
+    }
+    svg += `<text class="bw-row-label" x="${leftW - 10}" y="${(yc + 3.5).toFixed(1)}" text-anchor="end">${truncateName(f.name, 27)}</text>`;
+    svg += rowSvg;
+  });
+
+  const axisY = height - botPad;
+  svg += `<line class="bw-axisline" x1="${x0}" y1="${axisY}" x2="${x1}" y2="${axisY}"></line>`;
+  svg += `<text class="bw-axis-text" x="${x0}" y="${axisY + 14}" text-anchor="start">-$${maxAbs.toFixed(1)}</text>`;
+  svg += `<text class="bw-axis-text" x="${xZero}" y="${axisY + 14}" text-anchor="middle">$0</text>`;
+  svg += `<text class="bw-axis-text" x="${x1}" y="${axisY + 14}" text-anchor="end">+$${maxAbs.toFixed(1)}</text>`;
+  svg += `<text class="bw-axis-text" x="${(x0 + x1) / 2}" y="${height - 6}" text-anchor="middle">SHAP value (impact on predicted ADR, $)</text>`;
+  svg += `</svg>`;
+  chartEl.innerHTML = svg;
+
+  const svgEl = chartEl.querySelector('svg');
+  const card = document.getElementById('beeswarmCard');
+  const tooltip = document.getElementById('bwTooltip');
+  const tooltipCard = document.getElementById('bwTooltipCard');
+
+  function beeswarmTooltipHTML(fi, pi){
+    const f = feats[fi];
+    const shapVal = f.shap[pi];
+    const cls = shapVal >= 0 ? 'val-pos' : 'val-neg';
+    const sign = shapVal >= 0 ? '+' : '-';
+    let extra = '';
+    if (canLinkPoints){
+      const p = DATA.points[pi];
+      extra = `<div class="pt-tooltip-tag">${p.acct || 'RFP'} · actual $${p.actual.toFixed(2)} · predicted $${p.pred.toFixed(2)}</div>`;
+    }
+    return `<div class="pt-tooltip-name">${f.name}</div>
+      <div class="pt-tooltip-row"><span>SHAP impact</span><b class="${cls}">${sign}$${Math.abs(shapVal).toFixed(2)}</b></div>
+      <div class="pt-tooltip-row"><span>Feature value</span><b>${formatFeatureVal(f.val[pi])}</b></div>
+      ${extra}`;
+  }
+
+  let pinnedEls = [];
+  function syncPinnedDots(){
+    for (const el of pinnedEls) el.setAttribute('r', el.dataset.r);
+    pinnedEls = (canLinkPoints && pinned !== null)
+      ? Array.from(svgEl.querySelectorAll(`circle[data-pi="${pinned}"]`))
+      : [];
+    for (const el of pinnedEls) el.setAttribute('r', (parseFloat(el.dataset.r) * 1.8).toFixed(2));
+  }
+  bwSyncPinnedDots = syncPinnedDots;
+
+  svgEl.addEventListener('pointermove', e => {
+    const t = e.target;
+    if (t.tagName !== 'circle'){ tooltip.style.display = 'none'; return; }
+    const fi = +t.dataset.fi, pi = +t.dataset.pi;
+    tooltipCard.innerHTML = beeswarmTooltipHTML(fi, pi);
+    const rect = card.getBoundingClientRect();
+    let left = e.clientX - rect.left + 14;
+    const top = e.clientY - rect.top + 14;
+    if (left > rect.width - 240) left = e.clientX - rect.left - 244;
+    tooltip.style.left = left + 'px';
+    tooltip.style.top = top + 'px';
+    tooltip.style.display = 'block';
+  });
+  svgEl.addEventListener('pointerleave', () => { tooltip.style.display = 'none'; });
+  svgEl.addEventListener('click', e => {
+    const t = e.target;
+    if (t.tagName !== 'circle' || !canLinkPoints) return;
+    pinned = +t.dataset.pi;
+    placeHighlight(pinned);
+    syncPinnedDots();
+    document.getElementById('stage').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
+  // color-scale legend (per-row normalized, 2nd-98th percentile of that feature's value)
+  const legendEl = document.getElementById('bwLegend');
+  if (legendEl){
+    legendEl.innerHTML = `<span class="hint">Feature value:</span>
+      <svg width="64" height="10" style="vertical-align:middle;border-radius:3px;">
+        <defs><linearGradient id="bwGrad" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0%" stop-color="${colorFor(0)}"></stop>
+          <stop offset="100%" stop-color="${colorFor(1)}"></stop>
+        </linearGradient></defs>
+        <rect width="64" height="10" fill="url(#bwGrad)"></rect>
+      </svg>
+      <span class="hint">low → high</span>`;
+  }
+}
+renderBeeswarm();
 
 </script>
 </body>
