@@ -215,12 +215,28 @@ document.getElementById('legendCluster').innerHTML = DATA.cluster_info.map(c=>
 ).join('');
 
 function calloutClusterHTML(){
-  return `<b>Real, density-based clusters (DBSCAN, eps=0.06), ordered low→high ADR.</b> These 10 groups have zero
-  noise points at this resolution and are what actually organizes this space — not win/loss (which barely varies
-  across them, 70–87% vs. a 76% baseline) and not just an above/below-median ADR split (which this subsumes and
-  is why that toggle was dropped) but pricing regime: compression-date premium pricing, deep discounting, demand
-  tier, and so on. Coarser clustering (fewer, bigger groups) collapses these to 3; finer clustering fragments them
-  further — see the conversation for that sensitivity. Hover any point for its real per-row signed SHAP drivers.`;
+  // All numbers here are computed live from DATA — nothing retyped — so this stays correct
+  // across retrains instead of drifting the way a hand-written cluster count/win-rate range would.
+  const nClusters = DATA.cluster_info.length;
+  const winRates = DATA.cluster_info.map(c => c.win_rate);
+  const winMinPct = Math.round(Math.min(...winRates) * 1000) / 10;
+  const winMaxPct = Math.round(Math.max(...winRates) * 1000) / 10;
+  const baselineWon = DATA.points.filter(p => p.won).length / DATA.points.length;
+  const baselinePct = Math.round(baselineWon * 1000) / 10;
+  // dbscan_eps/dbscan_noise_points are only present in data.js files from the patched build
+  // script; older exports simply omit the eps clause rather than showing a stale number.
+  const epsClause = (typeof DATA.dbscan_eps === 'number') ? ` (DBSCAN, eps=${DATA.dbscan_eps})` : ` (DBSCAN)`;
+  // Only claim a noise-point count when the data actually reports one — an older export that
+  // omits dbscan_noise_points gets a plain "no noise points" claim dropped rather than a
+  // guessed number.
+  const noiseClause = (typeof DATA.dbscan_noise_points === 'number')
+    ? ` with ${DATA.dbscan_noise_points} noise points at this resolution,`
+    : ``;
+  return `<b>Real, density-based clusters${epsClause}, ordered low→high ADR.</b> These ${nClusters} groups,${noiseClause}
+  are what actually organizes this space — not win/loss (which varies only
+  ${winMinPct}–${winMaxPct}% across them vs. a ${baselinePct}% overall baseline) and not just an above/below-median
+  ADR split (which this subsumes and is why that toggle was dropped) but pricing regime: compression-date premium
+  pricing, deep discounting, demand tier, and so on. Hover any point for its real per-row signed SHAP drivers.`;
 }
 
 const r2 = DATA.r2;

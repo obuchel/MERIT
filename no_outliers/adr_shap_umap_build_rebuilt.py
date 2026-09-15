@@ -62,7 +62,13 @@ data — is unchanged from adr_shap_umap_build.py.
 
 Usage
 =====
-python adr_shap_umap_build_rebuilt.py --model adr_model_rebuilt.pkl  --data rfp_training_data_complete_v3_with_transient.csv  --pipeline rfp_adr_pipeline_filtered_first_final.py  --transient-data Nexus_Transient_Demand_v2.csv --out-js adr_shap_umap_data.js --out-png shap_beeswarm.png
+    python adr_shap_umap_build_rebuilt.py \\
+        --model adr_model_rebuilt.pkl \\
+        --data rfp_training_data_complete_v3_with_transient.csv \\
+        --pipeline rfp_adr_pipeline_filtered_first_final.py \\
+        --transient-data Nexus_Transient_Demand_v2.csv \\
+        --out-js adr_shap_umap_data.js \\
+        --out-png shap_beeswarm.png
 
 If your bundle's not_reconstructable_features is non-empty (e.g. the older
 adr_model_rebuilt_v2.pkl, pool_size 282), either still pass --transient-data
@@ -438,6 +444,11 @@ def main():
         "r2": r2,
         "n_total": len(ev),
         "cluster_info": cluster_info,
+        # Exported so the HTML page can state its own clustering parameters instead of a
+        # hand-typed number going stale on the next retrain (see the "10 groups"/"70-87%"
+        # bug this fixed).
+        "dbscan_eps": float(best_eps),
+        "dbscan_noise_points": int(best_n_noise),
     }
 
     with open(args.out_js, "w") as fh:
