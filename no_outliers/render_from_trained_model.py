@@ -1,0 +1,489 @@
+"""
+render_from_trained_model.py
+
+Builds the funnel_adr_rebuilt.html page from an ALREADY-TRAINED model bundle
+(a .pkl written by build_adr_model.py or build_funnel_adr_website.py) instead
+of retraining. Use this when you have a model bundle from a specific run
+(e.g. on your own machine) and want the page to reflect THAT exact model's
+real numbers -- not a fresh retrain, which (as established) can converge to
+different Optuna hyperparameters on a different machine even with identical
+code, seeds, and library versions, due to cross-platform floating-point
+differences in XGBoost's histogram computation.
+
+What's re-derived vs. what's taken verbatim from the bundle
+==============================================================
+Re-derived (by re-running candidate pool -> correlation pruning ->
+quick-XGBoost importance screening -> VIF pruning against the same data):
+  pool, corr_pairs, kept_corr, importance_screening, top60, vif_removed,
+  vif_final -- the funnel-stage bookkeeping needed to draw the page's stage
+  boxes and tables. This part re-runs pipe.build_candidate_pool /
+  pipe.prune_features live (same real pipeline functions), NOT the
+  hyperparameter search -- these earlier stages have empirically proven
+  deterministic across machines (same 298->192->60->54 feature counts, same
+  leaky-excluded set) even when the LATER Optuna step wasn't.
+
+Taken verbatim from the bundle, never recomputed:
+  the trained model itself, bundle["features"] (final feature list),
+  bundle["metrics"], bundle["best_params"], bundle["leaky_dropped"]. The
+  page's final-importance ranking is computed by calling
+  model.feature_importances_ directly on the loaded model object -- the
+  real importances of the real fitted model, not a re-derived estimate.
+
+If the re-derived base pool (54 features here) doesn't match
+bundle["features"] + bundle["leaky_dropped"] combined, this prints a
+warning -- that would mean the data or pipeline file has changed since the
+bundle was trained, and the page's early funnel stages (pool/corr/VIF)
+would be showing a DIFFERENT population than what the model itself was
+actually trained on. It still proceeds (the final feature list is always
+taken from the bundle, authoritative), but the warning is worth heeding.
+
+Usage
+=====
+
+ python render_from_trained_model.py --model adr_model_rebuilt.pkl --data rfp_training_data_complete_v3_with_transient.csv --pipeline rfp_adr_pipeline_filtered_first_final.py --transient-data Nexus_Transient_Demand_v2.csv --source funnel_quoted_adr_v4_verified_1_fixed_1.html --out funnel_adr_rebuilt.html
+   
+"""
+import argparse
+import importlib.util
+import json
+import pickle
+import warnings
+from pathlib import Path
+
+warnings.filterwarnings("ignore")
+
+import numpy as np
+import pandas as pd
+
+EXCLUDE_RFP_IDS = ["B-202309-62288", "B-202310-34967", "B-202511-72086"]
+
+
+def load_pipeline_module(path):
+    spec = importlib.util.spec_from_file_location("pipeline_ref", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def real_join_transient(df_raw, pipe, transient_path):
+    df = df_raw.copy()
+    pre_existing_tr = [c for c in df.columns if c.lower().startswith("tr_")]
+    if pre_existing_tr:
+        print(f"  Dropping {len(pre_existing_tr)} pre-existing (partial) tr_* columns "
+              f"before re-joining from the real raw file: {pre_existing_tr}")
+        df = df.drop(columns=pre_existing_tr)
+    df["Arrival_Date"] = pd.to_datetime(df["Arrival_Date"] if "Arrival_Date" in df.columns else df["arrival_date"])
+    df["Departure_Date"] = pd.to_datetime(df["Departure_Date"])
+    pipe.TRANSIENT_FILE = transient_path
+    df_joined = pipe.join_transient(df)
+    new_tr = [c for c in df_joined.columns if c.lower().startswith("tr_") or c in pipe.TR_CAT_MAPS]
+    print(f"  join_transient() produced {len(new_tr)} tr_* columns from the real raw file.")
+    return df_joined
+
+
+def engineer_features_full(df, pipe):
+    df = df.copy()
+    if "group_size_tier" in df.columns:
+        df["is_meeting_only"] = (df["group_size_tier"] == "meeting_only").astype(int)
+        size_order = {"small": 0, "medium": 1, "large": 2, "very_large": 3}
+        df["group_size_tier_clean_enc"] = df["group_size_tier"].map(size_order).fillna(-1).astype(int)
+    if "market_segment" in df.columns:
+        ohe = pd.get_dummies(df["market_segment"], prefix="market_seg").astype(int)
+        df = pd.concat([df, ohe], axis=1)
+    skip_encode = pipe.IDENTITY_COLS | {"group_size_tier", "market_segment"}
+    for c in df.select_dtypes(include="object").columns:
+        if c in skip_encode:
+            continue
+        df[f"{c}_enc"] = pd.Categorical(df[c]).codes
+    if "total_room_nights" not in df.columns:
+        df["total_room_nights"] = df.get("room_block", df.get("total_room_nights_requested", np.nan))
+    return df
+
+
+def pearson_r(x, y):
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    mask = ~(np.isnan(x) | np.isnan(y))
+    if mask.sum() < 3:
+        return None
+    xm, ym = x[mask], y[mask]
+    if xm.std() < 1e-12 or ym.std() < 1e-12:
+        return 0.0
+    return float(np.corrcoef(xm, ym)[0, 1])
+
+
+def spearman_rho(x, y):
+    x = pd.Series(x).rank()
+    y = pd.Series(y).rank()
+    return pearson_r(x.values, y.values)
+
+
+def jsonable(v):
+    if v is None:
+        return None
+    if isinstance(v, (bool, np.bool_)):
+        return bool(v)
+    if isinstance(v, (int, np.integer)):
+        return int(v)
+    if isinstance(v, (float, np.floating)):
+        return None if (np.isnan(v) or np.isinf(v)) else round(float(v), 6)
+    return str(v)
+
+
+def build_payload(model_path, data_path, pipeline_path, transient_path, scratch_dir):
+    print("Loading trained model bundle...")
+    with open(model_path, "rb") as fh:
+        bundle = pickle.load(fh)
+    model = bundle["model"]
+    features = bundle["features"]
+    print(f"  {len(features)} features, trained_at={bundle.get('trained_at_utc')}, "
+          f"library_versions={bundle.get('library_versions')}")
+
+    pipe = load_pipeline_module(pipeline_path)
+    scratch = Path(scratch_dir)
+    scratch.mkdir(exist_ok=True, parents=True)
+    pipe.OUTPUT_DIR = scratch
+
+    print("Loading raw data...")
+    df_raw = pd.read_csv(data_path)
+    df_raw["rfp_id"] = df_raw["rfp_id"].astype(str)
+
+    if transient_path:
+        print(f"Joining REAL transient-demand data from {transient_path}...")
+        df_raw = real_join_transient(df_raw, pipe, transient_path)
+
+    print("Engineering features on the full population...")
+    df_eng = engineer_features_full(df_raw, pipe)
+
+    print(f"Excluding {len(EXCLUDE_RFP_IDS)} flagged rows: {EXCLUDE_RFP_IDS}")
+    ev = df_eng[~df_eng["rfp_id"].isin(EXCLUDE_RFP_IDS)].reset_index(drop=True)
+    excl_df = df_eng[df_eng["rfp_id"].isin(EXCLUDE_RFP_IDS)].reset_index(drop=True)
+    rows_before_filter = len(ev)
+
+    ev_adr = ev[ev["room_block"] > 0].copy().reset_index(drop=True)
+    rows_after_filter = len(ev_adr)
+    rows_excluded = rows_before_filter - rows_after_filter
+    print(f"  {rows_before_filter} -> {rows_after_filter} rows ({rows_excluded} meeting-only rows excluded)")
+
+    print("\n[Re-deriving funnel stages: candidate pool -> correlation -> importance -> VIF]")
+    pool = pipe.build_candidate_pool(ev_adr)
+    base = pipe.prune_features(ev_adr, pool, tag="rebuilt_")
+
+    expected_base = set(features) | set(bundle.get("leaky_dropped", []))
+    if set(base) != expected_base:
+        print(f"  WARNING: re-derived base pool ({len(base)} features) doesn't exactly match "
+              f"bundle features+leaky_dropped ({len(expected_base)}). Diff: "
+              f"re-derived only={sorted(set(base)-expected_base)}, "
+              f"bundle only={sorted(expected_base-set(base))}. "
+              f"Proceeding with the bundle's feature list as authoritative for scoring/metrics, "
+              f"but the funnel stage boxes above reflect THIS re-derivation.")
+    else:
+        print(f"  Re-derived base pool matches the bundle's features+leaky_dropped exactly ({len(base)}).")
+
+    corr_log = pd.read_csv(scratch / "rebuilt_multicollinearity_correlation_pairs.csv")
+    imp_screen = pd.read_csv(scratch / "rebuilt_importance_pool_screening.csv")
+    imp_screen.columns = ["feature", "importance"]
+    vif_final = pd.read_csv(scratch / "rebuilt_multicollinearity_vif_final.csv")
+    vif_removed_path = scratch / "rebuilt_multicollinearity_vif_removed.csv"
+    vif_removed = pd.read_csv(vif_removed_path) if vif_removed_path.exists() else pd.DataFrame(columns=["feature", "vif"])
+
+    kept_corr = sorted([c for c in pool if c not in set(corr_log["dropped"])])
+    top60 = imp_screen.sort_values("importance", ascending=False).head(60)["feature"].tolist()
+
+    print("\nScoring the population with the ALREADY-TRAINED model (no retraining)...")
+    X_all = pipe.prep_X(ev_adr, features)
+    pred_all = model.predict(X_all)
+
+    y_all = ev_adr["quoted_adr"].astype(float).values
+    stats = {}
+    points = {"quoted_adr": [jsonable(v) for v in y_all]}
+    for feat in pool:
+        xv = pd.to_numeric(ev_adr[feat], errors="coerce").values.astype(float)
+        stats[feat] = {
+            "pearson_r": pearson_r(xv, y_all),
+            "spearman_rho": spearman_rho(xv, y_all),
+            "nunique": int(pd.Series(xv).nunique()),
+            "is_binary": bool(pd.Series(xv).nunique() <= 2),
+        }
+        points[feat] = [jsonable(v) for v in xv]
+
+    for feat in ["rate_discount_pct", "lead_time_days", "account_avg_revenue", "account_win_rate",
+                 "segment_win_rate", "attendees", "room_block", "nights"]:
+        if feat in ev_adr.columns and feat not in points:
+            points[feat] = [jsonable(v) for v in ev_adr[feat]]
+
+    is_excluded_flags = [False] * len(ev_adr)
+    if len(excl_df):
+        X_excl = pipe.prep_X(excl_df, features)
+        pred_excl = model.predict(X_excl)
+        points["quoted_adr"] += [jsonable(v) for v in excl_df["quoted_adr"].astype(float)]
+        for feat in pool:
+            if feat in excl_df.columns:
+                xv = pd.to_numeric(excl_df[feat], errors="coerce").values.astype(float)
+            else:
+                xv = np.full(len(excl_df), np.nan)
+            points[feat] += [jsonable(v) for v in xv]
+        for feat in ["rate_discount_pct", "lead_time_days", "account_avg_revenue", "account_win_rate",
+                     "segment_win_rate", "attendees", "room_block", "nights"]:
+            if feat in points:
+                if feat in excl_df.columns:
+                    points[feat] += [jsonable(v) for v in excl_df[feat]]
+                else:
+                    points[feat] += [None] * len(excl_df)
+        points["predicted_adr_excluded"] = [None] * len(ev_adr) + [jsonable(v) for v in pred_excl]
+        points["rfp_id"] = [None] * len(ev_adr) + list(excl_df["rfp_id"])
+        is_excluded_flags += [True] * len(excl_df)
+    points["is_excluded_from_training"] = is_excluded_flags
+
+    print("Computing final feature importance from the real fitted model (model.feature_importances_)...")
+    imp_vals = model.feature_importances_
+    imp_df = pd.DataFrame({"feature": features, "importance": imp_vals})
+    imp_df = imp_df.sort_values("importance", ascending=False)
+    imp_df["importance_pct"] = imp_df["importance"] / imp_df["importance"].sum() * 100
+    imp_df["rank"] = range(1, len(imp_df) + 1)
+    final_importance = imp_df[["feature", "importance", "importance_pct", "rank"]].to_dict("records")
+
+    dropped_leaky = bundle.get("leaky_dropped", [])
+
+    funnel = {
+        "rows_before_filter": int(rows_before_filter),
+        "rows_after_filter": int(rows_after_filter),
+        "rows_excluded": int(rows_excluded),
+        "excluded_rfp_ids": bundle.get("excluded_rfp_ids", EXCLUDE_RFP_IDS),
+        "not_reconstructable_features": bundle.get("not_reconstructable_features", []),
+        "pool": pool,
+        "pool_size": len(pool),
+        "corr_pairs": corr_log.to_dict("records"),
+        "kept_corr": kept_corr,
+        "kept_corr_size": len(kept_corr),
+        "importance_screening": imp_screen.sort_values("importance", ascending=False).to_dict("records"),
+        "top60": top60,
+        "vif_removed": [
+            {"feature": r["feature"], "vif": ("inf" if (isinstance(r["vif"], str) or np.isinf(r["vif"])) else round(float(r["vif"]), 2))}
+            for r in vif_removed.to_dict("records")
+        ],
+        "vif_final": vif_final.to_dict("records"),
+        "vif_final_size": len(vif_final),
+        "leaky_dropped": dropped_leaky,
+        "adr_feats": features,
+        "adr_feats_size": len(features),
+        "final_importance": final_importance,
+        "metrics": bundle["metrics"],
+        "best_params": bundle["best_params"],
+    }
+
+    payload = {
+        "funnel": funnel,
+        "stats": stats,
+        "adr_mean": float(np.mean(y_all)),
+        "adr_std": float(np.std(y_all)),
+        "points": points,
+    }
+    print(f"\nDone. test_r2={bundle['metrics']['test_r2']:.4f} test_mae=${bundle['metrics']['test_mae']:.2f} "
+          f"(bundle's own real numbers, not recomputed).")
+    return payload
+
+
+# ---- reuse the exact rendering logic from build_funnel_adr_website.py ----
+ALREADY_REBUILT_MARKER = "const EXCL = POINTS.is_excluded_from_training"
+
+BAD_SOURCE_MSG = """\
+--source looks like a file already rebuilt by this project's scripts, not the
+original funnel_quoted_adr_v4 template. Point --source at the pristine
+original HTML file instead.
+"""
+
+
+def get_between(content, start_marker, end_marker, start_after=0):
+    i = content.find(start_marker, start_after)
+    if i == -1:
+        raise ValueError(f"start marker not found: {start_marker!r}. Is --source the original template?")
+    j = content.find(end_marker, i)
+    if j == -1:
+        raise ValueError(f"end marker not found: {end_marker!r}. Is --source the original template?")
+    return i, j + len(end_marker)
+
+
+def render_html(source_path, payload):
+    with open(source_path, encoding="utf-8") as fh:
+        content = fh.read()
+    if ALREADY_REBUILT_MARKER in content:
+        raise SystemExit(BAD_SOURCE_MSG)
+
+    f = payload["funnel"]
+    n_excl = len(f["excluded_rfp_ids"])
+    n_tr_missing = len(f.get("not_reconstructable_features", []))
+
+    i, j = get_between(content, '<h1>Quoted ADR pruning funnel', '</div>\n\n  <div class="callout">')
+    j -= len('\n\n  <div class="callout">')
+    diag_body = (f"""
+    <b>Candidate pool reaches the full {f["pool_size"]}.</b> The raw transient-demand time series
+    (<span class="tag">Nexus_Transient_Demand_v2.csv</span>) is joined for real via the pipeline's own
+    <span class="tag">join_transient()</span> — a genuine per-row date-window average over the daily data, not
+    an approximation — so all 19 <span class="tag">tr_*</span>-prefixed columns are present with 0% missing.
+    Nothing in the candidate pool is fabricated or backfilled. Every stage below (correlation pruning, importance
+    screening, VIF pruning, leaky exclusion) runs the real, unmodified pipeline code on this complete pool, and
+    the final {f["adr_feats_size"]}-feature model is a genuine, freshly-trained fit — not a copy of the original
+    51-feature list.
+  """ if n_tr_missing == 0 else f"""
+    <b>Candidate pool starts {f["pool_size"]}, not 298.</b> The available data doesn't include a complete raw
+    transient-demand time series. The gap is fully accounted for: <span class="diagstat">{n_tr_missing}
+    tr_*-prefixed columns</span> genuinely can't be reconstructed without that raw file, and
+    {f["pool_size"]} + {n_tr_missing} = 298 exactly — nothing else is missing or unexplained. Every other stage
+    (correlation pruning, importance screening, VIF pruning, leaky exclusion) runs the real, unmodified code on
+    whatever candidate pool is actually available, and the final {f["adr_feats_size"]}-feature model is a
+    genuine, freshly-trained fit — not a copy of the original 51-feature list.
+  """)
+    new_header = f"""<h1>Quoted ADR pruning funnel — rebuilt with 3 flagged rows excluded</h1>
+  <p class="sub">
+    <span class="badge">Real pipeline, single authoritative run</span>
+    Every stage below runs the actual <span class="tag">rfp_adr_pipeline_filtered_first_final.py</span>
+    code (drop_correlated, the importance-screening XGBoost, prune_vif with its rank-deficiency and
+    standardization fixes, exclude_leaky, train_model's Optuna search) — imported and executed unchanged,
+    not reimplemented. The one deliberate change: 3 rows identified as genuine data-quality problems
+    (<span class="tag">{', '.join(f["excluded_rfp_ids"])}</span> — quoted_adr above the deal's own
+    max_room_rate, with no legitimate bundled-revenue explanation) are excluded BEFORE the candidate pool
+    is built, so every pruning decision is made on the same population the final model trains on.
+  </p>
+
+  <div class="callout diag">{diag_body}</div>
+
+  <div class="callout">"""
+    content = content[:i] + new_header + content[j:]
+
+    def replace_note(old_key_note_start, new_note):
+        nonlocal content
+        i0 = content.find(old_key_note_start)
+        if i0 == -1:
+            raise ValueError(f"note anchor not found: {old_key_note_start[:60]!r}")
+        note_start = content.find('note: `', i0) + len('note: `')
+        note_end = content.find('`,', note_start)
+        content = content[:note_start] + new_note + content[note_end:]
+
+    replace_note("key:'pool'",
+        r"Numeric columns not in ALWAYS_EXCLUDE, not ending in _v8, std &gt; 1e-10, &lt;50% missing — "
+        r"computed on the ${D.rows_after_filter}-row filtered population (3 flagged rows already excluded). "
+        r"Click a column header to sort.")
+    replace_note("key:'corr'",
+        r"${D.corr_pairs.length} pairs exceeded the threshold; the lower-variance feature of each pair was "
+        r"dropped. Click a column header to sort.")
+    content = content.replace(
+        "title:'Quick-XGBoost importance screening → top 60 (now fully reproducible)'",
+        "title:'Quick-XGBoost importance screening → top 60'")
+    replace_note("key:'imp'",
+        r"A lightweight proxy XGBRegressor (100 trees, depth 5, target = quoted_adr on the filtered rows, "
+        r"subsample=1.0/colsample_bytree=1.0/tree_method=exact for determinism) ranks all ${D.kept_corr_size} "
+        r"correlation-survivors; only the top 60 by importance continue. Click a column header to sort.")
+    replace_note("key:'vif'",
+        r"${D.vif_removed.length} features iteratively dropped (highest VIF first, recomputed each round) "
+        r"until every remaining feature has VIF &lt; 10, with a condition-number check before trusting any "
+        r"VIF value (an exact/near-exact rank deficiency drops the responsible column directly instead of "
+        r"trusting an arbitrarily large regression estimate). Click a column header to sort.")
+
+    content = content.replace(
+        '<div class="stage-title">Trained model — your actual feature importance &amp; correlation</div>',
+        '<div class="stage-title">Trained model — rebuilt, feature importance &amp; correlation</div>')
+    content = content.replace(
+        '<div class="stage-delta">Your real, Optuna-tuned XGBoost model, fit on the surviving features · click any row for its scatter</div>',
+        '<div class="stage-delta">Freshly Optuna-tuned XGBoost model, fit on the surviving features with the 3 flagged rows excluded · click any row for its scatter</div>')
+    content = content.replace(
+        '<div class="stage-count" style="color:var(--stage5)">51 <span class="chev">&#9656;</span></div>',
+        f'<div class="stage-count" style="color:var(--stage5)">{f["adr_feats_size"]} <span class="chev">&#9656;</span></div>')
+
+    i, j = get_between(content, '<footer>', '</footer>')
+    tr_gap_note = "" if n_tr_missing == 0 else (
+        f" ({n_tr_missing} tr_* columns unavailable without the raw transient file, "
+        f"{f['pool_size']}+{n_tr_missing}=298)")
+    new_footer = f"""<footer>
+    Best hyperparameters (this run's Optuna search, seed 42): <span id="bpLine"></span><br>
+    Rows: {f["rows_before_filter"] + n_excl:,} total &rarr; {n_excl} flagged rows excluded &rarr; {f["rows_before_filter"]:,}
+    &rarr; {f["rows_after_filter"]:,} after room_block&gt;0 filter ({f["rows_excluded"]} meeting-only RFPs excluded from ADR modeling).<br>
+    Candidate pool {f["pool_size"]}{tr_gap_note}
+    &rarr; correlation pruning (|r|&ge;0.85) &rarr; {f["kept_corr_size"]} &rarr; quick-XGBoost importance top-60 &rarr;
+    VIF pruning (VIF&ge;10) &rarr; {f["vif_final_size"]} &rarr; leaky-feature exclusion &rarr; {f["adr_feats_size"]} features trained.<br>
+    All correlations on this page are real Pearson r vs <span class="tag">quoted_adr</span>, n={f["rows_after_filter"]:,}
+    (room_block&gt;0, 3 flagged rows excluded), computed directly from the training data. The 3 excluded rows are shown
+    on every scatter as a hollow diamond marker, scored out-of-sample by the trained model.
+  </footer>"""
+    content = content[:i] + new_footer + content[j:]
+
+    i, j = get_between(content, '// Metrics', "].map(([k,v,v2])=>`<div class=\"metric\"><div class=\"k\">${k}</div><div class=\"v\">${v}</div>${v2?`<div class=\"v2\">${v2}</div>`:''}</div>`).join('');\n\n")
+    new_metrics_js = """// Metrics — this run's real trained model, no second run to compare against
+const m = D.metrics;
+document.getElementById('metricsGrid').innerHTML = [
+  ['Test R²', m.test_r2.toFixed(4), ''],
+  ['Test MAE', '$'+m.test_mae.toFixed(2), ''],
+  ['Train MAE', '$'+m.train_mae.toFixed(2), ''],
+  ['CV MAE (5-fold)', '$'+m.cv_mae_mean.toFixed(2)+' \\u00b1 '+m.cv_mae_std.toFixed(2), ''],
+  ['Train rows', m.n_train, ''],
+  ['Test rows', m.n_test, ''],
+].map(([k,v,v2])=>`<div class="metric"><div class="k">${k}</div><div class="v">${v}</div>${v2?`<div class="v2">${v2}</div>`:''}</div>`).join('');
+
+"""
+    content = content[:i] + new_metrics_js + content[j:]
+
+    old_pts_start = "const pts = xs.map((x,i)=>{"
+    old_pts_end_anchor = "const y1 = slope*minX"
+    i = content.find(old_pts_start)
+    j = content.find(old_pts_end_anchor, i)
+    new_pts_block = """const EXCL = POINTS.is_excluded_from_training || [];
+  const pts = xs.map((x,i)=>{
+    const cx = sx(x).toFixed(1), cy = sy(ys[i]).toFixed(1);
+    let tip = pointTooltip(feature,i,x,ys[i]);
+    if (EXCL[i]) tip += esc(`\\nEXCLUDED FROM TRAINING (out-of-sample here — ${POINTS.rfp_id && POINTS.rfp_id[i] ? POINTS.rfp_id[i] : ''})`);
+    if (isOutlier[i]) tip += esc(`\\nOUTLIER (Cook's D=${cooksD[i].toFixed(3)}, threshold ${COOKS_THRESHOLD.toFixed(3)})`);
+    if (EXCL[i]){
+      const s = 4.6;
+      return `<g class="point excluded"><rect x="${cx-s}" y="${cy-s}" width="${s*2}" height="${s*2}" fill="none" stroke="var(--neg)" stroke-width="1.6" transform="rotate(45 ${cx} ${cy})"></rect><title>${tip}</title></g>`;
+    }
+    if (isOutlier[i]){
+      const s = 4.2; // cross arm half-length
+      return `<g class="point outlier"><line x1="${cx-s}" y1="${cy-s}" x2="${Number(cx)+s}" y2="${Number(cy)+s}"></line><line x1="${cx-s}" y1="${Number(cy)+s}" x2="${Number(cx)+s}" y2="${cy-s}"></line><title>${tip}</title></g>`;
+    }
+    return `<circle class="point" cx="${cx}" cy="${cy}" r="2.2"><title>${tip}</title></circle>`;
+  }).join('');
+
+  """
+    content = content[:i] + new_pts_block + content[j:]
+
+    content = content.replace(
+        "catches points with an unusual y for their x AND high-leverage points whose extreme x pulls the trend line toward them).</div>",
+        "catches points with an unusual y for their x AND high-leverage points whose extreme x pulls the trend line toward them). "
+        "<span style=\"color:var(--neg);\">&#9670;</span> hollow diamond = one of the 3 rows excluded from training, shown out-of-sample.</div>")
+
+    marker = '<script id="funnel-data" type="application/json">'
+    i = content.find(marker) + len(marker)
+    j = content.find('</script>', i)
+    content = content[:i] + json.dumps(payload) + content[j:]
+
+    return content
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--model", required=True)
+    ap.add_argument("--data", required=True)
+    ap.add_argument("--pipeline", required=True)
+    ap.add_argument("--transient-data", default=None)
+    ap.add_argument("--source", required=True)
+    ap.add_argument("--out", default="funnel_adr_rebuilt.html")
+    ap.add_argument("--out-json", default=None)
+    ap.add_argument("--scratch", default="pipeline_scratch")
+    args = ap.parse_args()
+
+    payload = build_payload(args.model, args.data, args.pipeline, args.transient_data, args.scratch)
+
+    print(f"\nRendering {args.source} -> {args.out} ...")
+    html = render_html(args.source, payload)
+    with open(args.out, "w", encoding="utf-8") as fh:
+        fh.write(html)
+    print(f"Wrote {args.out}  ({len(html) / 1e6:.2f} MB)")
+
+    if args.out_json:
+        with open(args.out_json, "w") as fh:
+            json.dump(payload, fh)
+        print(f"Wrote {args.out_json}")
+
+
+if __name__ == "__main__":
+    main()

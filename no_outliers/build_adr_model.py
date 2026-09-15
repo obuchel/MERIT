@@ -1,0 +1,398 @@
+"""
+build_adr_model.py
+
+MODEL-ONLY version of build_funnel_adr_website.py: runs the real ADR
+feature-selection + training pipeline and writes just the trained model
+bundle (.pkl) and, optionally, the raw JSON payload — no HTML templating,
+no --source needed. Use this when you just want the retrained model (e.g.
+to feed into adr_shap_umap_build_rebuilt.py) without also producing the
+funnel diagnostic page.
+
+What this does, in order
+=========================
+1. Loads your real pipeline file (rfp_adr_pipeline_filtered_first_final.py)
+   as a live module and calls its actual functions -- join_transient,
+   build_candidate_pool, drop_correlated, prune_vif (with the rank-deficiency
+   + standardization fixes), exclude_leaky, train_model -- UNCHANGED, not
+   reimplemented.
+2. Joins the real raw transient-demand time series
+   (Nexus_Transient_Demand_v2.csv) via the pipeline's own join_transient(),
+   a genuine per-row date-window average -- not an approximation -- so the
+   full ~298-feature candidate pool is reached (not a partial one).
+3. Excludes the 3 rows identified as genuine data-quality problems
+   (quoted_adr above the deal's own max_room_rate, no legitimate bundled-
+   revenue explanation) BEFORE the candidate pool is built, so every pruning
+   decision -- correlation, importance ranking, VIF -- is made on the exact
+   population the final model trains on.
+4. Runs correlation pruning -> quick-XGBoost importance screening -> VIF
+   pruning -> leaky-feature exclusion -> Optuna-tuned XGBoost training.
+5. Writes the trained model bundle (.pkl) and, if requested, the raw JSON
+   payload. That's it -- no HTML step, no --source.
+
+This is the same pipeline logic as build_funnel_adr_website.py's
+run_pipeline() (STAGE A), with STAGE B (the HTML templating) removed
+entirely -- if you also want the funnel_adr_rebuilt.html page, use that
+script instead, or run this one first and pass its --out-json into
+build_funnel_adr_website.py's --from-json to render the page from it
+without re-training.
+
+Usage
+=====
+pip install xgboost==3.2.0 numpy==2.4.4 pandas==3.0.2
+
+python build_adr_model.py  --data rfp_training_data_complete_v3_with_transient.csv --pipeline rfp_adr_pipeline_filtered_first_final.py  --transient-data Nexus_Transient_Demand_v2.csv  --out-model adr_model_rebuilt.pkl   --out-json funnel_payload_rebuilt.json
+
+    python build_adr_model.py \\
+        --data rfp_training_data_complete_v3_with_transient.csv \\
+        --pipeline rfp_adr_pipeline_filtered_first_final.py \\
+        --transient-data Nexus_Transient_Demand_v2.csv \\
+        --out-model adr_model_rebuilt.pkl \\
+        --out-json funnel_payload_rebuilt.json
+
+--transient-data is optional: without it, the script uses whatever tr_*
+columns are already present in --data (if any) and reports the rest as
+"not reconstructable" in the bundle, instead of pretending they exist.
+--out-json is also optional -- drop it if you only want the model .pkl.
+"""
+import argparse
+import importlib.util
+import json
+import pickle
+import warnings
+from datetime import datetime, timezone
+from pathlib import Path
+
+warnings.filterwarnings("ignore")
+
+import numpy as np
+import pandas as pd
+import xgboost as xgb
+
+EXCLUDE_RFP_IDS = ["B-202309-62288", "B-202310-34967", "B-202511-72086"]
+
+# The original pipeline's candidate pool includes ~19 tr_*-prefixed columns from a
+# raw transient-demand time series file. If --transient-data isn't given (or the
+# join can't reach some of these), NOT_RECONSTRUCTABLE is computed after loading,
+# from whichever expected tr_* columns are actually absent — nothing here is
+# fabricated as a stand-in for a column that isn't genuinely available.
+EXPECTED_TR_COLS = [
+    "tr_transient_adr", "tr_market_adr", "tr_adr_index", "tr_transient_occ_of_available",
+    "tr_total_occupancy_pct", "tr_rooms_to_capacity", "tr_transient_rooms_turned_away",
+    "tr_transient_yield_pct", "tr_displacement_cost_per_room", "tr_pace_index",
+    "tr_pace_vs_prior_year", "tr_market_occ_pct", "tr_transient_revpar",
+    "tr_group_rooms_on_books", "tr_transient_pace_30d",
+    "tr_demand_tier", "tr_demand_tier_3", "tr_rate_strategy", "tr_displacement_pressure",
+]
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# STAGE A — run the real pipeline and build the JSON payload
+# ═══════════════════════════════════════════════════════════════════════════
+
+def load_pipeline_module(path):
+    spec = importlib.util.spec_from_file_location("pipeline_ref", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def real_join_transient(df_raw, pipe, transient_path):
+    """Runs the pipeline's ACTUAL join_transient() (imported live, unmodified)
+    against the genuine raw transient-demand file — a real per-row date-window
+    average over the raw daily time series, not an approximation.
+
+    Two adjustments this merged CSV needs before it matches what
+    join_transient() expects:
+      1. It has lowercase 'arrival_date' but not the capitalized 'Arrival_Date'
+         join_transient() reads (r.Arrival_Date) — that capitalized column
+         normally comes from a v8 events-file merge this script doesn't have.
+         Since it's the exact same date, just a casing difference, it's
+         aliased rather than treated as missing.
+      2. Any tr_* columns already baked into --data (a prior partial join) are
+         dropped first so the freshly-computed, complete columns aren't
+         shadowed or duplicated.
+    """
+    df = df_raw.copy()
+
+    pre_existing_tr = [c for c in df.columns if c.lower().startswith("tr_")]
+    if pre_existing_tr:
+        print(f"  Dropping {len(pre_existing_tr)} pre-existing (partial) tr_* columns "
+              f"before re-joining from the real raw file: {pre_existing_tr}")
+        df = df.drop(columns=pre_existing_tr)
+
+    df["Arrival_Date"] = pd.to_datetime(df["Arrival_Date"] if "Arrival_Date" in df.columns else df["arrival_date"])
+    df["Departure_Date"] = pd.to_datetime(df["Departure_Date"])
+
+    pipe.TRANSIENT_FILE = transient_path
+    df_joined = pipe.join_transient(df)
+
+    new_tr = [c for c in df_joined.columns if c.lower().startswith("tr_") or c in pipe.TR_CAT_MAPS]
+    print(f"  join_transient() produced {len(new_tr)} tr_* columns from the real raw file.")
+    for c in sorted(set(new_tr)):
+        miss_pct = df_joined[c].isna().mean() * 100
+        print(f"    {c}: {miss_pct:.1f}% missing")
+    return df_joined
+
+
+def engineer_features_full(df, pipe):
+    """As close to the real engineer_features() (stage 3 of the pipeline) as
+    --data allows. Reuses pipe.IDENTITY_COLS so the object-column skip-list is
+    guaranteed identical to the original, not re-typed by hand. Columns --data
+    already carries from an earlier run of the real pipeline are left as-is.
+    What's added here is only what's missing: the blanket per-object-column
+    label encoding, the group_size_tier split, and the full market_segment
+    one-hot set. NOTHING is fabricated for columns --data genuinely doesn't
+    have — those are left NaN and drop out of the candidate pool on their own."""
+    df = df.copy()
+
+    if "group_size_tier" in df.columns:
+        df["is_meeting_only"] = (df["group_size_tier"] == "meeting_only").astype(int)
+        size_order = {"small": 0, "medium": 1, "large": 2, "very_large": 3}
+        df["group_size_tier_clean_enc"] = df["group_size_tier"].map(size_order).fillna(-1).astype(int)
+
+    if "market_segment" in df.columns:
+        ohe = pd.get_dummies(df["market_segment"], prefix="market_seg").astype(int)
+        df = pd.concat([df, ohe], axis=1)
+
+    skip_encode = pipe.IDENTITY_COLS | {"group_size_tier", "market_segment"}
+    for c in df.select_dtypes(include="object").columns:
+        if c in skip_encode:
+            continue
+        df[f"{c}_enc"] = pd.Categorical(df[c]).codes
+
+    if "total_room_nights" not in df.columns:
+        df["total_room_nights"] = df.get("room_block", df.get("total_room_nights_requested", np.nan))
+
+    return df
+
+
+def pearson_r(x, y):
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    mask = ~(np.isnan(x) | np.isnan(y))
+    if mask.sum() < 3:
+        return None
+    xm, ym = x[mask], y[mask]
+    if xm.std() < 1e-12 or ym.std() < 1e-12:
+        return 0.0
+    return float(np.corrcoef(xm, ym)[0, 1])
+
+
+def spearman_rho(x, y):
+    x = pd.Series(x).rank()
+    y = pd.Series(y).rank()
+    return pearson_r(x.values, y.values)
+
+
+def jsonable(v):
+    if v is None:
+        return None
+    if isinstance(v, (bool, np.bool_)):
+        return bool(v)
+    if isinstance(v, (int, np.integer)):
+        return int(v)
+    if isinstance(v, (float, np.floating)):
+        return None if (np.isnan(v) or np.isinf(v)) else round(float(v), 6)
+    return str(v)
+
+
+def run_pipeline(data_path, pipeline_path, transient_path, scratch_dir):
+    """Runs the whole real pipeline and returns the JSON-ready payload dict
+    plus the trained-model bundle dict."""
+    pipe = load_pipeline_module(pipeline_path)
+    scratch = Path(scratch_dir)
+    scratch.mkdir(exist_ok=True, parents=True)
+    pipe.OUTPUT_DIR = scratch  # redirect its internal CSV writes away from cwd
+
+    print("Loading raw data...")
+    df_raw = pd.read_csv(data_path)
+    df_raw["rfp_id"] = df_raw["rfp_id"].astype(str)
+
+    if transient_path:
+        print(f"\nJoining REAL transient-demand data from {transient_path} "
+              f"(this is pipe.join_transient(), run verbatim, not reimplemented)...")
+        df_raw = real_join_transient(df_raw, pipe, transient_path)
+
+    print("\nEngineering features on the FULL population first (so categorical codes / "
+          "one-hot columns are derived once, consistently, before any row is split off)...")
+    df_eng = engineer_features_full(df_raw, pipe)
+    not_reconstructable = [c for c in EXPECTED_TR_COLS if c not in df_eng.columns]
+    print(f"  tr_* columns not reconstructable ({len(not_reconstructable)}): {not_reconstructable}")
+
+    print(f"Excluding {len(EXCLUDE_RFP_IDS)} flagged rows: {EXCLUDE_RFP_IDS}")
+    missing = set(EXCLUDE_RFP_IDS) - set(df_eng["rfp_id"])
+    if missing:
+        print(f"  WARNING: not found: {sorted(missing)}")
+    ev = df_eng[~df_eng["rfp_id"].isin(EXCLUDE_RFP_IDS)].reset_index(drop=True)
+    excl_df = df_eng[df_eng["rfp_id"].isin(EXCLUDE_RFP_IDS)].reset_index(drop=True)
+    rows_before_filter = len(ev)
+
+    print(">>> Filtering room_block > 0 BEFORE pool/pruning (filter-first, matches the "
+          "original script's own design).")
+    ev_adr = ev[ev["room_block"] > 0].copy().reset_index(drop=True)
+    rows_after_filter = len(ev_adr)
+    rows_excluded = rows_before_filter - rows_after_filter
+    print(f"  {rows_before_filter} -> {rows_after_filter} rows ({rows_excluded} meeting-only rows excluded)")
+
+    print("\n[Stage: candidate pool]")
+    pool = pipe.build_candidate_pool(ev_adr)
+
+    print("\n[Stage: correlation pruning + importance screening + VIF pruning]")
+    base = pipe.prune_features(ev_adr, pool, tag="rebuilt_")
+
+    print("\n[Stage: leaky-feature exclusion]")
+    adr_feats = pipe.exclude_leaky(base, "quoted_adr")
+    dropped_leaky = sorted(set(base) - set(adr_feats))
+    print(f"  Leaky-excluded: {dropped_leaky if dropped_leaky else '(none)'}")
+    print(f"  Final feature list: {len(adr_feats)} features")
+
+    print("\n[Stage: train final model — Optuna search]")
+    result = pipe.train_model("Quoted ADR (rebuilt, outliers excluded)", ev, adr_feats,
+                               "quoted_adr", filter_rooms=True)
+
+    # ---- read back the intermediate stage artifacts prune_features() wrote to scratch ----
+    corr_log = pd.read_csv(scratch / "rebuilt_multicollinearity_correlation_pairs.csv")
+    imp_screen = pd.read_csv(scratch / "rebuilt_importance_pool_screening.csv")
+    imp_screen.columns = ["feature", "importance"]
+    vif_final = pd.read_csv(scratch / "rebuilt_multicollinearity_vif_final.csv")
+    vif_removed_path = scratch / "rebuilt_multicollinearity_vif_removed.csv"
+    vif_removed = pd.read_csv(vif_removed_path) if vif_removed_path.exists() else pd.DataFrame(columns=["feature", "vif"])
+
+    kept_corr = sorted([c for c in pool if c not in set(corr_log["dropped"])])
+    top60 = imp_screen.sort_values("importance", ascending=False).head(60)["feature"].tolist()
+
+    y_all = ev_adr["quoted_adr"].astype(float).values
+    stats = {}
+    points = {"quoted_adr": [jsonable(v) for v in y_all]}
+    for feat in pool:
+        xv = pd.to_numeric(ev_adr[feat], errors="coerce").values.astype(float)
+        stats[feat] = {
+            "pearson_r": pearson_r(xv, y_all),
+            "spearman_rho": spearman_rho(xv, y_all),
+            "nunique": int(pd.Series(xv).nunique()),
+            "is_binary": bool(pd.Series(xv).nunique() <= 2),
+        }
+        points[feat] = [jsonable(v) for v in xv]
+
+    for feat in ["rate_discount_pct", "lead_time_days", "account_avg_revenue", "account_win_rate",
+                 "segment_win_rate", "attendees", "room_block", "nights"]:
+        if feat in ev_adr.columns and feat not in points:
+            points[feat] = [jsonable(v) for v in ev_adr[feat]]
+
+    # excluded-from-training marker: score the 3 excluded rows out-of-sample and append
+    # them to every points array so they render as a distinct marker on the page.
+    is_excluded_flags = [False] * len(ev_adr)
+    if len(excl_df):
+        X_excl = pipe.prep_X(excl_df, adr_feats)
+        pred_excl = result["model"].predict(X_excl)
+        points["quoted_adr"] += [jsonable(v) for v in excl_df["quoted_adr"].astype(float)]
+        for feat in pool:
+            if feat in excl_df.columns:
+                xv = pd.to_numeric(excl_df[feat], errors="coerce").values.astype(float)
+            else:
+                xv = np.full(len(excl_df), np.nan)
+            points[feat] += [jsonable(v) for v in xv]
+        for feat in ["rate_discount_pct", "lead_time_days", "account_avg_revenue", "account_win_rate",
+                     "segment_win_rate", "attendees", "room_block", "nights"]:
+            if feat in points:
+                if feat in excl_df.columns:
+                    points[feat] += [jsonable(v) for v in excl_df[feat]]
+                else:
+                    points[feat] += [None] * len(excl_df)
+        points["predicted_adr_excluded"] = [None] * len(ev_adr) + [jsonable(v) for v in pred_excl]
+        points["rfp_id"] = [None] * len(ev_adr) + list(excl_df["rfp_id"])
+        is_excluded_flags += [True] * len(excl_df)
+    points["is_excluded_from_training"] = is_excluded_flags
+
+    final_importance = result["importance"][["feature", "importance", "importance_pct", "rank"]].to_dict("records")
+
+    funnel = {
+        "rows_before_filter": int(rows_before_filter),
+        "rows_after_filter": int(rows_after_filter),
+        "rows_excluded": int(rows_excluded),
+        "excluded_rfp_ids": EXCLUDE_RFP_IDS,
+        "not_reconstructable_features": not_reconstructable,
+        "pool": pool,
+        "pool_size": len(pool),
+        "corr_pairs": corr_log.to_dict("records"),
+        "kept_corr": kept_corr,
+        "kept_corr_size": len(kept_corr),
+        "importance_screening": imp_screen.sort_values("importance", ascending=False).to_dict("records"),
+        "top60": top60,
+        "vif_removed": [
+            {"feature": r["feature"], "vif": ("inf" if (isinstance(r["vif"], str) or np.isinf(r["vif"])) else round(float(r["vif"]), 2))}
+            for r in vif_removed.to_dict("records")
+        ],
+        "vif_final": vif_final.to_dict("records"),
+        "vif_final_size": len(vif_final),
+        "leaky_dropped": dropped_leaky,
+        "adr_feats": adr_feats,
+        "adr_feats_size": len(adr_feats),
+        "final_importance": final_importance,
+        "metrics": result["metrics"],
+        "best_params": result["best_params"],
+    }
+
+    payload = {
+        "funnel": funnel,
+        "stats": stats,
+        "adr_mean": float(np.mean(y_all)),
+        "adr_std": float(np.std(y_all)),
+        "points": points,
+    }
+
+    bundle = {
+        "model": result["model"],
+        "features": result["features"],
+        "target": "quoted_adr",
+        "best_params": result["best_params"],
+        "metrics": result["metrics"],
+        "candidate_pool_size": len(pool),
+        "base_pool_size": len(base),
+        "leaky_dropped": dropped_leaky,
+        "excluded_rfp_ids": EXCLUDE_RFP_IDS,
+        "not_reconstructable_features": not_reconstructable,
+        "trained_at_utc": datetime.now(timezone.utc).isoformat(),
+        "library_versions": {"xgboost": xgb.__version__, "pandas": pd.__version__, "numpy": np.__version__},
+    }
+
+    print(f"\nFinal: {len(adr_feats)} features | test_r2={result['metrics']['test_r2']:.4f} | "
+          f"test_mae=${result['metrics']['test_mae']:.2f}")
+
+    return payload, bundle
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# MAIN
+# ═══════════════════════════════════════════════════════════════════════════
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--data", required=True,
+                     help="rfp_training_data_complete_v3_with_transient.csv (the merged training CSV)")
+    ap.add_argument("--pipeline", required=True,
+                     help="rfp_adr_pipeline_filtered_first_final.py (your real pipeline source file)")
+    ap.add_argument("--transient-data", default=None,
+                     help="Raw transient-demand CSV (e.g. Nexus_Transient_Demand_v2.csv). Optional -- "
+                          "omit to use whatever tr_* columns --data already has.")
+    ap.add_argument("--out-model", required=True, help="Output path for the trained model bundle (.pkl)")
+    ap.add_argument("--out-json", default=None, help="Optional: also write the raw JSON payload "
+                                                       "(useful as input to build_funnel_adr_website.py's --from-json later)")
+    ap.add_argument("--scratch", default="pipeline_scratch", help="Scratch dir for the pipeline's intermediate CSVs")
+    args = ap.parse_args()
+
+    payload, bundle = run_pipeline(args.data, args.pipeline, args.transient_data, args.scratch)
+
+    with open(args.out_model, "wb") as fh:
+        pickle.dump(bundle, fh)
+    print(f"\nWrote {args.out_model}")
+
+    if args.out_json:
+        with open(args.out_json, "w") as fh:
+            json.dump(payload, fh)
+        print(f"Wrote {args.out_json}")
+
+
+if __name__ == "__main__":
+    main()
