@@ -1,0 +1,82 @@
+<div style="max-width:680px">
+<h2 class="sr-only">Interactive parallel coordinates plot of 40 Optuna trials across four XGBoost hyperparameters, with the best-scoring trial highlighted and hoverable trial lines showing exact values.</h2>
+<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+  <div style="font-size:14px;font-weight:500">Trial paths across hyperparameters</div>
+  <div style="font-size:12px;color:var(--text-secondary)">Hover a line · orange = best trial</div>
+</div>
+<svg id="pc" width="100%" viewBox="0 0 680 340" role="img"><title>Parallel coordinates of Optuna trials</title><desc>Four vertical axes for learning rate, max depth, subsample, colsample bytree; lines represent trials, colored by validation score</desc></svg>
+<div id="tooltip" style="font-size:13px;color:var(--text-secondary);min-height:20px;margin-top:6px"></div>
+</div>
+<script>
+function seeded(seed){let s=seed;return()=>{s=(s*9301+49297)%233280;return s/233280;};}
+const rnd=seeded(7);
+const N=40;
+const trueBestLr=0.04, trueBestDepth=6, trueBestSub=0.85, trueBestCol=0.7;
+function score(lr,depth,sub,col){
+  const d=((Math.log10(lr)-Math.log10(trueBestLr))/1.2)**2 + ((depth-trueBestDepth)/4)**2 + ((sub-trueBestSub)/0.3)**2*0.3 + ((col-trueBestCol)/0.3)**2*0.2;
+  return Math.max(0.55,Math.min(0.95, 0.93-0.14*d+(rnd()-0.5)*0.02));
+}
+const trials=[];
+for(let i=0;i<12;i++){
+  const lr=Math.pow(10, Math.log10(0.001)+rnd()*(Math.log10(0.3)-Math.log10(0.001)));
+  const depth=Math.round(2+rnd()*8);
+  const sub=0.5+rnd()*0.5, col=0.5+rnd()*0.5;
+  trials.push({lr,depth,sub,col,s:score(lr,depth,sub,col)});
+}
+for(let i=12;i<N;i++){
+  const sp=1-(i-12)/(N-12)*0.85;
+  const lr=Math.max(0.001,Math.min(0.3,Math.pow(10, Math.log10(trueBestLr)+(rnd()-0.5)*1.4*sp)));
+  const depth=Math.round(Math.max(2,Math.min(10,trueBestDepth+(rnd()-0.5)*8*sp)));
+  const sub=Math.max(0.5,Math.min(1,trueBestSub+(rnd()-0.5)*0.5*sp));
+  const col=Math.max(0.5,Math.min(1,trueBestCol+(rnd()-0.5)*0.5*sp));
+  trials.push({lr,depth,sub,col,s:score(lr,depth,sub,col)});
+}
+let bestIdx=0;
+for(let i=1;i<N;i++) if(trials[i].s>trials[bestIdx].s) bestIdx=i;
+
+const axes=[
+  {key:'lr', label:'learning_rate', x:100, norm:v=>(Math.log10(v)-Math.log10(0.001))/(Math.log10(0.3)-Math.log10(0.001))},
+  {key:'depth', label:'max_depth', x:280, norm:v=>(v-2)/8},
+  {key:'sub', label:'subsample', x:460, norm:v=>(v-0.5)/0.5},
+  {key:'col', label:'colsample_bytree', x:640, norm:v=>(v-0.5)/0.5}
+];
+const yTop=50, yBot=290;
+function yFor(norm){return yBot-norm*(yBot-yTop);}
+const svg=document.getElementById('pc');
+let html='';
+axes.forEach(a=>{
+  html+=`<line x1="${a.x}" y1="${yTop}" x2="${a.x}" y2="${yBot}" stroke="var(--border-strong)" stroke-width="0.5"/>`;
+  const lx = a.x>600 ? a.x-8 : a.x;
+  const anchor = a.x>600 ? 'end' : 'middle';
+  html+=`<text class="ts" x="${lx}" y="30" text-anchor="${anchor}" fill="var(--text-secondary)">${a.label}</text>`;
+});
+function colorFor(s,dim){
+  const t=(s-0.55)/(0.95-0.55);
+  const stops=[[195,193,183],[24,95,165]];
+  const r=Math.round(stops[0][0]+(stops[1][0]-stops[0][0])*t);
+  const g=Math.round(stops[0][1]+(stops[1][1]-stops[0][1])*t);
+  const b=Math.round(stops[0][2]+(stops[1][2]-stops[0][2])*t);
+  return dim ? `rgba(${r},${g},${b},0.35)` : `rgb(${r},${g},${b})`;
+}
+trials.forEach((tr,i)=>{
+  const pts=axes.map(a=>`${a.x},${yFor(a.norm(tr[a.key]))}`).join(' ');
+  const isBest=i===bestIdx;
+  html+=`<polyline points="${pts}" fill="none" stroke="${isBest?'#D85A30':colorFor(tr.s,true)}" stroke-width="${isBest?3:1.2}" opacity="${isBest?1:0.7}" class="trial-line" data-i="${i}" style="cursor:pointer"/>`;
+});
+svg.innerHTML=html;
+document.querySelectorAll('.trial-line').forEach(line=>{
+  line.addEventListener('mouseenter',()=>{
+    const i=+line.dataset.i, tr=trials[i];
+    document.getElementById('tooltip').textContent=
+      `Trial ${i}: lr=${tr.lr.toFixed(4)}, depth=${tr.depth}, subsample=${tr.sub.toFixed(2)}, colsample=${tr.col.toFixed(2)} → AUC ${tr.s.toFixed(3)}${i===bestIdx?' (best)':''}`;
+    line.setAttribute('stroke-width', i===bestIdx?4:2.5);
+    line.setAttribute('opacity','1');
+  });
+  line.addEventListener('mouseleave',()=>{
+    const i=+line.dataset.i, tr=trials[i], isBest=i===bestIdx;
+    document.getElementById('tooltip').textContent='';
+    line.setAttribute('stroke-width', isBest?3:1.2);
+    line.setAttribute('opacity', isBest?1:0.7);
+  });
+});
+</script>
