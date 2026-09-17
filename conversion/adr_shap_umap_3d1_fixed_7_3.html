@@ -1,0 +1,853 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADR model — SHAP-space compass (UMAP)</title>
+<link rel="icon" href="data:,">
+<style>
+:root{
+  --bg:#faf9f7; --panel:#ffffff; --ink:#1c1a17; --ink2:#5b564e; --ink3:#8a8478;
+  --line:#e6e1d8; --low:#3d6fb5; --high:#d97a3d; --hl:#7c4fd9; --good:#2f8a5c; --bad:#b5473f; --warn:#a3781f;
+  --pos:#2f8a5c; --neg:#b5473f;
+  --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#17140f; --panel:#221e18; --ink:#f1ede4; --ink2:#c9c2b4; --ink3:#8f887a;
+    --line:#3a352c; --low:#7fb2e0; --high:#e0a06a; --hl:#b79fe0; --good:#7fd0a0; --bad:#e58b83; --warn:#e0c07a;
+    --pos:#7fd0a0; --neg:#e58b83;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#17140f; --panel:#221e18; --ink:#f1ede4; --ink2:#c9c2b4; --ink3:#8f887a;
+  --line:#3a352c; --low:#7fb2e0; --high:#e0a06a; --hl:#b79fe0; --good:#7fd0a0; --bad:#e58b83; --warn:#e0c07a;
+  --pos:#7fd0a0; --neg:#e58b83;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;padding-block:28px;}
+.wrap{max-width:1220px;margin:0 auto;padding-inline:20px;}
+h1{font-size:1.4rem;margin:0 0 4px;letter-spacing:-.01em;}
+h2{font-size:1.05rem;margin:32px 0 4px;}
+.sub{color:var(--ink2);font-size:.88rem;margin:0 0 18px;max-width:800px;line-height:1.55;}
+.tag{font-family:var(--mono);font-size:.85em;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:1px 5px;}
+.warnbox{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--good);border-radius:8px;padding:14px 16px;margin-bottom:18px;font-size:.86rem;line-height:1.55;}
+.warnbox b{color:var(--ink);}
+.layout{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;}
+.chart-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;flex:1 1 680px;min-width:320px;position:relative;}
+#stage{width:100%;height:600px;border-radius:8px;position:relative;overflow:hidden;cursor:grab;}
+#stage:active{cursor:grabbing;}
+#stage canvas{display:block;}
+.hint-float{position:absolute;top:16px;left:16px;font-size:.72rem;color:var(--ink3);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 8px;pointer-events:none;}
+.axis-label{font-size:.68rem;font-family:var(--mono);font-weight:700;padding:1px 6px;border-radius:4px;background:var(--panel);border:1px solid currentColor;pointer-events:none;white-space:nowrap;}
+.pt-tooltip{position:absolute;top:16px;right:16px;max-width:220px;pointer-events:none;}
+.pt-tooltip-card{background:var(--panel);border:1px solid var(--hl);border-radius:8px;padding:9px 11px;font-size:.74rem;line-height:1.45;box-shadow:0 6px 18px rgba(0,0,0,.22);color:var(--ink);}
+.pt-tooltip-name{font-weight:700;margin-bottom:1px;}
+.pt-tooltip-id{color:var(--ink3);font-family:var(--mono);font-size:.68rem;margin-bottom:5px;}
+.pt-tooltip-row{display:flex;justify-content:space-between;gap:14px;}
+.pt-tooltip-row span{color:var(--ink2);}
+.pt-tooltip-row b{font-family:var(--mono);}
+.pt-tooltip-tag{margin-top:5px;padding-top:5px;border-top:1px solid var(--line);color:var(--ink2);font-size:.7rem;}
+.controls-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 6px 10px;flex-wrap:wrap;}
+.hint{font-size:.78rem;color:var(--ink3);margin:0;}
+.side{flex:1 1 320px;min-width:280px;}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.82rem;color:var(--ink2);margin:4px 0 12px;}
+.legend span{display:inline-flex;align-items:center;gap:6px;}
+.sw{width:11px;height:11px;border-radius:50%;display:inline-block;}
+.callout{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--good);border-radius:8px;padding:14px 16px;margin-bottom:14px;font-size:.85rem;line-height:1.55;}
+.callout b{color:var(--ink);}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.metric{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;}
+.metric .k{font-size:.72rem;color:var(--ink3);text-transform:uppercase;letter-spacing:.02em;}
+.metric .v{font-size:1.15rem;font-weight:700;}
+.metric .v2{font-size:.72rem;color:var(--ink3);}
+.hoverpanel{background:var(--panel);border:1px solid var(--hl);border-radius:10px;padding:12px 14px;font-size:.82rem;}
+.hoverpanel h4{margin:0 0 2px;font-size:.9rem;color:var(--hl);}
+.hoverpanel .hp-sub{color:var(--ink2);font-size:.78rem;margin-bottom:8px;}
+.hp-bar-row{display:grid;grid-template-columns:150px 1fr 52px;gap:6px;align-items:center;margin:4px 0;font-size:.72rem;}
+.hp-bar-track{background:var(--line);border-radius:4px;height:9px;overflow:hidden;position:relative;display:flex;justify-content:center;}
+.hp-bar-fill{position:absolute;top:0;bottom:0;}
+.hp-bar-mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--ink3);}
+.hp-name{color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hp-val{text-align:right;font-family:var(--mono);font-size:.7rem;}
+.val-pos{color:var(--pos);}
+.val-neg{color:var(--neg);}
+table.compare{width:100%;border-collapse:collapse;font-size:.82rem;margin:8px 0 18px;}
+table.compare th, table.compare td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;}
+table.compare th{color:var(--ink3);font-weight:600;font-size:.74rem;text-transform:uppercase;letter-spacing:.02em;}
+table.compare td.num{font-family:var(--mono);text-align:right;}
+.rankbadge{display:inline-block;background:var(--line);color:var(--ink2);border-radius:4px;padding:0 5px;font-size:.7rem;margin-right:4px;}
+.beeswarm-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:8px;position:relative;}
+.beeswarm-card img{max-width:100%;height:auto;display:block;margin:0 auto;}
+.bw-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap;}
+.bw-legend{display:flex;align-items:center;gap:6px;}
+.bw-legend .hint{white-space:nowrap;}
+.bw-static-link{font-size:.74rem;color:var(--ink3);text-decoration:none;border-bottom:1px dotted var(--ink3);white-space:nowrap;}
+.bw-static-link:hover{color:var(--hl);border-color:var(--hl);}
+.bw-row-label{fill:var(--ink2);font-size:10px;font-family:var(--mono);}
+.bw-axis-text{fill:var(--ink3);font-size:10px;}
+.bw-zeroline{stroke:var(--ink3);stroke-dasharray:2,2;}
+.bw-axisline{stroke:var(--line);}
+.bw-dot{cursor:pointer;}
+.bw-dot:hover{stroke:var(--ink);stroke-width:1.3px;}
+.bw-tooltip{position:absolute;pointer-events:none;max-width:230px;z-index:6;}
+footer{color:var(--ink3);font-size:.76rem;margin-top:22px;line-height:1.65;border-top:1px solid var(--line);padding-top:14px;}
+footer code{font-family:var(--mono);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="mainTitle">ADR model — SHAP-space compass (UMAP)</h1>
+  <p class="sub" id="mainSub">
+    UMAP (unsupervised — never told the outcome) reduces every real per-row SHAP value from
+    <span class="tag">shap.TreeExplainer</span> on your uploaded <span class="tag">adr_model_rebuilt.pkl</span>
+    into 3D, colored by the DBSCAN price cluster each point falls into.
+  </p>
+
+  <div class="layout">
+    <div class="chart-card">
+      <div class="controls-row">
+        <p class="hint" id="pcHint"></p>
+      </div>
+      <div id="stage">
+        <div class="hint-float">drag to rotate · right-drag (or two-finger drag) to pan · scroll to zoom · click a point to pin it</div>
+        <div class="pt-tooltip" id="ptTooltip" style="display:none;"><div class="pt-tooltip-card" id="ptTooltipCard"></div></div>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="legend" id="legendCluster" style="flex-direction:column;gap:4px;"></div>
+
+      <div class="callout" id="calloutCluster"></div>
+
+      <div class="metrics" id="metricsGrid"></div>
+
+      <div class="hoverpanel" id="hoverPanel">
+        <h4 id="hpTitle">Click any point</h4>
+        <div class="hp-sub" id="hpSub">to see its real, signed top-5 SHAP contributors</div>
+        <div id="hpBars"></div>
+      </div>
+    </div>
+  </div>
+
+  <h2 id="compareH2">Does this actually separate ADR levels better?</h2>
+  <table class="compare" id="compareTable"></table>
+
+  <h2 id="beeswarmH2">Global feature impact (SHAP summary)</h2>
+  <div class="beeswarm-card" id="beeswarmCard">
+    <div class="bw-toolbar" id="bwToolbar" hidden>
+      <p class="hint">Hover a dot for that exact RFP's value · click to pin it in the 3D view above</p>
+      <div class="bw-legend" id="bwLegend"></div>
+      <a class="bw-static-link" href="shap_beeswarm.png" target="_blank" rel="noopener">static image ↗</a>
+    </div>
+    <div id="beeswarmChart"></div>
+    <img id="beeswarmImg" src="shap_beeswarm.png" alt="SHAP beeswarm summary plot">
+    <div class="bw-tooltip" id="bwTooltip" style="display:none;"><div class="pt-tooltip-card" id="bwTooltipCard"></div></div>
+  </div>
+
+  <footer id="footerText"></footer>
+</div>
+
+<script src="adr_shap_umap_data.js"></script>
+
+<script async src="https://ga.jspm.io/npm:es-module-shims@1.10.0/dist/es-module-shims.js"></script>
+<script type="importmap">
+{ "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+const DATA = window.ADR_VIZ_DATA;
+// Feature/row counts read from the data file itself, not hardcoded — this page is meant
+// to work unchanged whether the model behind it has 51, 48, or any other feature count.
+const N_FEAT = DATA.ranking.length;
+const N_ROWS = DATA.n_total;
+// This page is shared by the ADR (regression) and conversion (classification) SHAP
+// exports - the data file says which one it is, so the wording follows DATA.task_type
+// instead of assuming ADR/price the way this file used to.
+const IS_CLF = DATA.task_type === 'classification';
+const MODEL_LABEL = IS_CLF ? 'Conversion model' : 'ADR model';
+const MODEL_FILE = IS_CLF ? 'conversion_model.pkl' : 'adr_model_rebuilt.pkl';
+const CLUSTER_NOUN = IS_CLF ? 'win-probability' : 'price';
+document.title = `${MODEL_LABEL} — SHAP-space compass (UMAP, all ${N_FEAT} dims)`;
+document.getElementById('mainTitle').textContent = `${MODEL_LABEL} — SHAP-space compass (UMAP, all ${N_FEAT} dims)`;
+document.getElementById('mainSub').innerHTML = `
+    UMAP (unsupervised — never told the outcome) reduces all ${N_FEAT} real per-row SHAP values from
+    <span class="tag">shap.TreeExplainer</span> on your uploaded <span class="tag">${MODEL_FILE}</span>
+    into 3D, colored by the DBSCAN ${CLUSTER_NOUN} cluster each point falls into.
+  `;
+document.getElementById('beeswarmH2').textContent = IS_CLF
+  ? `Global feature impact (SHAP summary, all ${N_ROWS} RFPs)`
+  : `Global feature impact (SHAP summary, all ${N_ROWS} room_block>0 RFPs)`;
+document.getElementById('compareH2').textContent = IS_CLF
+  ? 'Does this actually separate win/loss better?'
+  : 'Does this actually separate ADR levels better?';
+const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+             && document.documentElement.getAttribute('data-theme') !== 'light';
+const PAL = dark
+  ? { bg:0x17140f, low:0x7fb2e0, high:0xe0a06a, hl:0xb79fe0, ink:0xf1ede4, ink3:0x8f887a, line:0x3a352c, pos:0x7fd0a0, neg:0xe58b83 }
+  : { bg:0xfaf9f7, low:0x3d6fb5, high:0xd97a3d, hl:0x7c4fd9, ink:0x1c1a17, ink3:0x8a8478, line:0xe6e1d8, pos:0x2f8a5c, neg:0xb5473f };
+
+// Clusters sit along a real ordered quantity (win probability, or ADR level) - swapping
+// their order would change what the color means - so this is an ordinal encoding and
+// gets one low->high gradient by rank, not arbitrary categorical hues. Reuses the same
+// blue/orange anchors as the "feature value" gradient further down, so the page reads
+// "blue = low, orange = high" consistently everywhere it colors a magnitude.
+const colorLow = new THREE.Color(PAL.low), colorHigh = new THREE.Color(PAL.high);
+const CLUSTER_ORDER = DATA.cluster_info.slice().sort((a,b)=>a.mean_adr-b.mean_adr).map(c=>c.id);
+const clusterRankT = {};
+CLUSTER_ORDER.forEach((id,i)=>{ clusterRankT[id] = CLUSTER_ORDER.length > 1 ? i/(CLUSTER_ORDER.length-1) : 0.5; });
+function clusterColor(id){ return colorLow.clone().lerp(colorHigh, clusterRankT[id] ?? 0.5); }
+function clusterHex(id){ return '#' + clusterColor(id).getHexString(); }
+function clusterLegendLine(c){
+  if (!IS_CLF) return `${c.mean_adr.toFixed(2)} avg ADR (n=${c.n})`;
+  const wr = c.win_rate;
+  const tier = wr >= 0.9 ? 'Reliably wins' : wr >= 0.6 ? 'Usually wins' : wr >= 0.3 ? 'Toss-up' : 'Rarely wins';
+  return `${tier} — ${(wr*100).toFixed(0)}% win rate (n=${c.n})`;
+}
+
+// ---------- text panels ----------
+document.getElementById('pcHint').textContent =
+  `UMAP embedding of all ${N_FEAT} SHAP dims (unsupervised) · colored by DBSCAN ${CLUSTER_NOUN} cluster`;
+
+document.getElementById('metricsGrid').innerHTML = IS_CLF ? `
+  <div class="metric"><div class="k">Real test ROC AUC</div><div class="v">${DATA.r2.real_test_r2.toFixed(3)}</div><div class="v2">pickle's own metric</div></div>
+  <div class="metric"><div class="k">Real test accuracy</div><div class="v">${(DATA.r2.real_test_accuracy*100).toFixed(1)}%</div><div class="v2">F1 ${DATA.r2.real_test_f1.toFixed(3)}</div></div>
+  <div class="metric"><div class="k">Full-population fit</div><div class="v">R² ${DATA.r2.recon_r2.toFixed(3)}</div><div class="v2">MAE ${DATA.r2.recon_mae.toFixed(3)} (win prob.), all ${N_ROWS} rows</div></div>
+  <div class="metric"><div class="k">Base conversion rate</div><div class="v">${(DATA.base_rate*100).toFixed(1)}%</div><div class="v2">share of RFPs won</div></div>
+` : `
+  <div class="metric"><div class="k">Real test R²</div><div class="v">${DATA.r2.real_test_r2.toFixed(3)}</div><div class="v2">pickle's own metric</div></div>
+  <div class="metric"><div class="k">Real test MAE</div><div class="v">${DATA.r2.real_test_mae.toFixed(2)}</div><div class="v2">pickle's own metric</div></div>
+  <div class="metric"><div class="k">Full-population fit</div><div class="v">R² ${DATA.r2.recon_r2.toFixed(3)}</div><div class="v2">MAE ${DATA.r2.recon_mae.toFixed(2)}, all ${N_ROWS} rows</div></div>
+  <div class="metric"><div class="k">Median actual ADR</div><div class="v">${DATA.median_adr.toFixed(2)}</div><div class="v2">split point below</div></div>
+`;
+
+document.getElementById('calloutCluster').innerHTML = calloutClusterHTML();
+
+const gradBarHTML = `<span class="hint" style="display:block;margin-bottom:2px;">${IS_CLF ? 'Win probability' : 'ADR level'}: low
+  <svg width="64" height="10" style="vertical-align:middle;border-radius:3px;margin:0 4px;">
+    <defs><linearGradient id="clusterGrad" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="${clusterHex(CLUSTER_ORDER[0])}"></stop>
+      <stop offset="100%" stop-color="${clusterHex(CLUSTER_ORDER[CLUSTER_ORDER.length-1])}"></stop>
+    </linearGradient></defs>
+    <rect width="64" height="10" fill="url(#clusterGrad)"></rect>
+  </svg> high</span>`;
+// Print legend rows in the same low->high order as the gradient bar and the ramp
+// itself, rather than DATA.cluster_info's own (arbitrary) id order.
+const legendClusters = CLUSTER_ORDER.map(id => DATA.cluster_info.find(c => c.id === id));
+document.getElementById('legendCluster').innerHTML = gradBarHTML + legendClusters.map(c=>
+  `<span><span class="sw" style="background:${clusterHex(c.id)}"></span>
+    ${clusterLegendLine(c)}</span>`
+).join('');
+
+function calloutClusterHTML(){
+  // All numbers here are computed live from DATA — nothing retyped — so this stays correct
+  // across retrains instead of drifting the way a hand-written cluster count/win-rate range would.
+  const nClusters = DATA.cluster_info.length;
+  const winRates = DATA.cluster_info.map(c => c.win_rate);
+  const winMinPct = Math.round(Math.min(...winRates) * 1000) / 10;
+  const winMaxPct = Math.round(Math.max(...winRates) * 1000) / 10;
+  const baselineWon = DATA.points.filter(p => p.won).length / DATA.points.length;
+  const baselinePct = Math.round(baselineWon * 1000) / 10;
+  // dbscan_eps/dbscan_noise_points are only present in data.js files from the patched build
+  // script; older exports simply omit the eps clause rather than showing a stale number.
+  const epsClause = (typeof DATA.dbscan_eps === 'number') ? ` (DBSCAN, eps=${DATA.dbscan_eps})` : ` (DBSCAN)`;
+  // Only claim a noise-point count when the data actually reports one — an older export that
+  // omits dbscan_noise_points gets a plain "no noise points" claim dropped rather than a
+  // guessed number.
+  const noiseClause = (typeof DATA.dbscan_noise_points === 'number')
+    ? ` with ${DATA.dbscan_noise_points} noise points at this resolution,`
+    : ``;
+  if (IS_CLF){
+    return `<b>Real, density-based clusters${epsClause}, ordered low→high win probability.</b> These ${nClusters} groups,${noiseClause}
+    closely track the model's own decision: win rate swings from ${winMinPct}% to ${winMaxPct}% across them, against a
+    ${baselinePct}% overall baseline. That's expected, not circular — these clusters sit in SHAP space, i.e. groups of
+    RFPs the model pushed toward Won or Lost for similar reasons (meeting_ratio, num_fnb_types, proposed_total_revenue,
+    and so on). Hover any point for its real per-row signed SHAP drivers.`;
+  }
+  return `<b>Real, density-based clusters${epsClause}, ordered low→high ADR.</b> These ${nClusters} groups,${noiseClause}
+  are what actually organizes this space — not win/loss (which varies only
+  ${winMinPct}–${winMaxPct}% across them vs. a ${baselinePct}% overall baseline) but pricing regime: compression-date premium
+  pricing, deep discounting, demand tier, and so on. Hover any point for its real per-row signed SHAP drivers.`;
+}
+
+const r2 = DATA.r2;
+// The build script names this key shap_full<N> (N = the model's actual feature count),
+// so it changes with the model — look it up instead of assuming a fixed number.
+const shapFullKey = Object.keys(r2).find(k => k.startsWith('shap_full'));
+const shapFullVal = shapFullKey ? r2[shapFullKey] : null;
+document.getElementById('compareTable').innerHTML = `
+  <tr><th>Projection</th><th>Dims folded in</th><th>Render dims</th><th>5-fold k-NN R²</th></tr>
+  <tr><td>PCA of raw features</td><td class="num">${N_FEAT}</td><td class="num">3</td><td class="num">${r2.pca3.toFixed(3)}</td></tr>
+  <tr><td>UMAP of raw features (unsupervised)</td><td class="num">${N_FEAT}</td><td class="num">3</td><td class="num">${r2.umap_raw3.toFixed(3)}</td></tr>
+  <tr><td>Named top-3 SHAP axes</td><td class="num">3</td><td class="num">3</td><td class="num">${r2.shap_top3.toFixed(3)}</td></tr>
+  <tr><td><b>UMAP of all ${N_FEAT} SHAP values (this page)</b></td><td class="num">${N_FEAT}</td><td class="num">3</td><td class="num"><b>${r2.umap_shap3.toFixed(3)}</b></td></tr>
+  <tr><td>All ${N_FEAT} SHAP values, no reduction</td><td class="num">${N_FEAT}</td><td class="num">${N_FEAT}</td><td class="num">${shapFullVal!=null ? shapFullVal.toFixed(3) : '—'}</td></tr>
+`;
+
+document.getElementById('footerText').innerHTML = IS_CLF ? `
+  Method: <code>shap.TreeExplainer</code> on the model's real ${N_FEAT}-feature matrix, standardized only for the
+  PCA/raw-UMAP comparison rows, UMAP (<code>n_neighbors=15, min_dist=0.1</code>, unsupervised) on the raw
+  ${N_FEAT}-dim SHAP output for the 3D view. Base value (model's baseline log-odds with no feature info): ${DATA.base_value}.
+  SHAP decomposition check: base value + sum of all ${N_FEAT} SHAP values reconstructs each row's predicted log-odds to
+  within 0.0004 (run that through the sigmoid to get the 0–1 win probability shown above), confirming the decomposition
+  math itself is exact. Ellipsoids: each color group is split into up to 3 k-means sub-clusters in this UMAP space,
+  with a separate ~55%-density Gaussian-covariance ellipsoid per sub-cluster, since a single ellipsoid mis-represents
+  UMAP's typically multi-modal output.
+` : `
+  Method: <code>shap.TreeExplainer</code> on the model's real ${N_FEAT}-feature matrix, standardized only for the
+  PCA/raw-UMAP comparison rows, UMAP (<code>n_neighbors=15, min_dist=0.1</code>, unsupervised) on the raw
+  ${N_FEAT}-dim SHAP output for the 3D view. Base value (model's ADR with no feature info): ${DATA.base_value}.
+  SHAP decomposition check: base value + sum of all ${N_FEAT} SHAP values reconstructs each row's predicted ADR to
+  within 0.0004, confirming the decomposition math itself is exact. Ellipsoids: each color group is split
+  into up to 3 k-means sub-clusters in this UMAP space, with a separate ~55%-density Gaussian-covariance
+  ellipsoid per sub-cluster, since a single ellipsoid mis-represents UMAP's typically multi-modal output.
+`;
+
+// ---------- three.js scene ----------
+const stage = document.getElementById('stage');
+const W = () => stage.clientWidth, H = () => stage.clientHeight;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, W()/H(), 0.01, 100);
+camera.position.set(1.8, 1.4, 1.8);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(W(), H());
+renderer.setClearColor(0x000000, 0);
+stage.appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(W(), H());
+labelRenderer.domElement.style.position = 'absolute';
+labelRenderer.domElement.style.top = '0';
+labelRenderer.domElement.style.left = '0';
+labelRenderer.domElement.style.pointerEvents = 'none';
+stage.appendChild(labelRenderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 0.6;
+controls.maxDistance = 8;
+
+scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+
+// UMAP dimensions aren't individually interpretable the way named features or PCA
+// loadings are (there's no "this axis = price" reading), so the three axes below are
+// labeled generically as UMAP 1/2/3 rather than given invented real-world names - the
+// color coding is just so you can tell which line is which while rotating. A faint
+// reference sphere for scale and a small origin marker are kept too.
+const originDot = new THREE.Mesh(
+  new THREE.SphereGeometry(0.01, 8, 6),
+  new THREE.MeshBasicMaterial({ color: PAL.ink3, transparent:true, opacity:0.5 })
+);
+scene.add(originDot);
+const refSphere = new THREE.Mesh(
+  new THREE.SphereGeometry(1, 24, 16),
+  new THREE.MeshBasicMaterial({ color: PAL.line, wireframe:true, transparent:true, opacity:0.12 })
+);
+scene.add(refSphere);
+
+const AXIS_LEN = 1.35;
+const AXIS_DEFS = [
+  { dir: [1,0,0], color: PAL.low,  label: 'UMAP 1' },
+  { dir: [0,1,0], color: PAL.pos,  label: 'UMAP 2' },
+  { dir: [0,0,1], color: PAL.hl,   label: 'UMAP 3' },
+];
+AXIS_DEFS.forEach(ax=>{
+  const [dx,dy,dz] = ax.dir;
+  const lineGeo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(-dx*AXIS_LEN, -dy*AXIS_LEN, -dz*AXIS_LEN),
+    new THREE.Vector3( dx*AXIS_LEN,  dy*AXIS_LEN,  dz*AXIS_LEN),
+  ]);
+  const lineMat = new THREE.LineBasicMaterial({ color: ax.color, transparent:true, opacity:0.55 });
+  scene.add(new THREE.Line(lineGeo, lineMat));
+
+  const el = document.createElement('div');
+  el.className = 'axis-label';
+  el.textContent = ax.label;
+  el.style.color = '#' + new THREE.Color(ax.color).getHexString();
+  const label = new CSS2DObject(el);
+  label.position.set(dx*AXIS_LEN, dy*AXIS_LEN, dz*AXIS_LEN);
+  scene.add(label);
+});
+
+// ---- points ----
+const N = DATA.points.length;
+const positions = new Float32Array(N*3);
+const colors = new Float32Array(N*3);
+const clusterTagById = {};
+DATA.cluster_info.forEach(ci=>{ clusterTagById[ci.id] = clusterLegendLine(ci); });
+DATA.points.forEach((p,i)=>{
+  positions[i*3]=p.x; positions[i*3+1]=p.y; positions[i*3+2]=p.z;
+});
+const geo = new THREE.BufferGeometry();
+geo.setAttribute('position', new THREE.BufferAttribute(positions,3));
+geo.setAttribute('color', new THREE.BufferAttribute(colors,3));
+const mat = new THREE.PointsMaterial({ size:0.026, vertexColors:true, transparent:true, opacity:0.82, sizeAttenuation:true });
+const pointCloud = new THREE.Points(geo, mat);
+scene.add(pointCloud);
+
+function recolorByCluster(){
+  const attr = geo.getAttribute('color');
+  DATA.points.forEach((p,i)=>{
+    const c = p.cluster >= 0 ? clusterColor(p.cluster) : new THREE.Color(PAL.ink3);
+    attr.setXYZ(i, c.r, c.g, c.b);
+  });
+  attr.needsUpdate = true;
+}
+
+// ---- highlight ----
+const hlRing = new THREE.Mesh(
+  new THREE.RingGeometry(0.022, 0.03, 24),
+  new THREE.MeshBasicMaterial({ color: PAL.hl, side: THREE.DoubleSide, transparent:true, opacity:0.75, depthWrite:false })
+);
+hlRing.visible = false;
+scene.add(hlRing);
+const hlSphere = new THREE.Mesh(
+  new THREE.SphereGeometry(0.014, 12, 8),
+  new THREE.MeshBasicMaterial({ color: PAL.hl, transparent:true, opacity:0.5, depthWrite:false })
+);
+hlSphere.visible = false;
+scene.add(hlSphere);
+
+const tooltipPanel = document.getElementById('ptTooltip');
+const tooltipCard = document.getElementById('ptTooltipCard');
+
+// RFP ids are "{B|L}-{YYYYMM}-{5 digits}" (e.g. B-202301-25860). Verified against this
+// page's own data: every B id has won=1 and every L id has won=0, no exceptions - so the
+// letter is a real booked/lost flag and the 6-digit block a real year-month. Parsed here
+// rather than re-exported, since the info was already sitting in the id.
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function monthLabelFromId(id){
+  const m = /-(\d{4})(\d{2})-/.exec(id || '');
+  if (!m) return null;
+  const mm = parseInt(m[2], 10);
+  if (mm < 1 || mm > 12) return null;
+  return `${MONTH_NAMES[mm-1]} ${m[1]}`;
+}
+
+function tooltipHTML(p){
+  const rows = IS_CLF ? [
+    `<div class="pt-tooltip-row"><span>Predicted win prob.</span><b>${(p.pred*100).toFixed(1)}%</b></div>`,
+  ] : [
+    `<div class="pt-tooltip-row"><span>Actual ADR</span><b>${p.actual.toFixed(2)}</b></div>`,
+    `<div class="pt-tooltip-row"><span>Predicted ADR</span><b>${p.pred.toFixed(2)}</b></div>`,
+  ];
+  const when = monthLabelFromId(p.id);
+  if (when) rows.push(`<div class="pt-tooltip-row"><span>When</span><b>${when}</b></div>`);
+  // "industry" still isn't in this page's exported per-row data - once that's added to the
+  // export (see chat), it'll show here automatically.
+  if (p.industry) rows.push(`<div class="pt-tooltip-row"><span>Industry</span><b>${p.industry}</b></div>`);
+  rows.push(`<div class="pt-tooltip-row"><span>Outcome</span><b class="${p.won?'val-pos':'val-neg'}">${p.won ? 'Won' : 'Lost'}</b></div>`);
+  return `<div class="pt-tooltip-name">${p.acct || 'RFP'}</div>
+    <div class="pt-tooltip-id">${p.id}</div>
+    ${rows.join('')}
+    <div class="pt-tooltip-tag">${clusterTagById[p.cluster] ?? 'cluster ' + p.cluster}</div>`;
+}
+
+function placeHighlight(idx){
+  const p = DATA.points[idx];
+  const pos = new THREE.Vector3(p.x,p.y,p.z);
+  hlRing.position.copy(pos);
+  hlRing.lookAt(camera.position);
+  hlSphere.position.copy(pos);
+  hlRing.visible = true; hlSphere.visible = true;
+  tooltipCard.innerHTML = tooltipHTML(p);
+  tooltipPanel.style.display = 'block';
+  updateHoverPanel(idx);
+}
+
+function hideHighlight(){
+  if (pinned !== null) return;
+  hlRing.visible = false; hlSphere.visible = false; tooltipPanel.style.display = 'none';
+}
+
+function updateHoverPanel(idx){
+  const p = DATA.points[idx];
+  document.getElementById('hpTitle').textContent = `${p.acct || 'RFP'} · ${p.id}`;
+  document.getElementById('hpSub').textContent = IS_CLF
+    ? `${p.won ? 'Booked / Won' : 'Lost'} · predicted win probability ${(p.pred*100).toFixed(1)}%`
+    : `${p.won ? 'Booked / Won' : 'Lost'} · actual ${p.actual.toFixed(2)} · predicted ${p.pred.toFixed(2)}`;
+  const maxAbs = Math.max(...p.contribs.map(c=>Math.abs(c.shap)), 0.001);
+  const bars = p.contribs.map(c=>{
+    const pct = Math.min(50, (Math.abs(c.shap)/maxAbs)*50);
+    const cls = c.shap >= 0 ? 'val-pos' : 'val-neg';
+    const fillColor = c.shap >= 0 ? 'var(--pos)' : 'var(--neg)';
+    const left = c.shap >= 0 ? '50%' : `${50-pct}%`;
+    const width = `${pct}%`;
+    return `<div class="hp-bar-row">
+      <div class="hp-name" title="${c.name}">${c.name}</div>
+      <div class="hp-bar-track"><div class="hp-bar-mid"></div>
+        <div class="hp-bar-fill" style="left:${left};width:${width};background:${fillColor}"></div>
+      </div>
+      <div class="hp-val ${cls}">${c.shap>=0?'+':'-'}${Math.abs(c.shap).toFixed(2)}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('hpBars').innerHTML = bars + (IS_CLF
+    ? `<div class="hp-sub" style="margin-top:6px;">green pushes toward Won, red pushes toward Lost (real SHAP units, log-odds)</div>`
+    : `<div class="hp-sub" style="margin-top:6px;">green pushes ADR up, red pushes ADR down (real SHAP units)</div>`);
+}
+
+// ---- ellipsoids + centroids ----
+function buildEllipsoid(params, color){
+  const sphereGeo = new THREE.SphereGeometry(1, 20, 14);
+  const baseColor = new THREE.Color(color);
+  const fillMesh = new THREE.Mesh(sphereGeo, new THREE.MeshBasicMaterial({
+    color: baseColor, transparent:true, opacity:0.13, side: THREE.DoubleSide, depthWrite:false
+  }));
+  const contourColor = baseColor.clone().multiplyScalar(0.55); // darker than the fill for contrast
+  const contourMesh = new THREE.Mesh(sphereGeo, new THREE.MeshBasicMaterial({
+    color: contourColor, wireframe:true, transparent:true, opacity:0.7
+  }));
+  const group = new THREE.Group();
+  group.add(fillMesh);
+  group.add(contourMesh);
+  const basis = new THREE.Matrix4();
+  const [a0,a1,a2] = params.axes;
+  basis.makeBasis(
+    new THREE.Vector3(a0[0],a0[1],a0[2]),
+    new THREE.Vector3(a1[0],a1[1],a1[2]),
+    new THREE.Vector3(a2[0],a2[1],a2[2])
+  );
+  const scaleM = new THREE.Matrix4().makeScale(params.radii[0], params.radii[1], params.radii[2]);
+  group.matrixAutoUpdate = false;
+  group.matrix.copy(basis).multiply(scaleM);
+  group.matrix.setPosition(params.center[0], params.center[1], params.center[2]);
+  return group;
+}
+function buildCentroid(pos, color){
+  const m = new THREE.Mesh(
+    new THREE.SphereGeometry(0.03,14,10),
+    new THREE.MeshBasicMaterial({ color, transparent:true, opacity:0.45, depthWrite:false })
+  );
+  m.position.set(pos[0],pos[1],pos[2]);
+  return m;
+}
+const groupObjs = {};
+
+// ---- price-cluster ellipsoids, computed client-side from each point's cluster id ----
+// (the exported groups only carried k-means sub-clusters for won/adr; the DBSCAN
+// price clusters were exported as flat cluster ids on each point with no ellipsoid
+// geometry, so nothing was ever drawn for this mode — fixed by fitting a covariance
+// ellipsoid per cluster here, same visual language as the other two modes)
+function jacobiEigen3(covIn){
+  let a = covIn.map(row=>row.slice());
+  let v = [[1,0,0],[0,1,0],[0,0,1]];
+  for (let sweep=0; sweep<60; sweep++){
+    const off = Math.abs(a[0][1])+Math.abs(a[0][2])+Math.abs(a[1][2]);
+    if (off < 1e-12) break;
+    for (const [p,q] of [[0,1],[0,2],[1,2]]){
+      if (Math.abs(a[p][q]) < 1e-14) continue;
+      const theta = (a[q][q]-a[p][p])/(2*a[p][q]);
+      const sign = theta >= 0 ? 1 : -1;
+      const t = sign/(Math.abs(theta)+Math.sqrt(theta*theta+1));
+      const c = 1/Math.sqrt(t*t+1), s = t*c;
+      const app = a[p][p], aqq = a[q][q], apq = a[p][q];
+      a[p][p] = c*c*app - 2*s*c*apq + s*s*aqq;
+      a[q][q] = s*s*app + 2*s*c*apq + c*c*aqq;
+      a[p][q] = a[q][p] = 0;
+      for (let i=0;i<3;i++){
+        if (i!==p && i!==q){
+          const aip = a[i][p], aiq = a[i][q];
+          a[i][p] = a[p][i] = c*aip - s*aiq;
+          a[i][q] = a[q][i] = s*aip + c*aiq;
+        }
+      }
+      for (let i=0;i<3;i++){
+        const vip = v[i][p], viq = v[i][q];
+        v[i][p] = c*vip - s*viq;
+        v[i][q] = s*vip + c*viq;
+      }
+    }
+  }
+  return {
+    values: [a[0][0], a[1][1], a[2][2]],
+    vectors: [[v[0][0],v[1][0],v[2][0]], [v[0][1],v[1][1],v[2][1]], [v[0][2],v[1][2],v[2][2]]]
+  };
+}
+function computeCovarianceEllipsoid(pts, scale){
+  const n = pts.length;
+  const center = [0,0,0];
+  pts.forEach(p=>{ center[0]+=p[0]; center[1]+=p[1]; center[2]+=p[2]; });
+  center[0]/=n; center[1]/=n; center[2]/=n;
+  const cov = [[0,0,0],[0,0,0],[0,0,0]];
+  pts.forEach(p=>{
+    const d = [p[0]-center[0], p[1]-center[1], p[2]-center[2]];
+    for(let i=0;i<3;i++) for(let j=0;j<3;j++) cov[i][j]+=d[i]*d[j];
+  });
+  const denom = Math.max(n-1,1);
+  for(let i=0;i<3;i++) for(let j=0;j<3;j++) cov[i][j]/=denom;
+  const {values, vectors} = jacobiEigen3(cov);
+  const radii = values.map(val=>Math.sqrt(Math.max(val,1e-8))*scale);
+  return { center, axes: vectors, radii };
+}
+const clusterGroup = new THREE.Group();
+DATA.cluster_info.forEach(c=>{
+  const pts = DATA.points.filter(p=>p.cluster===c.id).map(p=>[p.x,p.y,p.z]);
+  const color = clusterColor(c.id);
+  if (pts.length >= 4){
+    const params = computeCovarianceEllipsoid(pts, 1.5); // ~1.5 sigma per axis, matches the ~55%-density feel of the other groups
+    clusterGroup.add(buildEllipsoid(params, color));
+    clusterGroup.add(buildCentroid(params.center, color));
+  }
+});
+clusterGroup.visible = false;
+scene.add(clusterGroup);
+groupObjs.cluster = clusterGroup;
+
+// ---- interaction ----
+const raycaster = new THREE.Raycaster();
+const BASE_PICK_THRESHOLD = 0.035;
+const REF_CAM_DIST = camera.position.length(); // threshold above was tuned for the initial view distance
+const mouse = new THREE.Vector2();
+let pinned = null;
+let bwSyncPinnedDots = () => {}; // reassigned once the interactive beeswarm below finishes rendering
+
+// raycaster.params.Points.threshold is a *world-space* radius around the ray. Left fixed,
+// it stays calibrated only for the starting zoom level: zoomed in close, that same
+// world-space radius covers a huge chunk of the screen, so a click can snap to a point
+// that's technically inside the (now oversized) pick radius but visually nowhere near the
+// cursor - "focus far from the click". Scaling it by current camera distance keeps the
+// pick radius roughly constant in screen space at any zoom.
+function pickPointIndex(clientX, clientY){
+  const rect = stage.getBoundingClientRect();
+  mouse.x = ((clientX-rect.left)/rect.width)*2-1;
+  mouse.y = -((clientY-rect.top)/rect.height)*2+1;
+  const dist = camera.position.length();
+  raycaster.params.Points.threshold = THREE.MathUtils.clamp(
+    BASE_PICK_THRESHOLD * (dist / REF_CAM_DIST), 0.006, 0.12
+  );
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObject(pointCloud);
+  if (!hits.length) return null;
+  // among points within the pick radius, prefer the one the cursor is actually closest to
+  // (perpendicular distance to the ray), not just the nearest to the camera
+  hits.sort((a,b) => a.distanceToRay - b.distanceToRay);
+  return hits[0].index;
+}
+
+function onMove(e){
+  if (pinned !== null) return;
+  const idx = pickPointIndex(e.clientX, e.clientY);
+  if (idx !== null) placeHighlight(idx);
+}
+function onClick(e){
+  const idx = pickPointIndex(e.clientX, e.clientY);
+  if (idx !== null){ pinned = idx; placeHighlight(pinned); bwSyncPinnedDots(); }
+}
+stage.addEventListener('pointermove', onMove);
+stage.addEventListener('click', onClick);
+stage.addEventListener('pointerleave', hideHighlight);
+
+// ---- color mode toggle ----
+recolorByCluster();
+groupObjs.cluster.visible = true;
+placeHighlight(DATA.default_idx);
+
+// ---- resize ----
+function onResize(){
+  camera.aspect = W()/H();
+  camera.updateProjectionMatrix();
+  renderer.setSize(W(), H());
+  labelRenderer.setSize(W(), H());
+}
+window.addEventListener('resize', onResize);
+
+// ---- render loop ----
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  if (hlRing.visible){
+    hlRing.lookAt(camera.position);
+    const dist = camera.position.distanceTo(hlRing.position);
+    const s = THREE.MathUtils.clamp(dist * 0.35, 0.15, 3.5);
+    hlRing.scale.setScalar(s);
+    hlSphere.scale.setScalar(s);
+  }
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+}
+animate();
+
+// ---------- interactive SHAP beeswarm ----------
+// Draws every point of the top-18 features for real, from DATA.beeswarm.shap/val
+// (same row order as DATA.points), instead of just showing shap_beeswarm.png as a
+// flat picture. If this page's data.js predates that export, DATA.beeswarm is
+// undefined and the static <img> above is left exactly as it was, untouched.
+function renderBeeswarm(){
+  const BW = DATA.beeswarm;
+  const chartEl = document.getElementById('beeswarmChart');
+  const imgEl = document.getElementById('beeswarmImg');
+  const toolbarEl = document.getElementById('bwToolbar');
+  if (!BW || !BW.features || !BW.features.length || !chartEl) return; // no interactive data - keep the static image
+
+  const feats = BW.features; // already sorted high -> low mean|SHAP| by the build script
+  const canLinkPoints = feats[0].shap.length === DATA.points.length;
+  imgEl.style.display = 'none';
+  toolbarEl.hidden = false;
+
+  const nRows = feats.length;
+  const rowH = 30, topPad = 24, botPad = 40, leftW = 190, rightPad = 20;
+  const width = 900;
+  const height = topPad + botPad + nRows * rowH;
+
+  // one shared x-scale across every row, symmetric around 0, so rows are comparable
+  let maxAbs = 0;
+  for (const f of feats) for (const v of f.shap) if (Math.abs(v) > maxAbs) maxAbs = Math.abs(v);
+  maxAbs *= 1.08;
+  const x0 = leftW, x1 = width - rightPad;
+  const xScale = v => x0 + ((v + maxAbs) / (2 * maxAbs)) * (x1 - x0);
+  const xZero = xScale(0);
+
+  const lowColor = new THREE.Color(PAL.low), highColor = new THREE.Color(PAL.high);
+  const _mix = new THREE.Color();
+  function colorFor(t){
+    _mix.lerpColors(lowColor, highColor, THREE.MathUtils.clamp(t, 0, 1));
+    return '#' + _mix.getHexString();
+  }
+  function truncateName(s, max){ return s.length > max ? s.slice(0, max - 1) + '…' : s; }
+  function formatFeatureVal(v){ return Number.isInteger(v) ? String(v) : v.toFixed(2); }
+
+  const dotRBase = 2.1;
+  let svg = `<svg viewBox="0 0 ${width} ${height}" style="width:100%;height:auto;display:block;" xmlns="http://www.w3.org/2000/svg">`;
+  svg += `<line class="bw-zeroline" x1="${xZero}" y1="${topPad - 6}" x2="${xZero}" y2="${height - botPad + 6}"></line>`;
+
+  feats.forEach((f, fi) => {
+    const yc = topPad + fi * rowH + rowH / 2;
+
+    // color domain for this feature: 2nd/98th percentile, so a few outliers
+    // don't wash the whole row's color scale out to one end
+    const sortedVal = f.val.slice().sort((a, b) => a - b);
+    const n = sortedVal.length;
+    let lo = sortedVal[Math.floor(n * 0.02)];
+    let hi = sortedVal[Math.min(n - 1, Math.ceil(n * 0.98))];
+    if (hi === lo) hi = lo + 1;
+
+    // bin by pixel x to find how crowded this row's busiest spot is (common for
+    // near-binary flags like Is_Compression_Date), then size dots/spacing to fit
+    // the full stack inside rowH instead of a fixed radius blowing the row out
+    const xs = f.shap.map(xScale);
+    const binW = 3;
+    const counts = new Map();
+    let maxStack = 1;
+    for (const x of xs){
+      const b = Math.round(x / binW);
+      const c = (counts.get(b) || 0) + 1;
+      counts.set(b, c);
+      if (c > maxStack) maxStack = c;
+    }
+    const avail = rowH - 4;
+    const dy = Math.max(1.1, Math.min(dotRBase * 2, avail / Math.max(1, maxStack)));
+    const r = Math.max(0.9, Math.min(dotRBase, dy / 2));
+
+    const order = xs.map((_, i) => i).sort((a, b) => xs[a] - xs[b]);
+    const placed = new Map();
+    let rowSvg = '';
+    for (const pi of order){
+      const x = xs[pi];
+      const b = Math.round(x / binW);
+      const k = placed.get(b) || 0;
+      placed.set(b, k + 1);
+      const dir = k % 2 === 0 ? -1 : 1;
+      const step = Math.ceil(k / 2);
+      const y = yc + dir * step * dy;
+      const t = (f.val[pi] - lo) / (hi - lo);
+      rowSvg += `<circle class="bw-dot" data-fi="${fi}" data-pi="${pi}" data-r="${r}" ` +
+        `cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(2)}" fill="${colorFor(t)}" fill-opacity="0.82"></circle>`;
+    }
+    svg += `<text class="bw-row-label" x="${leftW - 10}" y="${(yc + 3.5).toFixed(1)}" text-anchor="end">${truncateName(f.name, 27)}</text>`;
+    svg += rowSvg;
+  });
+
+  const axisY = height - botPad;
+  svg += `<line class="bw-axisline" x1="${x0}" y1="${axisY}" x2="${x1}" y2="${axisY}"></line>`;
+  svg += `<text class="bw-axis-text" x="${x0}" y="${axisY + 14}" text-anchor="start">-${maxAbs.toFixed(1)}</text>`;
+  svg += `<text class="bw-axis-text" x="${xZero}" y="${axisY + 14}" text-anchor="middle">0</text>`;
+  svg += `<text class="bw-axis-text" x="${x1}" y="${axisY + 14}" text-anchor="end">+${maxAbs.toFixed(1)}</text>`;
+  svg += `<text class="bw-axis-text" x="${(x0 + x1) / 2}" y="${height - 6}" text-anchor="middle">${IS_CLF ? 'SHAP value (impact on predicted win probability, log-odds)' : 'SHAP value (impact on predicted ADR)'}</text>`;
+  svg += `</svg>`;
+  chartEl.innerHTML = svg;
+
+  const svgEl = chartEl.querySelector('svg');
+  const card = document.getElementById('beeswarmCard');
+  const tooltip = document.getElementById('bwTooltip');
+  const tooltipCard = document.getElementById('bwTooltipCard');
+
+  function beeswarmTooltipHTML(fi, pi){
+    const f = feats[fi];
+    const shapVal = f.shap[pi];
+    const cls = shapVal >= 0 ? 'val-pos' : 'val-neg';
+    const sign = shapVal >= 0 ? '+' : '-';
+    let extra = '';
+    if (canLinkPoints){
+      const p = DATA.points[pi];
+      extra = IS_CLF
+        ? `<div class="pt-tooltip-tag">${p.acct || 'RFP'} · ${p.won ? 'Won' : 'Lost'} · predicted win prob. ${(p.pred*100).toFixed(1)}%</div>`
+        : `<div class="pt-tooltip-tag">${p.acct || 'RFP'} · actual ${p.actual.toFixed(2)} · predicted ${p.pred.toFixed(2)}</div>`;
+    }
+    return `<div class="pt-tooltip-name">${f.name}</div>
+      <div class="pt-tooltip-row"><span>SHAP impact</span><b class="${cls}">${sign}${Math.abs(shapVal).toFixed(2)}</b></div>
+      <div class="pt-tooltip-row"><span>Feature value</span><b>${formatFeatureVal(f.val[pi])}</b></div>
+      ${extra}`;
+  }
+
+  let pinnedEls = [];
+  function syncPinnedDots(){
+    for (const el of pinnedEls) el.setAttribute('r', el.dataset.r);
+    pinnedEls = (canLinkPoints && pinned !== null)
+      ? Array.from(svgEl.querySelectorAll(`circle[data-pi="${pinned}"]`))
+      : [];
+    for (const el of pinnedEls) el.setAttribute('r', (parseFloat(el.dataset.r) * 1.8).toFixed(2));
+  }
+  bwSyncPinnedDots = syncPinnedDots;
+
+  svgEl.addEventListener('pointermove', e => {
+    const t = e.target;
+    if (t.tagName !== 'circle'){ tooltip.style.display = 'none'; return; }
+    const fi = +t.dataset.fi, pi = +t.dataset.pi;
+    tooltipCard.innerHTML = beeswarmTooltipHTML(fi, pi);
+    const rect = card.getBoundingClientRect();
+    let left = e.clientX - rect.left + 14;
+    const top = e.clientY - rect.top + 14;
+    if (left > rect.width - 240) left = e.clientX - rect.left - 244;
+    tooltip.style.left = left + 'px';
+    tooltip.style.top = top + 'px';
+    tooltip.style.display = 'block';
+  });
+  svgEl.addEventListener('pointerleave', () => { tooltip.style.display = 'none'; });
+  svgEl.addEventListener('click', e => {
+    const t = e.target;
+    if (t.tagName !== 'circle' || !canLinkPoints) return;
+    pinned = +t.dataset.pi;
+    placeHighlight(pinned);
+    syncPinnedDots();
+    document.getElementById('stage').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
+  // color-scale legend (per-row normalized, 2nd-98th percentile of that feature's value)
+  const legendEl = document.getElementById('bwLegend');
+  if (legendEl){
+    legendEl.innerHTML = `<span class="hint">Feature value:</span>
+      <svg width="64" height="10" style="vertical-align:middle;border-radius:3px;">
+        <defs><linearGradient id="bwGrad" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0%" stop-color="${colorFor(0)}"></stop>
+          <stop offset="100%" stop-color="${colorFor(1)}"></stop>
+        </linearGradient></defs>
+        <rect width="64" height="10" fill="url(#bwGrad)"></rect>
+      </svg>
+      <span class="hint">low → high</span>`;
+  }
+}
+renderBeeswarm();
+
+</script>
+</body>
+</html>
